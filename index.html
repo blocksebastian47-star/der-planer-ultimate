@@ -22354,18 +22354,28 @@ const InsuranceManager = {
 };
 const FinanceManager = {
   recordRevenue(department, amount) {
-    State.departments[department].revenue += amount;
-    State.departments[department].monthRevenue += amount;
+    const dept = State.departments[department];
+    if (!dept) {
+      console.warn(`FinanceManager.recordRevenue: unknown department "${department}"`);
+      return;
+    }
+    dept.revenue += amount;
+    dept.monthRevenue += amount;
     State.cash += amount;
     State.stats.totalRevenue += amount;
   },
   recordCost(department, amount, isFixed = false) {
+    const dept = State.departments[department];
+    if (!dept) {
+      console.warn(`FinanceManager.recordCost: unknown department "${department}"`);
+      return;
+    }
     if (isFixed) {
-      State.departments[department].fixedCosts += amount;
-      State.departments[department].monthFixed += amount;
+      dept.fixedCosts += amount;
+      dept.monthFixed += amount;
     } else {
-      State.departments[department].variableCosts += amount;
-      State.departments[department].monthVariable += amount;
+      dept.variableCosts += amount;
+      dept.monthVariable += amount;
     }
     State.cash -= amount;
   },
@@ -25529,6 +25539,15 @@ const Game = {
   SLOTS: 5,
   SLOT_KEY: (n) => `planer_save_slot${n}`,
   AUTO_KEY: "planer_save_auto",
+  SAVE_SCHEMA: 1,
+  _buildSnapshot() {
+    return {
+      ...State,
+      _schema: this.SAVE_SCHEMA,
+      _savedAt: new Date().toLocaleString("de-DE"),
+      _savedAtMs: Date.now(),
+    };
+  },
   slotMeta(slotKey) {
     try {
       const raw = localStorage.getItem(slotKey);
@@ -25557,13 +25576,13 @@ const Game = {
   },
   saveToSlot(n) {
     const key = this.SLOT_KEY(n);
-    const data = { ...State, _savedAt: new Date().toLocaleString("de-DE"), _savedAtMs: Date.now() };
     try {
-      localStorage.setItem(key, JSON.stringify(data));
-      localStorage.setItem("planer_save", JSON.stringify(data));
+      const json = JSON.stringify(this._buildSnapshot());
+      localStorage.setItem(key, json);
+      localStorage.setItem("planer_save", json);
       return true;
     } catch (e) {
-      console.error("Save failed:", e);
+      console.error("saveToSlot failed:", e);
       return false;
     }
   },
@@ -25581,17 +25600,20 @@ const Game = {
   },
   autoSave() {
     try {
-      const data = { ...State, _savedAt: new Date().toLocaleString("de-DE"), _savedAtMs: Date.now() };
-      localStorage.setItem(this.AUTO_KEY, JSON.stringify(data));
-      localStorage.setItem("planer_save", JSON.stringify(data));
-    } catch (e) {}
+      const json = JSON.stringify(this._buildSnapshot());
+      localStorage.setItem(this.AUTO_KEY, json);
+      localStorage.setItem("planer_save", json);
+    } catch (e) {
+      console.warn("autoSave failed:", e);
+      if (typeof UI !== "undefined" && UI.toast)
+        UI.toast("Automatisches Speichern fehlgeschlagen — Speicher voll?", "warn");
+    }
   },
   save() {
     try {
-      const data = { ...State, _savedAt: new Date().toLocaleString("de-DE"), _savedAtMs: Date.now() };
-      localStorage.setItem("planer_save", JSON.stringify(data));
+      localStorage.setItem("planer_save", JSON.stringify(this._buildSnapshot()));
     } catch (e) {
-      console.warn("Save failed", e);
+      console.warn("save failed:", e);
     }
   },
   load() {
@@ -25612,6 +25634,11 @@ const Game = {
         if (raw) newest = JSON.parse(raw);
       }
       if (!newest) return false;
+      if (newest._schema && newest._schema > this.SAVE_SCHEMA) {
+        console.warn(
+          `Save was written by a newer schema (v${newest._schema}); this build supports v${this.SAVE_SCHEMA}. Loading anyway.`,
+        );
+      }
       Object.assign(State, newest);
       if (State.staff && Array.isArray(State.staff)) {
         const maleNames = DATA.firstNamesMale || [];
