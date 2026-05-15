@@ -996,8 +996,9 @@ footer {
     <div class="stat"><span class="label">Reputation</span><span class="val" id="stat-rep">—</span></div>
     <div class="stat"><span class="label">Bekanntheit</span><span class="val" id="stat-fame">—</span></div>
     <div class="stat"><span class="label">Stress</span><span class="val" id="stat-stress">—</span></div>
+    <button class="btn" title="Hauptmenü (Weiterspielen, Neues Spiel, Laden)" onclick="UI.showStartMenu()" style="font-size:14px; padding:8px 12px;">☰</button>
     <button class="btn" title="Manuell speichern" onclick="UI.manualSave()" style="font-size:14px; padding:8px 12px;">💾</button>
-    <button class="btn" title="Spiel-Menü (Neustart, Optionen)" onclick="UI.openGameMenu()" style="font-size:14px; padding:8px 12px;">⚙</button>
+    <button class="btn" title="Spiel-Menü (Slots, Optionen)" onclick="UI.openGameMenu()" style="font-size:14px; padding:8px 12px;">⚙</button>
     <!-- Spielgeschwindigkeit -->
     <div class="speed-controls">
       <button class="speed-btn pause-btn" id="btn-pause" onclick="GameClock.togglePause()" title="Pause / Weiter">⏸</button>
@@ -25507,13 +25508,8 @@ const ServiceContractManager = {
 };
 const Game = {
   init() {
-    if (!this.load()) {
-      State.gameOver = false;
-      UI.showLocationSelector();
-    } else {
-      if ("undefined" != typeof GameClock) GameClock.init();
-      UI.renderAll();
-    }
+    State.gameOver = false;
+    UI.showStartMenu();
   },
   startNewGame(locationId, companyName, companyLogo) {
     // Full reset — wipe any fields from a previous game session before applying defaults.
@@ -25523,7 +25519,7 @@ const Game = {
     Object.assign(State, _planerDefaultState());
     LocationManager.selectLocation(locationId);
     const loc = LocationManager.current();
-    const finalName = companyName || "Meine Spedition GmbH";
+    const finalName = companyName || "Meine Spedition e.K.";
     const finalLogo = companyLogo || "🚛";
     State.companyName = finalName;
     State.companyLogo = finalLogo;
@@ -25681,6 +25677,20 @@ const Game = {
     for (let i = 1; i <= this.SLOTS; i++)
       slots.push({ n: i, key: this.SLOT_KEY(i), meta: this.slotMeta(this.SLOT_KEY(i)) });
     return slots;
+  },
+  hasSave() {
+    for (let i = 1; i <= this.SLOTS; i++) if (localStorage.getItem(this.SLOT_KEY(i))) return true;
+    return !!localStorage.getItem("planer_save") || !!localStorage.getItem(this.AUTO_KEY);
+  },
+  newestSaveMeta() {
+    let newest = null;
+    const consider = (m) => {
+      if (m && (!newest || (m.savedAtMs || 0) > (newest.savedAtMs || 0))) newest = m;
+    };
+    for (let i = 1; i <= this.SLOTS; i++) consider(this.slotMeta(this.SLOT_KEY(i)));
+    consider(this.slotMeta(this.AUTO_KEY));
+    consider(this.slotMeta("planer_save"));
+    return newest;
   },
   saveToSlot(n) {
     const key = this.SLOT_KEY(n);
@@ -25893,7 +25903,7 @@ const UI = {
       "🎯",
       "🏗️",
     ];
-    box.innerHTML = `\n      <h2 style="margin-bottom:6px;">WILLKOMMEN BEI DER PLANER ULTIMATE</h2>\n      <p class="subtitle" style="margin-bottom:20px;">Zuerst: Wie heißt Ihre Spedition?</p>\n\n      \x3c!-- Logo-Auswahl --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:8px;letter-spacing:1px;">FIRMEN-LOGO (Emoji)</label>\n        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">\n          ${logos.map((e, i) => `\n            <button id="logo-${i}" onclick="UI._selectLogo('${e}',${i})"\n              style="font-size:24px;width:44px;height:44px;border-radius:8px;border:2px solid var(--border);\n              background:var(--bg2);cursor:pointer;transition:all .12s;${0 === i ? "border-color:var(--accent);background:rgba(255,182,39,0.15)" : ""}"\n              onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''">\n              ${e}\n            </button>`).join("")}\n        </div>\n        <div style="display:flex;align-items:center;gap:8px;">\n          <input id="logo-custom" type="text" maxlength="2" placeholder="Eigenes Emoji..."\n            style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);\n            background:var(--bg);color:var(--fg);font-size:18px;text-align:center;"\n            oninput="UI._selectLogo(this.value,-1)">\n          <span style="font-size:11px;color:var(--muted2);">Oder eigenes Emoji eingeben</span>\n        </div>\n      </div>\n\n      \x3c!-- Firmenname --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;letter-spacing:1px;">FIRMENNAME</label>\n        <input id="company-name-input" type="text" maxlength="40"\n          placeholder="z.B. Müller Transport GmbH"\n          value="Meine Spedition GmbH"\n          style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);\n          background:var(--bg);color:var(--fg);font-size:14px;"\n          oninput="UI._updateCompanyPreview()">\n        <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Rechtsform-Tipps: GmbH · GmbH & Co. KG · Transport GmbH · Spedition KG · Logistik AG</div>\n      </div>\n\n      \x3c!-- Vorschau --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">\n        <span id="logo-preview" style="font-size:36px;">🚛</span>\n        <div>\n          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">VORSCHAU HEADER</div>\n          <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;color:var(--accent);">DER PLANER ULTIMATE\n            <span id="company-preview" style="font-size:13px;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:0;"> Meine Spedition GmbH</span>\n          </div>\n        </div>\n      </div>\n\n      <div class="modal-actions">\n        <button class="btn primary" style="width:100%;padding:12px;font-size:14px;" onclick="UI._confirmCompanySetup()">\n          Weiter zur Standortauswahl →\n        </button>\n      </div>\n    `;
+    box.innerHTML = `\n      <h2 style="margin-bottom:6px;">WILLKOMMEN BEI DER PLANER ULTIMATE</h2>\n      <p class="subtitle" style="margin-bottom:20px;">Zuerst: Wie heißt Ihre Spedition?</p>\n\n      \x3c!-- Logo-Auswahl --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:8px;letter-spacing:1px;">FIRMEN-LOGO (Emoji)</label>\n        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">\n          ${logos.map((e, i) => `\n            <button id="logo-${i}" onclick="UI._selectLogo('${e}',${i})"\n              style="font-size:24px;width:44px;height:44px;border-radius:8px;border:2px solid var(--border);\n              background:var(--bg2);cursor:pointer;transition:all .12s;${0 === i ? "border-color:var(--accent);background:rgba(255,182,39,0.15)" : ""}"\n              onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''">\n              ${e}\n            </button>`).join("")}\n        </div>\n        <div style="display:flex;align-items:center;gap:8px;">\n          <input id="logo-custom" type="text" maxlength="2" placeholder="Eigenes Emoji..."\n            style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);\n            background:var(--bg);color:var(--fg);font-size:18px;text-align:center;"\n            oninput="UI._selectLogo(this.value,-1)">\n          <span style="font-size:11px;color:var(--muted2);">Oder eigenes Emoji eingeben</span>\n        </div>\n      </div>\n\n      \x3c!-- Firmenname --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;letter-spacing:1px;">FIRMENNAME</label>\n        <input id="company-name-input" type="text" maxlength="40"\n          placeholder="z.B. Müller Transport e.K."\n          value="Meine Spedition e.K."\n          style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);\n          background:var(--bg);color:var(--fg);font-size:14px;"\n          oninput="UI._updateCompanyPreview()">\n        <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Sie starten als Einzelunternehmer — Rechtsform <b>e.K.</b> (eingetragener Kaufmann). Größere Rechtsformen (GmbH, AG …) später unter Strategie → Rechtsform.</div>\n      </div>\n\n      \x3c!-- Vorschau --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">\n        <span id="logo-preview" style="font-size:36px;">🚛</span>\n        <div>\n          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">VORSCHAU HEADER</div>\n          <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;color:var(--accent);">DER PLANER ULTIMATE\n            <span id="company-preview" style="font-size:13px;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:0;"> Meine Spedition e.K.</span>\n          </div>\n        </div>\n      </div>\n\n      <div class="modal-actions">\n        <button class="btn primary" style="width:100%;padding:12px;font-size:14px;" onclick="UI._confirmCompanySetup()">\n          Weiter zur Standortauswahl →\n        </button>\n      </div>\n    `;
     this._selectedLogo = logos[0];
     overlay.classList.add("show");
   },
@@ -25920,13 +25930,13 @@ const UI = {
     if (preview) preview.textContent = " " + (val || "Meine Spedition");
   },
   _confirmCompanySetup() {
-    const name = document.getElementById("company-name-input")?.value?.trim() || "Meine Spedition GmbH";
+    const name = document.getElementById("company-name-input")?.value?.trim() || "Meine Spedition e.K.";
     const logo = this._selectedLogo || "🚛";
     this._pendingCompanyName = name;
     this._pendingCompanyLogo = logo;
     this._showStandortAuswahl();
   },
-  _pendingCompanyName: "Meine Spedition GmbH",
+  _pendingCompanyName: "Meine Spedition e.K.",
   _pendingCompanyLogo: "🚛",
   _showStandortAuswahl() {
     const overlay = document.getElementById("modal-overlay");
@@ -25942,7 +25952,7 @@ const UI = {
     overlay.classList.add("show");
   },
   _startWithCompany(locationId) {
-    const name = this._pendingCompanyName || "Meine Spedition GmbH";
+    const name = this._pendingCompanyName || "Meine Spedition e.K.";
     const logo = this._pendingCompanyLogo || "🚛";
     this.closeModal();
     Game.startNewGame(locationId, name, logo);
@@ -26315,6 +26325,43 @@ const UI = {
       content: `\n        <div style="font-size:13px; line-height:1.7;">\n          <div><b>Auftrag:</b> ${job.fromName} → ${job.toName}, ${job.weight}t, ${Utils.euro(job.price)}</div>\n          <div><b>Ladung:</b> ${job.cargo}</div>\n          <div><b>Erforderlicher Fahrer-Skill:</b> Level ${skill}/5</div>\n          <div><b>Erforderlicher Anhänger:</b> ${(job.requiresTrailer || []).join(", ") || "beliebig"}</div>\n          ${restList ? `<div style="margin-top:10px;"><b>Strecken-Auflagen:</b><ul style="margin:4px 0;padding-left:20px;">${restList}</ul></div>` : ""}\n          <hr style="margin:14px 0; opacity:.3;">\n          <div><b>Status pro Truck:</b></div>\n          ${0 === reasons.length ? '<div style="color:var(--accent);">Eigentlich passt alles - nochmal prüfen!</div>' : `<ul style="margin:6px 0;padding-left:20px;font-size:12px;">${reasons.map((r) => `<li><b>${r.truck}</b>: ${r.text}</li>`).join("")}</ul>`}\n          <div style="margin-top:10px;font-size:11px;color:var(--muted);">💡 Tipp: Skill-Level steigt durch Erfahrung (XP) oder gekaufte Schulungen unter "Logistik+ → Fahrer-Skills".</div>\n        </div>\n      `,
     });
   },
+  showStartMenu() {
+    const meta = Game.newestSaveMeta();
+    const hasGameRunning = !!State.locationId;
+    const theme = document.documentElement.getAttribute("data-theme");
+    const continueBlock = meta
+      ? `<button class="btn primary" style="width:100%;padding:14px;font-size:16px;font-family:'Bebas Neue';letter-spacing:2px;margin-bottom:4px;" onclick="UI._continueGame()">▶ WEITERSPIELEN</button>\n         <div style="font-size:11px;color:var(--muted2);text-align:center;margin-bottom:16px;">${meta.company} · Tag ${meta.day} · ${Math.round(meta.cash).toLocaleString("de-DE")} €</div>`
+      : `<div style="font-size:11px;color:var(--muted2);text-align:center;margin-bottom:16px;padding:10px;background:var(--bg);border-radius:6px;">Noch kein Spielstand — starte ein neues Spiel.</div>`;
+    this.showModal({
+      title: "🚛 DER PLANER ULTIMATE",
+      subtitle: "v2.0512 — Speditions-Simulation",
+      maxWidth: "440px",
+      dismissible: hasGameRunning,
+      content: `${continueBlock}\n        <div style="display:flex;flex-direction:column;gap:8px;">\n          <button class="btn ${meta ? "" : "primary"}" style="width:100%;padding:12px;font-size:13px;" onclick="UI._startFreshFromMenu()">🎮 Neues Spiel</button>\n          <button class="btn" style="width:100%;padding:12px;font-size:13px;" onclick="UI._showSaveLoadScreen()">💾 Spielstand laden &amp; verwalten</button>\n          <button class="btn" style="width:100%;padding:12px;font-size:13px;" onclick="UI.toggleTheme();UI.showStartMenu();">${"light" === theme ? "🌙 Dark Mode" : "☀️ Light Mode"}</button>\n        </div>`,
+      actions: hasGameRunning ? [{ label: "← Zurück zum Spiel", onclick: () => this.closeModal() }] : [],
+    });
+  },
+  _continueGame() {
+    if (!Game.load()) {
+      this.toast("Kein Spielstand gefunden", "warn");
+      return;
+    }
+    if ("undefined" != typeof GameClock) GameClock.init();
+    this.closeModal();
+    this.renderAll();
+    this.toast("Spielstand geladen", "good");
+  },
+  _startFreshFromMenu() {
+    if (
+      Game.hasSave() &&
+      !confirm(
+        "Neues Spiel starten?\n\nDein aktuelles Spiel wird überschrieben, sofern es nicht in einem Speicher-Slot gesichert ist. Slot-Spielstände bleiben erhalten.",
+      )
+    )
+      return;
+    this.closeModal();
+    this.showLocationSelector();
+  },
   openGameMenu() {
     this._showSaveLoadScreen();
   },
@@ -26344,6 +26391,7 @@ const UI = {
       window._callActions[`load_${slot.n}`] = () => {
         if (!confirm(`Slot ${slot.n} laden? Ungespeicherter Fortschritt geht verloren.`)) return;
         if (Game.loadFromSlot(slot.n)) {
+          if ("undefined" != typeof GameClock) GameClock.init();
           UI.closeModal();
           UI.renderAll();
           UI.toast(`📂 Slot ${slot.n} geladen`, "good");
@@ -26365,6 +26413,8 @@ const UI = {
         const raw = localStorage.getItem(Game.AUTO_KEY);
         if (raw) {
           Object.assign(State, JSON.parse(raw));
+          Game._reconcileTruckStatuses();
+          if ("undefined" != typeof GameClock) GameClock.init();
           UI.closeModal();
           UI.renderAll();
           UI.toast("Auto-Save geladen", "good");
