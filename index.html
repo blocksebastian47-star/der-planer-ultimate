@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="build" content="v2.0512 · Build 12.05.2026 23:03">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer 2 · v2.0512</title>
+<title>Der Planer Ultimate · v2.0512</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -981,7 +981,7 @@ footer {
 
 <header>
   <div class="header-left">
-    <div class="logo">DER PLANER 2<span style="font-size:9px;color:var(--muted2);margin-left:6px;font-family:'JetBrains Mono',monospace;letter-spacing:0;vertical-align:middle;">v2.0512</span><span class="sub"><span id="company-logo" style="margin-right:4px;"></span><span id="company-name">Spedition GmbH</span></span></div>
+    <div class="logo">DER PLANER ULTIMATE<span style="font-size:9px;color:var(--muted2);margin-left:6px;font-family:'JetBrains Mono',monospace;letter-spacing:0;vertical-align:middle;">v2.0512</span><span class="sub"><span id="company-logo" style="margin-right:4px;"></span><span id="company-name">Spedition GmbH</span></span></div>
   </div>
   <div class="stats-row">
     <!-- Uhrzeit + Datum (prominent) -->
@@ -1669,7 +1669,7 @@ footer {
   <div class="view-header">
     <div>
       <div class="view-title">❓ HILFE & HANDBUCH</div>
-      <div class="view-subtitle">Der Planer 2 — Spielhandbuch, FAQ und Versionshistorie</div>
+      <div class="view-subtitle">Der Planer Ultimate — Spielhandbuch, FAQ und Versionshistorie</div>
     </div>
     <button class="btn danger" onclick="Game.reset()">🔄 Neues Spiel</button>
   </div>
@@ -1677,7 +1677,7 @@ footer {
   <!-- Version Banner -->
   <div style="background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(74,222,128,0.1)); border:1px solid rgba(99,102,241,0.4); border-radius:10px; padding:14px 18px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
     <div>
-      <div style="font-family:'Bebas Neue'; font-size:22px; letter-spacing:2px; color:var(--accent2);">DER PLANER 2 · REMAKE</div>
+      <div style="font-family:'Bebas Neue'; font-size:22px; letter-spacing:2px; color:var(--accent2);">DER PLANER ULTIMATE · REMAKE</div>
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
@@ -22347,7 +22347,7 @@ const SelfTest = {
     const claudePrompt =
       0 === fail.length
         ? null
-        : `## 🔧 Der Planer 2 — Automatischer Bugbericht (v2.0512, Tag ${State.day})\n\n**Spielzustand:**\n- Firma: ${State.companyName} · Standort: ${State.locationId}\n- Tag ${State.day} · Kasse: ${Utils.euro(State.cash)} · Schulden: ${Utils.euro(State.debt)}\n- LKWs: ${(State.trucks || []).length} · Personal: ${(State.staff || []).length} · Aktive Aufträge: ${(State.activeJobs || []).length}\n\n**Gefundene Fehler (${fail.length}):**\n` +
+        : `## 🔧 Der Planer Ultimate — Automatischer Bugbericht (v2.0512, Tag ${State.day})\n\n**Spielzustand:**\n- Firma: ${State.companyName} · Standort: ${State.locationId}\n- Tag ${State.day} · Kasse: ${Utils.euro(State.cash)} · Schulden: ${Utils.euro(State.debt)}\n- LKWs: ${(State.trucks || []).length} · Personal: ${(State.staff || []).length} · Aktive Aufträge: ${(State.activeJobs || []).length}\n\n**Gefundene Fehler (${fail.length}):**\n` +
           fail
             .map((f, i) => `${i + 1}. **${f.label}**\n   Fehler: \`${f.msg}\`\n   Test-ID: \`${f.id}\``)
             .join("\n\n") +
@@ -25852,7 +25852,7 @@ const UI = {
       "🎯",
       "🏗️",
     ];
-    box.innerHTML = `\n      <h2 style="margin-bottom:6px;">WILLKOMMEN BEI DER PLANER 2</h2>\n      <p class="subtitle" style="margin-bottom:20px;">Zuerst: Wie heißt Ihre Spedition?</p>\n\n      \x3c!-- Logo-Auswahl --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:8px;letter-spacing:1px;">FIRMEN-LOGO (Emoji)</label>\n        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">\n          ${logos.map((e, i) => `\n            <button id="logo-${i}" onclick="UI._selectLogo('${e}',${i})"\n              style="font-size:24px;width:44px;height:44px;border-radius:8px;border:2px solid var(--border);\n              background:var(--bg2);cursor:pointer;transition:all .12s;${0 === i ? "border-color:var(--accent);background:rgba(255,182,39,0.15)" : ""}"\n              onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''">\n              ${e}\n            </button>`).join("")}\n        </div>\n        <div style="display:flex;align-items:center;gap:8px;">\n          <input id="logo-custom" type="text" maxlength="2" placeholder="Eigenes Emoji..."\n            style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);\n            background:var(--bg);color:var(--fg);font-size:18px;text-align:center;"\n            oninput="UI._selectLogo(this.value,-1)">\n          <span style="font-size:11px;color:var(--muted2);">Oder eigenes Emoji eingeben</span>\n        </div>\n      </div>\n\n      \x3c!-- Firmenname --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;letter-spacing:1px;">FIRMENNAME</label>\n        <input id="company-name-input" type="text" maxlength="40"\n          placeholder="z.B. Müller Transport GmbH"\n          value="Meine Spedition GmbH"\n          style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);\n          background:var(--bg);color:var(--fg);font-size:14px;"\n          oninput="UI._updateCompanyPreview()">\n        <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Rechtsform-Tipps: GmbH · GmbH & Co. KG · Transport GmbH · Spedition KG · Logistik AG</div>\n      </div>\n\n      \x3c!-- Vorschau --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">\n        <span id="logo-preview" style="font-size:36px;">🚛</span>\n        <div>\n          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">VORSCHAU HEADER</div>\n          <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;color:var(--accent);">DER PLANER 2\n            <span id="company-preview" style="font-size:13px;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:0;"> Meine Spedition GmbH</span>\n          </div>\n        </div>\n      </div>\n\n      <div class="modal-actions">\n        <button class="btn primary" style="width:100%;padding:12px;font-size:14px;" onclick="UI._confirmCompanySetup()">\n          Weiter zur Standortauswahl →\n        </button>\n      </div>\n    `;
+    box.innerHTML = `\n      <h2 style="margin-bottom:6px;">WILLKOMMEN BEI DER PLANER ULTIMATE</h2>\n      <p class="subtitle" style="margin-bottom:20px;">Zuerst: Wie heißt Ihre Spedition?</p>\n\n      \x3c!-- Logo-Auswahl --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:8px;letter-spacing:1px;">FIRMEN-LOGO (Emoji)</label>\n        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">\n          ${logos.map((e, i) => `\n            <button id="logo-${i}" onclick="UI._selectLogo('${e}',${i})"\n              style="font-size:24px;width:44px;height:44px;border-radius:8px;border:2px solid var(--border);\n              background:var(--bg2);cursor:pointer;transition:all .12s;${0 === i ? "border-color:var(--accent);background:rgba(255,182,39,0.15)" : ""}"\n              onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''">\n              ${e}\n            </button>`).join("")}\n        </div>\n        <div style="display:flex;align-items:center;gap:8px;">\n          <input id="logo-custom" type="text" maxlength="2" placeholder="Eigenes Emoji..."\n            style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);\n            background:var(--bg);color:var(--fg);font-size:18px;text-align:center;"\n            oninput="UI._selectLogo(this.value,-1)">\n          <span style="font-size:11px;color:var(--muted2);">Oder eigenes Emoji eingeben</span>\n        </div>\n      </div>\n\n      \x3c!-- Firmenname --\x3e\n      <div style="margin-bottom:18px;">\n        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;letter-spacing:1px;">FIRMENNAME</label>\n        <input id="company-name-input" type="text" maxlength="40"\n          placeholder="z.B. Müller Transport GmbH"\n          value="Meine Spedition GmbH"\n          style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);\n          background:var(--bg);color:var(--fg);font-size:14px;"\n          oninput="UI._updateCompanyPreview()">\n        <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Rechtsform-Tipps: GmbH · GmbH & Co. KG · Transport GmbH · Spedition KG · Logistik AG</div>\n      </div>\n\n      \x3c!-- Vorschau --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">\n        <span id="logo-preview" style="font-size:36px;">🚛</span>\n        <div>\n          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">VORSCHAU HEADER</div>\n          <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;color:var(--accent);">DER PLANER ULTIMATE\n            <span id="company-preview" style="font-size:13px;color:var(--muted2);font-family:'JetBrains Mono',monospace;letter-spacing:0;"> Meine Spedition GmbH</span>\n          </div>\n        </div>\n      </div>\n\n      <div class="modal-actions">\n        <button class="btn primary" style="width:100%;padding:12px;font-size:14px;" onclick="UI._confirmCompanySetup()">\n          Weiter zur Standortauswahl →\n        </button>\n      </div>\n    `;
     this._selectedLogo = logos[0];
     overlay.classList.add("show");
   },
@@ -25909,7 +25909,7 @@ const UI = {
     if (cn) cn.textContent = name;
     const cl = document.getElementById("company-logo");
     if (cl) cl.textContent = logo + " ";
-    document.title = `${logo} ${name} — Der Planer 2 · v2.0512`;
+    document.title = `${logo} ${name} — Der Planer Ultimate · v2.0512`;
     Game.save();
     setTimeout(() => this._showStartMorning(), 200);
   },
@@ -28995,7 +28995,7 @@ const UI = {
     const cl = document.getElementById("company-logo");
     if (cl) cl.textContent = State.companyLogo ? State.companyLogo + " " : "";
     if (State.companyLogo && State.companyName)
-      document.title = `${State.companyLogo} ${State.companyName} — Der Planer 2 · v2.0512`;
+      document.title = `${State.companyLogo} ${State.companyName} — Der Planer Ultimate · v2.0512`;
     if (void 0 !== GFOffice) {
       GFOffice.init();
       const total = GFOffice.unreadCount() + (State.gfOffice?.callQueue?.length || 0);

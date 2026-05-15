@@ -1,4 +1,4 @@
-# Der Planer 2
+# Der Planer Ultimate
 
 Eine Speditions-Simulation als Single-File-HTML-Spiel.
 
