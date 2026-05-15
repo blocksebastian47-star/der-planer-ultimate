@@ -4463,7 +4463,6 @@ const State = {
   annualReports: [],
   reserve: 0,
   subcontractors: [],
-  fame: 0,
   lastFamilyEventId: null,
   subCosts: {
     salaries: 0,
@@ -22238,7 +22237,7 @@ const SelfTest = {
     const claudePrompt =
       0 === fail.length
         ? null
-        : `## 🔧 Der Planer 2 — Automatischer Bugbericht (v2.10, Tag ${State.day})\n\n**Spielzustand:**\n- Firma: ${State.companyName} · Standort: ${State.locationId}\n- Tag ${State.day} · Kasse: ${Utils.euro(State.cash)} · Schulden: ${Utils.euro(State.debt)}\n- LKWs: ${(State.trucks || []).length} · Personal: ${(State.staff || []).length} · Aktive Aufträge: ${(State.activeJobs || []).length}\n\n**Gefundene Fehler (${fail.length}):**\n` +
+        : `## 🔧 Der Planer 2 — Automatischer Bugbericht (v2.0512, Tag ${State.day})\n\n**Spielzustand:**\n- Firma: ${State.companyName} · Standort: ${State.locationId}\n- Tag ${State.day} · Kasse: ${Utils.euro(State.cash)} · Schulden: ${Utils.euro(State.debt)}\n- LKWs: ${(State.trucks || []).length} · Personal: ${(State.staff || []).length} · Aktive Aufträge: ${(State.activeJobs || []).length}\n\n**Gefundene Fehler (${fail.length}):**\n` +
           fail
             .map((f, i) => `${i + 1}. **${f.label}**\n   Fehler: \`${f.msg}\`\n   Test-ID: \`${f.id}\``)
             .join("\n\n") +
@@ -25906,7 +25905,7 @@ const UI = {
     if (cn) cn.textContent = name;
     const cl = document.getElementById("company-logo");
     if (cl) cl.textContent = logo + " ";
-    document.title = `${logo} ${name} — Der Planer 2 · v2.10`;
+    document.title = `${logo} ${name} — Der Planer 2 · v2.0512`;
     Game.save();
     setTimeout(() => this._showStartMorning(), 200);
   },
@@ -29011,7 +29010,7 @@ const UI = {
     const cl = document.getElementById("company-logo");
     if (cl) cl.textContent = State.companyLogo ? State.companyLogo + " " : "";
     if (State.companyLogo && State.companyName)
-      document.title = `${State.companyLogo} ${State.companyName} — Der Planer 2 · v2.10`;
+      document.title = `${State.companyLogo} ${State.companyName} — Der Planer 2 · v2.0512`;
     if (void 0 !== GFOffice) {
       GFOffice.init();
       const total = GFOffice.unreadCount() + (State.gfOffice?.callQueue?.length || 0);
