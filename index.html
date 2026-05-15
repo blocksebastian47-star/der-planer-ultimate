@@ -21837,7 +21837,7 @@ const Onboarding = {
       icon: "📈",
       title: "Reputation wächst mit dir",
       text: "Pünktliche Lieferungen erhöhen deine Reputation. Höhere Reputation = mehr Aufträge, größere Distanzen, bessere Kunden.",
-      hint: "Du startest regional (~350 km). Ab Reputation 60 öffnet sich ganz Deutschland.",
+      hint: "Du startest regional (~400 km). Ab Reputation 60 öffnet sich ganz Deutschland, ab 75 Zentraleuropa, ab 90 ganz Europa.",
     },
   ],
   COACH_MESSAGES: {
@@ -23448,7 +23448,7 @@ const JobManager = {
     let from, to, customer;
     const rep = State.reputation || 50;
     const homeCity = State.locationId || "berlin";
-    const maxKm = rep < 20 ? 800 : rep < 40 ? 1500 : rep < 60 ? 2500 : 99999;
+    const maxKm = rep < 60 ? 400 : rep < 75 ? 1000 : rep < 90 ? 2000 : 99999;
     const homeC = MAP_DATA.getCity(homeCity);
     let cityPool = homeC
       ? MAP_DATA.cities.filter((c) => {
@@ -29436,7 +29436,14 @@ const UI = {
     };
     list.sort(sorters[sortVal] || sorters["price-desc"]);
     const rep = State.reputation || 50;
-    const maxKmInfo = rep < 20 ? "~800 km" : rep < 40 ? "~1.500 km" : rep < 60 ? "~2.500 km" : "ganz Europa";
+    const maxKmInfo =
+      rep < 60
+        ? "🏘 Regional ~400 km"
+        : rep < 75
+          ? "🇩🇪 Deutschland ~1.000 km"
+          : rep < 90
+            ? "🇪🇺 Zentraleuropa ~2.000 km"
+            : "🌍 ganz Europa";
     const availableRows =
       0 === list.length
         ? `<tr><td colspan="12" style="text-align:center; padding:20px;">\n          <div style="color:var(--muted); margin-bottom:8px;">Aktuell keine Aufträge verfügbar.</div>\n          <div style="font-size:10px; color:var(--muted2); max-width:400px; margin:0 auto; line-height:1.6;">\n            📦 Aufträge werden täglich generiert. Klicke "Nächster Tag" um neue Aufträge zu erhalten.<br>\n            🏆 Deine Reputation: <b>${Math.round(rep)}</b> — Reichweite: <b>${maxKmInfo}</b><br>\n            💡 Mehr Reputation = mehr und größere Aufträge. Marketing & Pünktlichkeit helfen.\n          </div>\n        </td></tr>`
