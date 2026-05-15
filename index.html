@@ -12835,8 +12835,9 @@ const Tutorial = {
       id: "hire_accountant",
       day: 2,
       title: "📊 Buchhalter einstellen",
-      desc: 'Ohne Buchhalter zahlen Sie 40% mehr Steuern und Rechnungen kommen nie pünktlich an. Gehen Sie zu "Personal" → "+ Einstellen".',
+      desc: "Ohne Buchhalter zahlen Sie 40% mehr Steuern und Rechnungen kommen nie pünktlich an. Klicken Sie 'Jetzt' für 3 Bewerber.",
       target: "staff",
+      onClick: "UI.openCandidatePool('accountant')",
       done: () => State.staff.some((s) => "accountant" === s.roleId && "aktiv" === s.status),
       reward: { cash: 500, text: "+500€ Beratungsbonus" },
     },
@@ -12930,7 +12931,8 @@ const Tutorial = {
       el.innerHTML = "";
       return;
     }
-    el.innerHTML = `\n      <div style="background:rgba(74,222,128,0.12); border:1px solid var(--accent2); border-radius:8px; padding:10px 14px; display:flex; gap:12px; align-items:center; margin-bottom:12px;">\n        <div style="font-size:22px; flex-shrink:0;">🎓</div>\n        <div style="flex:1;">\n          <div style="font-size:12px; font-weight:700; color:var(--accent2);">NÄCHSTER SCHRITT: ${step.title}</div>\n          <div style="font-size:11px; color:var(--muted2); margin-top:2px;">${step.desc}</div>\n        </div>\n        <div style="display:flex; gap:6px; flex-shrink:0;">\n          <button class="btn small primary" onclick="UI.showView('${step.target}')" style="font-size:10px;">Jetzt</button>\n          <button class="btn small" onclick="Tutorial.skipTutorial(); Tutorial.renderHint();" style="font-size:10px;">Überspringen</button>\n        </div>\n      </div>`;
+    const action = step.onClick || `UI.showView('${step.target}')`;
+    el.innerHTML = `\n      <div style="background:rgba(74,222,128,0.12); border:1px solid var(--accent2); border-radius:8px; padding:10px 14px; display:flex; gap:12px; align-items:center; margin-bottom:12px;">\n        <div style="font-size:22px; flex-shrink:0;">🎓</div>\n        <div style="flex:1;">\n          <div style="font-size:12px; font-weight:700; color:var(--accent2);">NÄCHSTER SCHRITT: ${step.title}</div>\n          <div style="font-size:11px; color:var(--muted2); margin-top:2px;">${step.desc}</div>\n        </div>\n        <div style="display:flex; gap:6px; flex-shrink:0;">\n          <button class="btn small primary" onclick="${action}" style="font-size:10px;">Jetzt</button>\n          <button class="btn small" onclick="Tutorial.skipTutorial(); Tutorial.renderHint();" style="font-size:10px;">Überspringen</button>\n        </div>\n      </div>`;
   },
 };
 const Campaign = {
@@ -26569,7 +26571,10 @@ const UI = {
     this.renderDashboard();
     this.renderNewsPanel();
     this.updateBadges();
-    if (void 0 !== Tutorial) Tutorial.renderHint();
+    if (void 0 !== Tutorial) {
+      Tutorial.checkProgress();
+      Tutorial.renderHint();
+    }
     const activeViewEl = document.querySelector(".view.active");
     const activeId = activeViewEl?.id?.replace("view-", "");
     if (!activeId) return;
