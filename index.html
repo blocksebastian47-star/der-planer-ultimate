@@ -4770,6 +4770,8 @@ function _planerDefaultState() {
     fuelPriceCurrent: 1.65,
     fuelPriceTrend: 0,
     tollEvent: null,
+    investorEquity: 1.0,
+    lastInsolvencyWarningDay: -100,
     dealer: { mode: "new", newStock: [], usedStock: [], lastRefresh: 0 },
     trailerDealer: { mode: "new", newStock: [], usedStock: [], lastRefresh: 0 },
     spotMarket: null,
@@ -15409,15 +15411,19 @@ const MergersAcquisitions = {
         ...offers.map((o, i) => ({
           text: `${["✓", "💰", "📈"][i]} ${Utils.euro(o.price)} (${o.terms.split("—")[0].trim()})`,
           action: () => {
-            State.cash += Math.round(0.6 * o.price);
-            State.privateWealth += Math.round(0.6 * o.price);
+            const playerShare = State.investorEquity ?? 1;
+            const playerPayout = Math.round(0.6 * o.price * playerShare);
+            State.cash += playerPayout;
+            State.privateWealth += playerPayout;
             State.victory = true;
             State.victoryType = "sale";
             State.victoryBuyer = buyer;
             State.victoryPrice = o.price;
+            State.victoryPlayerPayout = playerPayout;
+            const shareNote = playerShare < 1 ? ` (Ihr ${Math.round(100 * playerShare)}%-Anteil: ${Utils.euro(playerPayout)})` : "";
             EventManager.addNews(
               "good",
-              `🏆 SPIELZIEL: ${buyer} hat Ihre Spedition für ${Utils.euro(o.price)} übernommen!`,
+              `🏆 SPIELZIEL: ${buyer} hat Ihre Spedition für ${Utils.euro(o.price)} übernommen!${shareNote}`,
             );
           },
         })),
@@ -19029,7 +19035,10 @@ const CrisisSystem = {
       name: "Insolvenzgefahr",
       icon: "🏚️",
       minDay: 0,
-      trigger: () => State.cash < -1e4 && State.debt > 5e4,
+      trigger: () =>
+        State.cash < -1e4 &&
+        State.debt > 5e4 &&
+        State.day - (State.lastInsolvencyWarningDay ?? -100) >= 7,
       prob: 1,
     },
     flood: {
@@ -19141,8 +19150,8 @@ const CrisisSystem = {
             text: "📞 Versicherung anrufen und Anwalt einschalten",
             action: () => {
               if (!crisis.insured) {
-                State.cash -= damage;
-                BankAccount.hookRepair(damage, truck.plate);
+                FinanceManager.recordCost("repairs", damage, false);
+                if (void 0 !== BankAccount && BankAccount.hookRepair) BankAccount.hookRepair(damage, truck.plate);
               }
               EventManager.addNews("info", "Versicherungsfall gemeldet");
             },
@@ -19156,7 +19165,8 @@ const CrisisSystem = {
           },
         ],
       });
-    } else if ("insolvency_risk" === ct.id)
+    } else if ("insolvency_risk" === ct.id) {
+      State.lastInsolvencyWarningDay = State.day;
       EventManager.queueDecision({
         isCrisis: true,
         title: "🏚️ INSOLVENZGEFAHR",
@@ -19168,8 +19178,11 @@ const CrisisSystem = {
             action: () => {
               const amount = 1e3 * Utils.randInt(50, 150);
               State.cash += amount;
-              State.companyValue = 0.9 * (State.companyValue || 5e5);
-              EventManager.addNews("warn", `Investor eingestiegen: +${Utils.euro(amount)}, 10% Anteil abgegeben`);
+              State.investorEquity = Math.max(0, (State.investorEquity ?? 1) - 0.1);
+              EventManager.addNews(
+                "warn",
+                `Investor eingestiegen: +${Utils.euro(amount)} · Ihr Anteil jetzt ${Math.round(100 * State.investorEquity)}%`,
+              );
             },
           },
           {
@@ -19205,7 +19218,7 @@ const CrisisSystem = {
           },
         ],
       });
-    else if ("flood" === ct.id || "snowchaos" === ct.id) {
+    } else if ("flood" === ct.id || "snowchaos" === ct.id) {
       const days = Utils.randInt(3, 8);
       const mul = "flood" === ct.id ? 0.3 : 0.5;
       State.activeCrises.push({
@@ -23253,9 +23266,7 @@ const FleetManager = {
   },
   buy(truck, price) {
     if (State.cash < price) return false;
-    State.cash -= price;
-    State.departments.fleet.variableCosts += price;
-    State.departments.fleet.monthVariable += price;
+    FinanceManager.recordCost("fleet", price, false);
     State.trucks.push(truck);
     EventManager.addNews("good", `🚛 Fahrzeug gekauft: ${truck.model} (${truck.plate}) für ${Utils.euro(price)}`);
     return true;
@@ -23297,9 +23308,7 @@ const FleetManager = {
     else if (hasMech) discount = hasWorkshop ? 0.6 : 0.85;
     const cost = Math.round(baseCost * discount);
     if (State.cash < cost) return false;
-    State.cash -= cost;
-    State.departments.repairs.variableCosts += cost;
-    State.departments.repairs.monthVariable += cost;
+    FinanceManager.recordCost("repairs", cost, false);
     if (State.subCosts) State.subCosts.repairs += cost;
     t.condition = targetCondition;
     t.lifetimeCost += cost;
@@ -23412,9 +23421,6 @@ const FleetManager = {
       if (a?.effect?.accidentReduction) r += a.effect.accidentReduction;
     });
     return Math.min(0.85, r);
-  },
-  applyDailyDepreciation() {
-    (State.trucks || []).forEach((t) => {});
   },
 };
 const RouteManager = {
@@ -23932,9 +23938,7 @@ const JobManager = {
       const globalMautMul = lobbyFx.globalMautMul || 1;
       const tollEventMul = State.tollEvent && State.tollEvent.until > State.day ? State.tollEvent.mul : 1;
       const dailyToll = ((j.route?.tollCost || 0) / j.daysTotal) * mautBaseMul * globalMautMul * tollEventMul;
-      State.cash -= dailyFuel + dailyToll;
-      State.departments.fuelToll.variableCosts += dailyFuel + dailyToll;
-      State.departments.fuelToll.monthVariable += dailyFuel + dailyToll;
+      FinanceManager.recordCost("fuelToll", dailyFuel + dailyToll, false);
       truck.lifetimeCost += dailyFuel + dailyToll;
       if (State.subCosts) {
         State.subCosts.fuelActual += dailyFuel;
@@ -24377,9 +24381,7 @@ const EventManager = {
       { text: "Überladung des LKW", cost: 950 },
     ];
     const r = Utils.pick(reasons);
-    State.cash -= r.cost;
-    State.departments.admin.variableCosts += r.cost;
-    State.departments.admin.monthVariable += r.cost;
+    FinanceManager.recordCost("admin", r.cost, false);
     if (State.subCosts) State.subCosts.fines += r.cost;
     this.addNews("warn", `📋 Bußgeld: ${r.text} – ${Utils.euro(r.cost)}`);
   },
@@ -24502,9 +24504,7 @@ const MarketingManager = {
     const channel = DATA.marketingChannels.find((c) => c.id === channelId);
     if (!channel) return false;
     if (State.cash < channel.cost) return false;
-    State.cash -= channel.cost;
-    State.departments.marketing.variableCosts += channel.cost;
-    State.departments.marketing.monthVariable += channel.cost;
+    FinanceManager.recordCost("marketing", channel.cost, false);
     State.activeMarketing.push({ ...channel, startDay: State.day, endDay: State.day + channel.durationDays });
     EventManager.addNews("good", `📢 Kampagne "${channel.name}" gestartet (${channel.durationDays} Tage)`);
     return true;
