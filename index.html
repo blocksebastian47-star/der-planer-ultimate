@@ -25636,6 +25636,26 @@ const Game = {
       _savedAtMs: Date.now(),
     };
   },
+  _reconcileTruckStatuses() {
+    // Repair stale "active"/"broken" flags where no matching activeJob or repair state exists.
+    // Without this, acceptJob queues new jobs to scheduledJobs instead of starting them.
+    const active = State.activeJobs || [];
+    let fixed = 0;
+    (State.trucks || []).forEach((t) => {
+      if ("active" === t.status) {
+        const hasJob = active.some((j) => j.truckId === t.id);
+        if (!hasJob) {
+          t.status = "idle";
+          t.jobId = null;
+          fixed++;
+        }
+      } else if (t.jobId) {
+        const stillHasJob = active.some((j) => j.id === t.jobId);
+        if (!stillHasJob) t.jobId = null;
+      }
+    });
+    if (fixed > 0) console.warn(`Reconciled ${fixed} stale truck status flag(s) to idle`);
+  },
   slotMeta(slotKey) {
     try {
       const raw = localStorage.getItem(slotKey);
@@ -25681,6 +25701,7 @@ const Game = {
       if (!raw) return false;
       const saved = JSON.parse(raw);
       Object.assign(State, saved);
+      this._reconcileTruckStatuses();
       return true;
     } catch (e) {
       return false;
@@ -25728,6 +25749,7 @@ const Game = {
         );
       }
       Object.assign(State, newest);
+      this._reconcileTruckStatuses();
       if (State.staff && Array.isArray(State.staff)) {
         const maleNames = DATA.firstNamesMale || [];
         const femaleNames = DATA.firstNamesFemale || [];
