@@ -23718,14 +23718,14 @@ const JobManager = {
         }
         hasDeadhead = deadheadDays > 0;
         if (deadheadCost > 0) {
-          State.cash -= deadheadCost;
+          if (void 0 !== FinanceManager) FinanceManager.recordCost("fuelToll", deadheadCost, true);
+          else State.cash -= deadheadCost;
           if (void 0 !== BankAccount)
             BankAccount.record(
               "fuel_out",
               -deadheadCost,
               `Leerfahrt ${truckCity.name}→${jobFromCity.name} (${truck.plate})`,
             );
-          if (void 0 !== FinanceManager) FinanceManager.recordCost("fuelToll", deadheadCost, true);
         }
         if (hasDeadhead)
           EventManager.addNews(
@@ -23742,7 +23742,8 @@ const JobManager = {
         ferryCost += leg.ferry.cost;
       });
       if (ferryCost > 0) {
-        State.cash -= ferryCost;
+        if (void 0 !== FinanceManager) FinanceManager.recordCost("fuelToll", ferryCost, true);
+        else State.cash -= ferryCost;
         if (void 0 !== BankAccount)
           BankAccount.record("fuel_out", -ferryCost, `Fähre ${job.fromName}→${job.toName} (${truck.plate})`);
         EventManager.addNews(
@@ -29403,11 +29404,34 @@ const UI = {
               return `<tr>\n            <td>${j.customerName}</td>\n            <td>${j.fromName} → ${j.toName}</td>\n            <td>${t?.plate || "-"} / ${d?.name || "-"}</td>\n            <td>${j.route?.icon || ""} ${j.route?.name || ""}</td>\n            <td class="num">\n              <div style="display:flex;align-items:center;gap:6px;">\n                <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:2px;height:4px;">\n                  <div style="background:${progColor};border-radius:2px;height:4px;width:${j.progress}%;"></div>\n                </div>\n                <span style="font-size:10px;color:${progColor};">${j.progress}%</span>\n              </div>\n              <div style="font-size:9px;color:var(--muted2);margin-top:1px;">noch ${j.daysRemaining} Tag${1 !== j.daysRemaining ? "e" : ""}</div>\n            </td>\n            <td class="num" style="color:var(--accent2);">${Utils.euro(j.price)}</td>\n          </tr>`;
             })
             .join("");
-    container.innerHTML = `\n      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">\n        <select id="job-sort" onchange="UI._jobSort=this.value;UI.renderJobs()" style="padding:6px 10px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:11px;">\n          <option value="price-desc" ${"price-desc" === sortVal ? "selected" : ""}>💰 Preis absteigend</option>\n          <option value="price-asc"  ${"price-asc" === sortVal ? "selected" : ""}>💰 Preis aufsteigend</option>\n          <option value="perkm-desc" ${"perkm-desc" === sortVal ? "selected" : ""}>📊 €/km absteigend</option>\n          <option value="km-asc"     ${"km-asc" === sortVal ? "selected" : ""}>📏 Entfernung aufsteigend</option>\n          <option value="deadline-asc" ${"deadline-asc" === sortVal ? "selected" : ""}>⏰ Frist bald</option>\n          <option value="urgency-desc" ${"urgency-desc" === sortVal ? "selected" : ""}>⚡ Dringlichkeit</option>\n        </select>\n        <select id="job-filter" onchange="UI._jobFilter=this.value;UI.renderJobs()" style="padding:6px 10px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:11px;">\n          <option value="all"      ${"all" === filterVal ? "selected" : ""}>Alle Aufträge</option>\n          <option value="feasible" ${"feasible" === filterVal ? "selected" : ""}>Nur machbare</option>\n          <option value="hazard"   ${"hazard" === filterVal ? "selected" : ""}>Nur Gefahrgut</option>\n          <option value="nohazard" ${"nohazard" === filterVal ? "selected" : ""}>Kein Gefahrgut</option>\n        </select>\n        <span style="font-size:11px;color:var(--muted2);">${list.length} verfügbar · ${(State.activeJobs || []).length} laufend</span>\n      </div>\n\n      <div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">\n        🚛 LAUFENDE AUFTRÄGE (${(State.activeJobs || []).length})\n      </div>\n      <div style="overflow-x:auto;margin-bottom:16px;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Route</th><th>Truck / Fahrer</th><th>Route</th><th>Fortschritt</th><th>Preis</th>\n          </tr></thead>\n          <tbody>${activeRows}</tbody>\n        </table>\n      </div>\n\n      <div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">\n        📦 VERFÜGBARE AUFTRÄGE (${list.length})\n      </div>\n      <div style="overflow-x:auto;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Von</th><th>Nach</th><th>Fracht</th><th>Anhänger</th>\n            <th>km</th><th>Gew.</th><th title="Reine Fahrdauer in Tagen">🕐 Fahrt</th><th>Preis</th><th>€/km</th><th title="Spieltag bis zur Deadline">📅 Frist</th><th>Aktion</th>\n          </tr></thead>\n          <tbody>${availableRows}</tbody>\n        </table>\n      </div>`;
+    const queuedJobs = State.scheduledJobs || [];
+    const queuedRows = queuedJobs
+      .slice()
+      .sort((a, b) => (a.estimatedStartDay || 0) - (b.estimatedStartDay || 0))
+      .map((sq) => {
+        const t = (State.trucks || []).find((x) => x.id === sq.truckId);
+        const d = t && t.driverId ? State.staff.find((x) => x.id === t.driverId) : null;
+        const waitDays = Math.max(0, (sq.estimatedStartDay || State.day) - State.day);
+        return `<tr>\n            <td>${sq.job?.customerName || "—"}</td>\n            <td>${sq.job?.fromName || "?"} → ${sq.job?.toName || "?"}</td>\n            <td>${t?.plate || "—"} / ${d?.name || "—"}</td>\n            <td class="num">Pos. ${sq.queuePosition || "?"}</td>\n            <td class="num"><span title="Start frühestens an diesem Spieltag">Tag ${sq.estimatedStartDay || "?"}</span><div style="font-size:9px;color:var(--muted2);margin-top:1px;">${waitDays === 0 ? "startet heute" : "wartet noch " + waitDays + " Tag" + (1 !== waitDays ? "e" : "")}</div></td>\n            <td class="num" style="color:var(--accent2);">${Utils.euro(sq.job?.price || 0)}</td>\n            <td><button class="btn small danger" onclick="UI.cancelScheduledJob('${sq.id}')" style="font-size:9px;" title="Auftrag aus Warteschlange zurück in Verfügbar">↩ Stornieren</button></td>\n          </tr>`;
+      })
+      .join("");
+    container.innerHTML = `\n      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">\n        <select id="job-sort" onchange="UI._jobSort=this.value;UI.renderJobs()" style="padding:6px 10px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:11px;">\n          <option value="price-desc" ${"price-desc" === sortVal ? "selected" : ""}>💰 Preis absteigend</option>\n          <option value="price-asc"  ${"price-asc" === sortVal ? "selected" : ""}>💰 Preis aufsteigend</option>\n          <option value="perkm-desc" ${"perkm-desc" === sortVal ? "selected" : ""}>📊 €/km absteigend</option>\n          <option value="km-asc"     ${"km-asc" === sortVal ? "selected" : ""}>📏 Entfernung aufsteigend</option>\n          <option value="deadline-asc" ${"deadline-asc" === sortVal ? "selected" : ""}>⏰ Frist bald</option>\n          <option value="urgency-desc" ${"urgency-desc" === sortVal ? "selected" : ""}>⚡ Dringlichkeit</option>\n        </select>\n        <select id="job-filter" onchange="UI._jobFilter=this.value;UI.renderJobs()" style="padding:6px 10px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:11px;">\n          <option value="all"      ${"all" === filterVal ? "selected" : ""}>Alle Aufträge</option>\n          <option value="feasible" ${"feasible" === filterVal ? "selected" : ""}>Nur machbare</option>\n          <option value="hazard"   ${"hazard" === filterVal ? "selected" : ""}>Nur Gefahrgut</option>\n          <option value="nohazard" ${"nohazard" === filterVal ? "selected" : ""}>Kein Gefahrgut</option>\n        </select>\n        <span style="font-size:11px;color:var(--muted2);">${list.length} verfügbar · ${(State.activeJobs || []).length} laufend${queuedJobs.length > 0 ? " · " + queuedJobs.length + " in Warteschlange" : ""}</span>\n      </div>\n\n      <div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">\n        🚛 LAUFENDE AUFTRÄGE (${(State.activeJobs || []).length})\n      </div>\n      <div style="overflow-x:auto;margin-bottom:16px;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Route</th><th>Truck / Fahrer</th><th>Route</th><th>Fortschritt</th><th>Preis</th>\n          </tr></thead>\n          <tbody>${activeRows}</tbody>\n        </table>\n      </div>\n\n      ${queuedJobs.length > 0 ? `<div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--warn);margin-bottom:6px;">\n        ⏳ WARTESCHLANGE (${queuedJobs.length}) — LKW noch nicht frei\n      </div>\n      <div style="overflow-x:auto;margin-bottom:16px;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Route</th><th>Truck / Fahrer</th><th>Pos.</th><th>Start</th><th>Preis</th><th></th>\n          </tr></thead>\n          <tbody>${queuedRows}</tbody>\n        </table>\n      </div>` : ""}\n\n      <div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">\n        📦 VERFÜGBARE AUFTRÄGE (${list.length})\n      </div>\n      <div style="overflow-x:auto;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Von</th><th>Nach</th><th>Fracht</th><th>Anhänger</th>\n            <th>km</th><th>Gew.</th><th title="Reine Fahrdauer in Tagen">🕐 Fahrt</th><th>Preis</th><th>€/km</th><th title="Spieltag bis zur Deadline">📅 Frist</th><th>Aktion</th>\n          </tr></thead>\n          <tbody>${availableRows}</tbody>\n        </table>\n      </div>`;
     const tb = document.getElementById("jobs-tbody");
     const ab = document.getElementById("active-jobs-tbody");
     if (tb) tb.innerHTML = availableRows;
     if (ab) ab.innerHTML = activeRows;
+  },
+  cancelScheduledJob(scheduledId) {
+    const sq = (State.scheduledJobs || []).find((x) => x.id === scheduledId);
+    if (!sq) return;
+    State.scheduledJobs = (State.scheduledJobs || []).filter((x) => x.id !== scheduledId);
+    if (sq.job) {
+      State.jobs = State.jobs || [];
+      if (!State.jobs.some((j) => j.id === sq.job.id)) State.jobs.push(sq.job);
+    }
+    EventManager.addNews("info", `↩ ${sq.job?.fromName || "?"} → ${sq.job?.toName || "?"} aus Warteschlange storniert`);
+    this.toast("Auftrag zurück in Verfügbar", "info");
+    this.renderAll();
   },
   openRouteSelector(jobId) {
     const job = (State.jobs || []).find((j) => j.id === jobId);
