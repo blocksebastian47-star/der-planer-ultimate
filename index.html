@@ -25635,6 +25635,7 @@ const Game = {
         staff: (s.staff || []).length,
         rep: Math.round(s.reputation || 0),
         date: s._savedAt || null,
+        savedAtMs: s._savedAtMs || 0,
         location: s.locationId || "–",
       };
     } catch (e) {
@@ -25649,7 +25650,7 @@ const Game = {
   },
   saveToSlot(n) {
     const key = this.SLOT_KEY(n);
-    const data = { ...State, _savedAt: new Date().toLocaleString("de-DE") };
+    const data = { ...State, _savedAt: new Date().toLocaleString("de-DE"), _savedAtMs: Date.now() };
     try {
       localStorage.setItem(key, JSON.stringify(data));
       localStorage.setItem("planer_save", JSON.stringify(data));
@@ -25673,14 +25674,15 @@ const Game = {
   },
   autoSave() {
     try {
-      const data = { ...State, _savedAt: new Date().toLocaleString("de-DE") };
+      const data = { ...State, _savedAt: new Date().toLocaleString("de-DE"), _savedAtMs: Date.now() };
       localStorage.setItem(this.AUTO_KEY, JSON.stringify(data));
       localStorage.setItem("planer_save", JSON.stringify(data));
     } catch (e) {}
   },
   save() {
     try {
-      localStorage.setItem("planer_save", JSON.stringify(State));
+      const data = { ...State, _savedAt: new Date().toLocaleString("de-DE"), _savedAtMs: Date.now() };
+      localStorage.setItem("planer_save", JSON.stringify(data));
     } catch (e) {
       console.warn("Save failed", e);
     }
@@ -25693,7 +25695,9 @@ const Game = {
         if (!raw) continue;
         try {
           const s = JSON.parse(raw);
-          if (!newest || (s._savedAt && s._savedAt > newest._savedAt)) newest = s;
+          const sMs = s._savedAtMs || 0;
+          const nMs = newest ? newest._savedAtMs || 0 : -1;
+          if (!newest || sMs > nMs) newest = s;
         } catch (e) {}
       }
       if (!newest) {
