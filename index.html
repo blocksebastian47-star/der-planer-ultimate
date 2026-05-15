@@ -4545,9 +4545,6 @@ const Visuals = {
     };
   },
   _darken(hex, factor) {
-    const r = void 0;
-    const g = void 0;
-    const b = void 0;
     return (
       "#" +
       [
@@ -4560,9 +4557,6 @@ const Visuals = {
     );
   },
   _lighten(hex, factor) {
-    const r = void 0;
-    const g = void 0;
-    const b = void 0;
     return (
       "#" +
       [
@@ -5084,10 +5078,6 @@ const Visuals = {
     ]
       .map((deg) => {
         const rad = (deg * Math.PI) / 180;
-        const x1 = void 0;
-        const y1 = void 0;
-        const x2 = void 0;
-        const y2 = void 0;
         return `<line x1="${cx + Math.cos(rad) * r * 0.93}" y1="${cy + Math.sin(rad) * r * 0.93}" x2="${cx + Math.cos(rad) * r * 0.99}" y2="${cy + Math.sin(rad) * r * 0.99}" stroke="#444" stroke-width="0.4"/>`;
       })
       .join(
@@ -5097,17 +5087,11 @@ const Visuals = {
     ]
       .map((deg) => {
         const rad = (deg * Math.PI) / 180;
-        const x1 = void 0;
-        const y1 = void 0;
-        const x2 = void 0;
-        const y2 = void 0;
         return `<line x1="${cx + Math.cos(rad) * r * 0.18}" y1="${cy + Math.sin(rad) * r * 0.18}" x2="${cx + Math.cos(rad) * r * 0.5}" y2="${cy + Math.sin(rad) * r * 0.5}" stroke="#444" stroke-width="${0.13 * r}" stroke-linecap="round"/>`;
       })
       .join("")}\n      \x3c!-- 6 Radmuttern --\x3e\n      ${[0, 60, 120, 180, 240, 300]
       .map((deg) => {
         const rad = (deg * Math.PI) / 180;
-        const x = void 0;
-        const y = void 0;
         return `<circle cx="${cx + Math.cos(rad) * r * 0.28}" cy="${cy + Math.sin(rad) * r * 0.28}" r="${0.06 * r}" fill="#1a1a1a"/>`;
       })
       .join(
@@ -5310,11 +5294,9 @@ const Visuals = {
     return `<svg viewBox="0 0 110 110" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">\n      ${this._comicBg("#38bdf8")}\n      ${isFemale ? this._femaleHair(hair, rnd) : `<path d="M 27 35 Q 55 16 83 35 L 83 42 Q 55 38 27 42 Z" fill="${hair}" stroke="#1a1a1a" stroke-width="2"/>`}\n      ${this._comicHead(skin, hair, eye, { mouthCurve: 0.4, eyeSize: 0.85, gender: gender })}\n      ${!isFemale && stubble ? `${[40, 46, 52, 58, 64, 68, 42, 48, 54, 60, 66].map((x, i) => `<circle cx="${x}" cy="${68 + (i % 3) * 1.5}" r="0.6" fill="${this._darken(hair, 0.6)}" opacity="0.7"/>`).join("")}` : ""}\n      \x3c!-- Rechteckige moderne Brille --\x3e\n      <rect x="35" y="44" width="18" height="12" rx="2" fill="rgba(255,255,255,0.15)" stroke="#1a1a1a" stroke-width="2"/>\n      <rect x="57" y="44" width="18" height="12" rx="2" fill="rgba(255,255,255,0.15)" stroke="#1a1a1a" stroke-width="2"/>\n      <line x1="53" y1="50" x2="57" y2="50" stroke="#1a1a1a" stroke-width="2"/>\n      <line x1="35" y1="48" x2="29" y2="47" stroke="#1a1a1a" stroke-width="1.5"/>\n      <line x1="75" y1="48" x2="81" y2="47" stroke="#1a1a1a" stroke-width="1.5"/>\n      <path d="M 38 47 L 42 49" stroke="#fff" stroke-width="1.5" opacity="0.7"/>\n      <path d="M 60 47 L 64 49" stroke="#fff" stroke-width="1.5" opacity="0.7"/>\n      \x3c!-- Headset Bügel --\x3e\n      <path d="M 26 38 Q 55 16 84 38" stroke="#1a1a1a" stroke-width="3" fill="none"/>\n      \x3c!-- Ohrmuscheln --\x3e\n      <ellipse cx="26" cy="52" rx="4" ry="6" fill="#1a1a1a" stroke="#444" stroke-width="1"/>\n      <ellipse cx="26" cy="52" rx="2" ry="3" fill="#0a0a0a"/>\n      <ellipse cx="84" cy="52" rx="4" ry="6" fill="#1a1a1a" stroke="#444" stroke-width="1"/>\n      <ellipse cx="84" cy="52" rx="2" ry="3" fill="#0a0a0a"/>\n      \x3c!-- Mikrofon --\x3e\n      <path d="M 26 58 Q 30 70 40 72" stroke="#1a1a1a" stroke-width="2" fill="none"/>\n      <ellipse cx="42" cy="72" rx="3" ry="1.8" fill="#1a1a1a" stroke="#444" stroke-width="0.8"/>\n      <circle cx="42" cy="72" r="0.8" fill="#38bdf8"/>\n      \x3c!-- Outfit --\x3e\n      <path d="M 25 110 L 25 90 Q 35 86 47 95 L 55 100 L 63 95 Q 75 86 85 90 L 85 110 Z" fill="#38bdf8" stroke="#0a78a8" stroke-width="2"/>\n      ${isFemale ? `\n        \x3c!-- Damen-Kragen V-Ausschnitt --\x3e\n        <path d="M 47 95 L 55 106 L 63 95" fill="${skin}" stroke="#0a78a8" stroke-width="1.5"/>\n        \x3c!-- Halskette --\x3e\n        <path d="M 44 93 Q 55 100 66 93" stroke="#fff" stroke-width="1.2" fill="none" opacity="0.7"/>\n      ` : '\n        \x3c!-- Polo Kragen --\x3e\n        <path d="M 47 95 L 55 102 L 63 95" fill="#1a85ad" stroke="#1a1a1a" stroke-width="1.5"/>\n        \x3c!-- Knöpfe --\x3e\n        <circle cx="55" cy="106" r="1" fill="#fff" stroke="#1a1a1a" stroke-width="0.5"/>\n      '}\n      \x3c!-- DISPO Logo --\x3e\n      <rect x="62" y="98" width="18" height="7" fill="#fff" rx="0.5" stroke="#0a78a8" stroke-width="0.5"/>\n      <text x="71" y="103" font-family="Arial Black,sans-serif" font-size="5" fill="#0a78a8" text-anchor="middle" font-weight="900">DISPO</text>\n    </svg>`;
   },
   assistanceIcon(assistId, size = 22) {
-    const icons = void 0;
     return `<span style="font-size:${size}px">${{ abs: "🛞", lane_assist: "🛣️", aeb: "🛑", acc: "📡", blind_spot: "👁️", fatigue: "😴", reverse_cam: "📹", tire_pressure: "⚙️", night_vision: "🌙", auto_trans: "⚡", antitheft: "🔒", dashcam: "📷" }[assistId] || "⚙"}</span>`;
   },
   equipmentIcon(equipId, size = 22) {
-    const icons = void 0;
     return `<span style="font-size:${size}px">${{ gps: "🗺️", comfort: "💺", fridge: "❄", crane: "🏗", adr: "☢", eco: "🌿", paint: "🎨", sound: "🔊", fridge_cab: "🥤", parking_heater: "🔥" }[equipId] || "⚙"}</span>`;
   },
 };
@@ -5332,7 +5314,6 @@ const MAP_DATA = {
     const mercY = Math.log(Math.tan(Math.PI / 4 + latRad / 2));
     const mercMin = Math.log(Math.tan(Math.PI / 4 + minLatRad / 2));
     const mercMax = Math.log(Math.tan(Math.PI / 4 + maxLatRad / 2));
-    const y = void 0;
     return { x: x, y: this.viewBox.h - ((mercY - mercMin) / (mercMax - mercMin)) * this.viewBox.h };
   },
   distanceKm(cityA, cityB) {
@@ -7117,10 +7098,8 @@ const MAP_DATA = {
     if (!fromCity || !toCity) return 0;
     const fromCountry = this.getCountry(fromCity.country);
     const toCountry = this.getCountry(toCity.country);
-    const avgToll = void 0;
     let cost = totalKm * (((fromCountry?.toll || 0) + (toCountry?.toll || 0)) / 2);
     for (const h of this.tollHotspots) {
-      const hits = void 0;
       if ((h.from === fromId && h.to === toId) || (h.from === toId && h.to === fromId)) cost += h.surcharge;
     }
     return Math.round(cost);
@@ -7169,7 +7148,6 @@ const MapRender = {
     this.render();
   },
   setZoom(newZoom, centerX, centerY) {
-    const M = void 0;
     const vb = MAP_DATA.viewBox;
     if ((newZoom = Math.max(1, Math.min(8, newZoom))) === this.zoom) return;
     if (void 0 !== centerX && void 0 !== centerY) {
@@ -7183,7 +7161,6 @@ const MapRender = {
     const maxPanY = vb.h * (this.zoom - 1);
     this.panX = Math.max(-maxPanX, Math.min(0, this.panX));
     this.panY = Math.max(-maxPanY, Math.min(0, this.panY));
-    const crossedThreshold = void 0;
     if (
       (oldZoom < 1.2 && newZoom >= 1.2) ||
       (oldZoom >= 1.2 && newZoom < 1.2) ||
@@ -7223,7 +7200,6 @@ const MapRender = {
   _bindInteractions(container) {
     if (container._mapBound) return;
     container._mapBound = true;
-    const M = void 0;
     const vb = MAP_DATA.viewBox;
     const getSvg = () => container.querySelector("#europeMap");
     container.addEventListener(
@@ -7236,7 +7212,6 @@ const MapRender = {
         const rect = svg.getBoundingClientRect();
         const mx = ((e.clientX - rect.left) / rect.width) * vb.w;
         const my = ((e.clientY - rect.top) / rect.height) * vb.h;
-        const delta = void 0;
         const factor = (0 === e.deltaMode ? e.deltaY : 30 * e.deltaY) < 0 ? 1.25 : 0.8;
         this.setZoom(this.zoom * factor, mx, my);
       },
@@ -7381,7 +7356,6 @@ const MapRender = {
         if (!a || !b) return;
         const pa = M.project(a.lon, a.lat);
         const pb = M.project(b.lon, b.lat);
-        const FERRY_WP = void 0;
         const wp = {
           eurotunnel: [
             [-0.13, 51.51],
@@ -7482,7 +7456,6 @@ const MapRender = {
           '<path d="' +
           dLine +
           '" fill="none" stroke="#e0f2fe" stroke-width="1" opacity="0.55" stroke-dasharray="10,6" stroke-dashoffset="5" pointer-events="none"/>';
-        const midIdx = void 0;
         const mp = pts[Math.floor(pts.length / 2)] || { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 };
         svg +=
           '<text x="' +
@@ -7492,7 +7465,6 @@ const MapRender = {
           '" font-size="11" text-anchor="middle" opacity="0.75" pointer-events="none">⚓</text>';
       });
     if (this.activeLayers.has("traffic")) {
-      const traffic = void 0;
       (State.traffic || []).forEach((jam) => {
         const a = M.getCity(jam.from);
         const b = M.getCity(jam.to);
@@ -7520,7 +7492,6 @@ const MapRender = {
         svg += `<text x="${mx}" y="${my + 28}" font-size="9" text-anchor="middle" fill="#5a3000" font-weight="700">${h.surcharge}€</text>`;
       });
     if (this.activeLayers.has("weather")) {
-      const weather = void 0;
       (State.weather || []).forEach((w) => {
         const c = M.getCity(w.city);
         if (!c) return;
@@ -7639,12 +7610,10 @@ const MapRender = {
           route._angle = (180 * Math.atan2(pb.y - pa.y, pb.x - pa.x)) / Math.PI;
         }
       });
-      const clusters = void 0;
       (this.zoom < 2 ? this._buildClusters(routes) : routes.map((r) => ({ routes: [r], x: r._px, y: r._py }))).forEach(
         (cluster) => {
           const { routes: cRoutes, x: cx, y: cy } = cluster;
           if (cRoutes.length >= 3 && this.zoom < 2) {
-            const hasProblems = void 0;
             const clusterColor = cRoutes.some((r) => "problem" === r.status) ? "#f87171" : "#3a8aff";
             svg += `<g class="truck-cluster" style="cursor:pointer;" transform="translate(${cx.toFixed(1)},${cy.toFixed(1)})">\n            <circle cx="0" cy="0" r="18" fill="${clusterColor}" stroke="#fff" stroke-width="2" opacity="0.9"/>\n            <circle cx="0" cy="0" r="22" fill="${clusterColor}" opacity="0.2"/>\n            <text x="0" y="5" font-family="Arial Black,sans-serif" font-size="13" font-weight="900" fill="#fff" text-anchor="middle">${cRoutes.length}</text>\n            <text x="0" y="-25" font-size="10" text-anchor="middle">🚛</text>\n          </g>`;
           } else
@@ -8092,7 +8061,6 @@ const SundayBan = {
     const fromCity = MAP_DATA.getCity(route.fromCity);
     const toCity = MAP_DATA.getCity(route.toCity);
     if (!fromCity && !toCity) return false;
-    const inBanCountry = void 0;
     if (
       !(
         (fromCity && MAP_DATA.sundayBan.countries.includes(fromCity.country)) ||
@@ -8103,7 +8071,6 @@ const SundayBan = {
     if (hour >= MAP_DATA.sundayBan.endHour) return false;
     const cargoType = route.cargoType || "";
     if (MAP_DATA.sundayBan.exemptCargo.includes(cargoType)) return false;
-    const truckTons = void 0;
     if ((route.truckTons || 12) < MAP_DATA.sundayBan.weightThreshold) return false;
     return true;
   },
@@ -8168,7 +8135,6 @@ const FollowUpJobs = {
     const offers = State.availableJobs.filter((j) => {
       const jobFrom = MAP_DATA.getCity(j.fromCity);
       if (!jobFrom) return false;
-      const dist = void 0;
       return MAP_DATA.distanceKm(targetCity, jobFrom) < 50;
     });
     if (offers.length > 0) {
@@ -8269,16 +8235,10 @@ const TruckSpec = {
     const baseFull = { city: 14, regional: 22, sleeper: 36, heavy: 65 }[truck.cabinType] || 32;
     const loadKg = options.loadKg || 0;
     const maxLoad = 1e3 * (axle.maxLoad || 18);
-    const loadFactor = void 0;
     let consumption = baseEmpty + (baseFull - baseEmpty) * Math.min(1, loadKg / maxLoad);
-    const weather = void 0;
-    const weatherMod = void 0;
     consumption *= { sun: 1, rain: 1.06, fog: 1.04, snow: 1.18, storm: 1.12 }[options.weather || "sun"] || 1;
-    const grade = void 0;
     consumption *= 1 + (options.grade || 0) * (1 / axle.gradePenalty - 0.85);
-    const styleMod = void 0;
     consumption *= { defensiv: 0.93, sportlich: 1.05, aggressiv: 1.12 }[options.drivingStyle] || 1;
-    const condFactor = void 0;
     consumption *= 1 + Math.max(0, 0.003 * (80 - (truck.condition || 90)));
     if (options.fuelReduction) consumption *= 1 - options.fuelReduction;
     return Math.round(10 * consumption) / 10;
@@ -8288,11 +8248,9 @@ const TruckSpec = {
     const ps = truck.ps || 380;
     const loadKg = options.loadKg || 0;
     const grade = options.grade || 0;
-    const totalTons = void 0;
     const psPerTon = ps / ((truck.weightEmpty || 8) + loadKg / 1e3);
     let baseSpeed = 80;
     if (grade > 0.05) baseSpeed = Math.min(baseSpeed, 30 + 4 * psPerTon * (1 - 1.5 * grade));
-    const weatherSpeedMod = void 0;
     baseSpeed *= { sun: 1, rain: 0.92, fog: 0.78, snow: 0.65, storm: 0.55 }[options.weather] || 1;
     return Math.max(20, Math.round(baseSpeed));
   },
@@ -8614,15 +8572,12 @@ const Pathfinding = {
     return g;
   },
   _addFerriesToGraph(g) {
-    const ferries = void 0;
     (MAP_DATA.ferries || []).forEach((f) => {
       if (!g[f.from]) g[f.from] = [];
       if (!g[f.to]) g[f.to] = [];
       const kmEquiv = 60 * f.hours;
-      const existing_ab = void 0;
       if (!g[f.from].find((e) => e.to === f.to && e.ferry))
         g[f.from].push({ to: f.to, km: kmEquiv, ferry: true, ferryData: f });
-      const existing_ba = void 0;
       if (!g[f.to].find((e) => e.to === f.from && e.ferry))
         g[f.to].push({ to: f.from, km: kmEquiv, ferry: true, ferryData: f });
     });
@@ -8676,7 +8631,6 @@ const Pathfinding = {
     const weather = State.weather || [];
     for (const w of weather)
       if (w.city === fromId || w.city === toId) {
-        const sm = void 0;
         cost *= { snow: 1.4, storm: 1.3, fog: 1.15, rain: 1.05, sun: 1 }[w.type] || 1;
       }
     if ("cheapest" === strategy) {
@@ -8684,7 +8638,6 @@ const Pathfinding = {
       const toCountry = MAP_DATA.getCity(toId)?.country;
       const fc = MAP_DATA.getCountry(fromCountry);
       const tc = MAP_DATA.getCountry(toCountry);
-      const tollPenalty = void 0;
       cost += 8 * ((((fc?.toll || 0.15) + (tc?.toll || 0.15)) / 2) * baseKm);
       for (const h of MAP_DATA.tollHotspots)
         if ((h.from === fromId && h.to === toId) || (h.from === toId && h.to === fromId)) cost += 12 * h.surcharge;
@@ -8692,7 +8645,6 @@ const Pathfinding = {
     const fromC = MAP_DATA.getCity(fromId)?.country;
     const toC = MAP_DATA.getCity(toId)?.country;
     if (fromC && toC && fromC !== toC) {
-      const wait = void 0;
       cost += 60 * BorderWaits.estimate(fromC, toC);
     }
     return cost;
@@ -8865,7 +8817,6 @@ const MultiStopJobs = {
     let remainingLoad = 18e3;
     for (let i = 0; i < numStops; i++) {
       const c = cities[Math.floor(Math.random() * cities.length)];
-      const isLast = void 0;
       let action, loadKg;
       if (i === numStops - 1) {
         action = "unload";
@@ -9453,7 +9404,6 @@ const LocationExpansion = {
     }
     State.cash -= setupCost;
     if (void 0 !== FinanceManager) FinanceManager.recordCost("admin", setupCost, false);
-    const newId = void 0;
     const loc = {
       id: (State.locations.length || 0) + 1,
       cityId: cityId,
@@ -9475,7 +9425,6 @@ const LocationExpansion = {
     if (!loc) return { ok: false, reason: "Standort nicht gefunden" };
     if (loc.owned) return { ok: false, reason: "Standort bereits im Eigentum" };
     const city = MAP_DATA.getCity(loc.cityId);
-    const monthlyRent = void 0;
     const buyPrice = (loc.rent || city?.baseRent || 5e3) * this.BUY_MULTIPLIER;
     if (State.cash < buyPrice)
       return { ok: false, reason: `Kaufpreis: ${Utils.euro(buyPrice)} — zu wenig Kapital (${Utils.euro(State.cash)})` };
@@ -9684,7 +9633,6 @@ const DepartmentSystem = {
       else if (staffCount >= ideal && dept.bonuses?.fullStaff)
         Object.assign(fx, this._applyBonus(fx, dept.bonuses.fullStaff));
     });
-    const meister = void 0;
     if (
       (State.staff || []).find(
         (s) => ("kfz_meister" === s.roleId || "head_workshop" === s.roleId) && "aktiv" === s.status,
@@ -9873,7 +9821,6 @@ const DepartmentSystem = {
     if (dfx.newCustomers > 0 && void 0 !== JobManager)
       EventManager.addNews("good", `📈 Vertriebsoffensive: ${dfx.newCustomers} neue Kunden gewonnen`);
     Object.entries(State.deptDirectives || {}).forEach(([deptId, dir]) => {
-      const head = void 0;
       if (!(State.staff || []).find((s) => s.id === dir.headId && "aktiv" === s.status)) return;
       const remaining = dir.endsDay - State.day;
       if (remaining > 0 && remaining <= 30)
@@ -9912,7 +9859,6 @@ const DepartmentSystem = {
     const fx = this.getEffects();
     const delay = Math.max(1, fx.invoiceDelay + Utils.randInt(-3, 5));
     const skontoPolicy = State.skontoPolicy || { enabled: false, percent: 0, days: 0 };
-    const hasAccountant = void 0;
     const offerSkonto =
       this._countActiveStaff(["accountant", "controller", "head_accounting"]) > 0 &&
       skontoPolicy.enabled &&
@@ -9977,7 +9923,6 @@ const DepartmentSystem = {
         return;
       }
       if ("offen" === inv.status && today >= inv.dueDay) {
-        const hasAccountant = void 0;
         const outChance =
           this._countActiveStaff(["accountant", "controller"]) > 0 ? 0.3 * fx.badDebtRate : fx.badDebtRate;
         if (Math.random() < outChance) {
@@ -10060,7 +10005,6 @@ const DepartmentSystem = {
     });
   },
   getHireCost(baseSalary) {
-    const fx = void 0;
     const mul = 1 + this.getEffects().hireCost;
     return Math.round(baseSalary * mul * 0.5);
   },
@@ -10072,12 +10016,10 @@ const DepartmentSystem = {
     const maxContracts = salesStaff > 0 ? 2 * salesStaff + fx.contractBonus : 0;
     State.contracts = State.contracts.filter((c) => c.endDay > State.day);
     if (State.contracts.length < maxContracts && salesStaff > 0) {
-      const keyAccounts = void 0;
       (State.staff || [])
         .filter((s) => "key_account" === s.roleId && "aktiv" === s.status)
         .forEach((ka) => {
           if (State.contracts.length >= maxContracts) return;
-          const customers = void 0;
           const goodCust = (State.customers || []).filter((c) => c.relationship > 60);
           if (0 === goodCust.length) return;
           const cust = Utils.pick(goodCust);
@@ -10132,7 +10074,6 @@ const DepartmentSystem = {
         const yearsIn = (State.day - azubi.hireDay) / 365;
         azubi._azubiYear = Math.floor(yearsIn) + 1;
         if (State.day - azubi.hireDay >= 1095) {
-          const promotionMap = void 0;
           const newRole =
             { azubi_driver: "driver", azubi_mechanic: "mechanic", azubi_kaufmann: "accountant" }[azubi.roleId] ||
             "driver";
@@ -10222,7 +10163,6 @@ const DepartmentSystem = {
     if (0 === heads.length) return;
     const reports = heads
       .map((h) => {
-        const roleLabels = void 0;
         return `${{ head_accounting: "📊 Finanzen", head_hr: "👥 Personal", head_sales: "📈 Vertrieb", head_legal: "⚖️ Recht", head_fleet: "🚛 Fuhrpark", head_it: "💻 IT", head_workshop: "🔧 Werkstatt" }[h.roleId] || h.role}: ${h.name.split(" ").pop()} — alles im grünen Bereich`;
       })
       .join("<br>");
@@ -10294,7 +10234,6 @@ const StaffInteraction = {
     },
   },
   rollPersonality(roleId) {
-    const weights = void 0;
     const pool = {
       driver: ["loyal:30", "veteran:20", "pragmatic:25", "difficult:15", "anxious:10"],
       mechanic: ["pragmatic:35", "veteran:25", "loyal:20", "difficult:15", "anxious:5"],
@@ -10326,7 +10265,6 @@ const StaffInteraction = {
     return "pragmatic";
   },
   _tone(staff) {
-    const p = void 0;
     const tones = {
       loyal: { greet: "Guten Morgen,", sign: "Ihr ergebener", style: "formell und respektvoll" },
       ambitious: { greet: "Kurz und direkt:", sign: "Beste Grüße", style: "knapp, auf den Punkt, leicht fordernd" },
@@ -10346,7 +10284,6 @@ const StaffInteraction = {
     return tones[staff.personality || "pragmatic"] || tones.pragmatic;
   },
   checkDailyTriggers() {
-    const recentTier1 = void 0;
     if ((State.pendingDecisions || []).filter((d) => 1 === d.tier).length >= 1) return;
     const triggers = [
       { weight: 3, fn: () => this._t1_invoiceOverdue() },
@@ -10446,7 +10383,6 @@ const StaffInteraction = {
     const driver = (State.staff || []).find((s) => s.id === truck.driverId);
     if (!driver) return;
     const tone = this._tone(driver);
-    const scenarios = void 0;
     const valid = [
       {
         cond: () => truck.condition < 50,
@@ -10698,7 +10634,6 @@ const StaffInteraction = {
         {
           text: `💬 Verhandeln — max. ${Math.round(discount / 2)}% Rabatt`,
           action: () => {
-            const success = void 0;
             if (bigCust.relationship > 65 || Math.random() < 0.55) {
               const monthly = Math.round(potentialRevenue * (1 - discount / 2 / 100));
               State.contracts = State.contracts || [];
@@ -11147,7 +11082,6 @@ const StaffInteraction = {
     return `\n      <div style="display:flex; gap:12px; align-items:flex-start;">\n        <div style="flex-shrink:0;">\n          ${Visuals.staff(staff, 64, 64)}\n          <div style="font-size:9px; color:var(--muted); text-align:center; margin-top:4px; max-width:64px; line-height:1.2;">${pInfo.icon} ${pInfo.label}</div>\n        </div>\n        <div style="flex:1; background:var(--bg); border-radius:8px; padding:12px; border:1px solid var(--border); position:relative;">\n          <div style="font-size:12px; font-weight:700; color:var(--accent); margin-bottom:4px;">${staff.name} · ${staff.role}</div>\n          <div style="font-size:11px; color:var(--muted); margin-bottom:8px;">Tag ${State.day} · Erfahrung: ${staff.experience}% · Motivation: ${staff.motivation}%</div>\n          <div style="font-size:13px; line-height:1.65; color:var(--fg); font-style:italic;">${text.trim()}</div>\n        </div>\n      </div>\n    `;
   },
   _staffReaction(staff, mood, text) {
-    const moodEmoji = void 0;
     const emoji = { approved: "😊", happy: "😄", neutral: "😐", sad: "😔", disagree: "😤", angry: "😠" }[mood] || "😐";
     Notifier.add(
       `${emoji} ${staff.name.split(" ")[0]}: "${text}"`,
@@ -11211,8 +11145,6 @@ const GameDepth = {
   },
   checkJobFit(driver, job) {
     if (!driver.preference) return { ok: true, delta: 0 };
-    const isFern = void 0;
-    const wantsFern = void 0;
     if ((job.km || 0) > 300 === ("fern" === driver.preference))
       return { ok: true, delta: 2, label: `+2 Mot. (${driver.preferenceLabel} ✓)` };
     else return { ok: true, delta: -3, label: `-3 Mot. (${driver.preferenceLabel} — falsche Route)` };
@@ -11236,7 +11168,6 @@ const GameDepth = {
     11: [1.35, 1.15, "Dezember — Hochsaison Weihnachtslogistik! +35% Aufträge"],
   },
   getCurrentSeason() {
-    const date = void 0;
     const month = new Date(State.date || Date.now()).getMonth();
     const data = this.SEASON_DATA[month] || [1, 1, ""];
     return { month: month, jobMul: data[0], priceMul: data[1], note: data[2] };
@@ -11328,7 +11259,6 @@ const GameDepth = {
     const season = this.getCurrentSeason();
     const playerRep = State.reputation || 50;
     this.COMPETITORS.forEach((comp) => {
-      const stolen = void 0;
       if (!(Math.random() < 0.12 * comp.aggressiveness)) return;
       const available = (State.jobs || []).filter((j) => !j._competitorInterest);
       if (!available.length) return;
@@ -11402,7 +11332,6 @@ const GameDepth = {
     if (!locationSpecialization) return baseCount;
     const bonus = this.SPECIALIZATION_BONUSES[locationSpecialization];
     if (!bonus) return baseCount;
-    const trailerBonusMap = void 0;
     const multiplier =
       {
         container: bonus.containerJobBonus,
@@ -11997,7 +11926,6 @@ const LocationSystem = {
   checkManagerEvents() {
     const managedLocations = (State.locations || []).filter((l) => l.managerId);
     if (!managedLocations.length) return;
-    const existing = void 0;
     if ((State.pendingDecisions || []).filter((d) => d.isManagerEvent).length >= 1) return;
     for (const loc of managedLocations) {
       if (Math.random() > 0.15) continue;
@@ -12024,7 +11952,6 @@ const LocationSystem = {
       pool.push({ weight: 2, fn: () => this._mgrEventWarehouse(loc, mgr, city, tone) });
     if (!loc.infrastructure.includes("parking_m"))
       pool.push({ weight: 3, fn: () => this._mgrEventInfraRequest(loc, mgr, city, tone) });
-    const localStaff = void 0;
     if ((State.staff || []).filter((s) => s._locationId === loc.id && "aktiv" === s.status).length < 2)
       pool.push({ weight: 3, fn: () => this._mgrEventStaffShortage(loc, mgr, city, tone) });
     pool.push({ weight: 1, fn: () => this._mgrEventStrategy(loc, mgr, city, tone) });
@@ -12438,7 +12365,6 @@ const LocationSystem = {
     });
   },
   _mgrEventStrategy(loc, mgr, city, tone) {
-    const specs = void 0;
     const newSpec = Object.keys(LocationExpansion.SPECIALIZATIONS || {}).find((s) => s !== loc.specialization);
     if (!newSpec) return;
     const specData = LocationExpansion.SPECIALIZATIONS[newSpec];
@@ -12595,7 +12521,6 @@ const LocationSystem = {
     }
     const sickDrivers = branchStaff.filter((s) => "driver" === s.roleId && "krank" === s.status);
     if (sickDrivers.length > 0) {
-      const freeDrivers = void 0;
       if (
         0 ===
           branchStaff.filter(
@@ -12807,7 +12732,6 @@ const Campaign = {
           id: "nodept",
           label: "Alle Pflicht-Abteilungen besetzt",
           check: () => {
-            const fx = void 0;
             return (DepartmentSystem.getEffects().taxRate || 0) < 0.05;
           },
         },
@@ -12867,7 +12791,6 @@ const Campaign = {
     if (!State.campaign) State.campaign = { milestoneIndex: 0, completed: [] };
     const ms = this.currentMilestone();
     if (!ms) return;
-    const allDone = void 0;
     if (!ms.goals.every((g) => g.check())) return;
     State.campaign.completed.push(ms.id);
     if (ms.reward.cash) State.cash += ms.reward.cash;
@@ -12972,7 +12895,6 @@ const CareerSystem = {
     const results = [];
     Object.values(this.PATHS).forEach((path) => {
       path.steps.forEach((step) => {
-        const staff = void 0;
         (State.staff || [])
           .filter(
             (s) =>
@@ -13008,7 +12930,6 @@ const CareerSystem = {
   },
   dailyCheck() {
     if (State.day % 7 != 0) return;
-    const eligible = void 0;
     this.getEligiblePromotions().forEach(({ staff: s, step: step }) => {
       if (s._promotionOffered) return;
       s._promotionOffered = true;
@@ -13062,7 +12983,6 @@ const SubcontractorSystem = {
     if (!job || !sub) return false;
     const kmCost = Math.round((job.km / 100) * sub.costPer100km);
     const cost = Math.max(150, kmCost);
-    const ourRevenue = void 0;
     const margin = job.price - cost;
     if (State.cash < cost) {
       Notifier.add("Nicht genug Kapital für Subunternehmer-Vorkosten", "error");
@@ -13113,7 +13033,6 @@ const SubcontractorSystem = {
       j.progress = Math.round(100 * (1 - j.daysRemaining / j.daysTotal));
       if (j.daysRemaining <= 0) {
         const sub = this.POOL.find((s) => s.id === j.subcontractorId);
-        const success = void 0;
         if (Math.random() < (sub?.reliability || 0.88)) {
           State.cash += j.price;
           FinanceManager.recordRevenue("fleet", j.price);
@@ -13264,7 +13183,6 @@ const CustomerDepth = {
   },
   monthlyEvents() {
     if (State.day % 30 != 0) return;
-    const customers = void 0;
     (State.customers || []).forEach((c) => {
       this.enrich(c);
       const r = Math.random();
@@ -13383,7 +13301,6 @@ const SpotMarket = {
     };
   },
   _spotPriceIndex() {
-    const sm = void 0;
     return State.spotMarket.priceIndex * (0.75 + 0.5 * Math.random());
   },
   hourlyTick() {
@@ -13406,7 +13323,6 @@ const SpotMarket = {
         l.price = Math.round(0.985 * l.price);
         l.perKm = Math.round((l.price / l.km) * 100) / 100;
       }
-      const hoursLeft = void 0;
       if (l.expiresHour - hour <= 2 && 0 === l.bids) {
         l.price = Math.round(1.08 * l.price);
         l.perKm = Math.round((l.price / l.km) * 100) / 100;
@@ -13683,7 +13599,6 @@ const DriverCareer = {
     return this.LEVELS.find((l) => xp >= l.minXP && xp < l.maxXP) || this.LEVELS[this.LEVELS.length - 1];
   },
   addXP(driver, jobDifficulty = 1) {
-    const base = void 0;
     const xpGain = parseFloat(((0.5 + 0.3 * jobDifficulty) * (State.departments?.fleet_mgmt ? 1.1 : 1)).toFixed(2));
     const oldLevel = this.getLevel(driver);
     driver.experience = Math.min(100, (driver.experience || 0) + xpGain);
@@ -13729,9 +13644,6 @@ const DriverCareer = {
     return { fuelSaving: level.fuelBonus, speedBonus: level.speedBonus, accidentRisk: level.accidentRisk };
   },
   profileSummary(driver) {
-    const quals = void 0;
-    const unlocked = void 0;
-    const level = void 0;
     return {
       quals: (driver.qualifications || []).map((qid) => {
         const q = this.QUALIFICATIONS.find((x) => x.id === qid);
@@ -13831,7 +13743,6 @@ const ContractSLA = {
         c.sla.deliveriesThisMonth = 0;
         c.sla.promisedThisMonth = 0;
       }
-      const contractAge = void 0;
       if (today - (c.startDay || 0) >= 360 && !c._renewalOffered) {
         c._renewalOffered = true;
         this._offerRenewal(c);
@@ -13913,7 +13824,6 @@ const ContractSLA = {
     const rate = promised > 0 ? Math.round((delivered / promised) * 100) : 100;
     const type = this.TYPES[c.contractType] || this.TYPES.standard;
     const status = rate >= type.slaTarget + 5 ? "bonus" : rate >= type.slaTarget ? "ok" : "warn";
-    const color = void 0;
     return {
       rate: rate,
       status: status,
@@ -13934,7 +13844,6 @@ const BAGCompliance = {
       id: "vehicle_cond",
       label: "Fahrzeugzustand / TÜV",
       riskFactor: () => {
-        const pct = void 0;
         return (
           0.05 + 0.5 * (State.trucks.filter((t) => t.condition < 40).length / Math.max(1, (State.trucks || []).length))
         );
@@ -13947,7 +13856,6 @@ const BAGCompliance = {
         const hazardJobs = (State.activeJobs || []).filter((j) => j.cargoType?.hazard);
         if (0 === hazardJobs.length) return 0;
         const driver = hazardJobs[0] && (State.staff || []).find((s) => s.id === hazardJobs[0].driverId);
-        const hasAdr = void 0;
         return driver && (driver.qualifications || []).some((q) => q.startsWith("adr")) ? 0.05 : 0.75;
       },
     },
@@ -13957,7 +13865,6 @@ const BAGCompliance = {
       id: "rest_times",
       label: "Ruhezeiten eingehalten",
       riskFactor: () => {
-        const stressed = void 0;
         return 0.05 + 0.12 * (State.staff || []).filter((s) => "driver" === s.roleId && s.stress > 80).length;
       },
     },
@@ -13975,11 +13882,8 @@ const BAGCompliance = {
   },
   complianceScore() {
     let score = 100;
-    const stressedDrivers = void 0;
     score -= 8 * (State.staff || []).filter((s) => "driver" === s.roleId && s.stress > 75).length;
-    const badTrucks = void 0;
     score -= 10 * State.trucks.filter((t) => t.condition < 40).length;
-    const adrViolations = void 0;
     score -=
       15 *
       (State.activeJobs || []).filter((j) => {
@@ -13987,9 +13891,7 @@ const BAGCompliance = {
         const driver = (State.staff || []).find((s) => s.id === j.driverId);
         return !driver || !(driver.qualifications || []).some((q) => q.startsWith("adr"));
       }).length;
-    const overdue = void 0;
     score -= 12 * (State.activeJobs || []).filter((j) => j.daysRemaining < -1).length;
-    const hasOfficer = void 0;
     if (State.staff.some((s) => "compliance" === s.roleId && "aktiv" === s.status)) score = Math.min(100, score + 20);
     return Math.max(0, Math.round(score));
   },
@@ -14065,7 +13967,6 @@ const BAGCompliance = {
           {
             text: "Anwalt einschalten",
             action: () => {
-              const hasL = void 0;
               if (State.staff.some((s) => "lawyer" === s.roleId && "aktiv" === s.status))
                 EventManager.addNews("good", "⚖️ Anwalt: Verwarnung abgeschwächt");
               else {
@@ -14096,7 +13997,6 @@ const BAGCompliance = {
           {
             text: "Einspruch einlegen (wenn Anwalt)",
             action: () => {
-              const hasL = void 0;
               if (State.staff.some((s) => "lawyer" === s.roleId && "aktiv" === s.status)) {
                 const refund = Math.round(0.4 * totalFine);
                 State.cash += refund;
@@ -14360,8 +14260,6 @@ const CO2ESG = {
   },
   recordEmission(truck, distanceKm) {
     this.init();
-    const base = void 0;
-    const co2Mul = void 0;
     const emissionKg =
       ((truck.upgrades?.includes("electric_drive")
         ? this.CO2_BASE.electric
@@ -14391,11 +14289,9 @@ const CO2ESG = {
     score += (electricCount / total) * 20;
     score += (lngCount / total) * 10;
     score += (euro6Count / total) * 8;
-    const compScore = void 0;
     score += 0.2 * ((void 0 !== BAGCompliance ? BAGCompliance.complianceScore() : 80) - 80);
     score -= 2 * (State.stats?.accidents || 0);
     const overBudget = Math.max(0, esg.co2ThisYear - esg.co2Budget);
-    const coveredByCerts = void 0;
     if (Math.min(overBudget / 1e3, esg.certificates) > 0) score += 5;
     return Math.max(0, Math.min(100, Math.round(score)));
   },
@@ -14651,7 +14547,6 @@ const FuelHedging = {
       State.cash -= cost;
       if (State.subCosts) State.subCosts.fuelActual += cost;
       hedge.storage += c.liters;
-      const spotCost = void 0;
       const diff = Math.round(c.liters * State.fuelPriceCurrent) - cost;
       hedge.totalSaved += Math.max(0, diff);
       const note = diff >= 0 ? `🟢 ${Utils.euro(diff)} gespart` : `🔴 ${Utils.euro(-diff)} teurer als Spot`;
@@ -14757,7 +14652,6 @@ const BonusSystem = {
               ],
             });
           }
-        const daysSinceHire = void 0;
         if (State.day - (s.hireDay || 0) >= 365 && 0 === s.accidents && !s._accidentFreeBonus) {
           s._accidentFreeBonus = true;
           EventManager.queueDecision({
@@ -14908,7 +14802,6 @@ const LobbySystem = {
     if (!m) return { ok: false, reason: "Maßnahme nicht gefunden" };
     if (State.cash < m.cost) return { ok: false, reason: "Nicht genug Kapital" };
     if (m.requires) {
-      const hasStaff = void 0;
       if (!State.staff.some((s) => s.roleId === m.requires && "aktiv" === s.status))
         return { ok: false, reason: `Benötigt: ${"lawyer" === m.requires ? "Rechtsanwalt/in" : m.requires}` };
     }
@@ -14924,7 +14817,6 @@ const LobbySystem = {
         expiresDay: State.day + m.duration,
       });
     if ("extraESubsidy" === m.effect) {
-      const eTrucks = void 0;
       const total = (State.trucks || []).filter((t) => t.upgrades?.includes("electric_drive")).length * m.effectValue;
       if (total > 0) {
         State.cash += total;
@@ -14933,7 +14825,6 @@ const LobbySystem = {
     }
     if ("clearBagWarning" === m.effect) {
       const hasLawyer = State.staff.some((s) => "lawyer" === s.roleId && "aktiv" === s.status);
-      const success = void 0;
       if (Math.random() < (hasLawyer ? 0.85 : 0.6)) {
         if (State.bag) State.bag.violations = [];
         EventManager.addNews("good", "⚖️ BAG-Verwarnung zurückgezogen — Konzession gesichert");
@@ -14953,7 +14844,6 @@ const LobbySystem = {
   },
   dailyTick() {
     if (!State.lobby?.active) return;
-    const expired = void 0;
     State.lobby.active
       .filter((a) => null != a.expiresDay && State.day > a.expiresDay)
       .forEach((a) => EventManager.addNews("warn", `⏰ Lobbymaßnahme abgelaufen: ${a.name}`));
@@ -15024,7 +14914,6 @@ const MarketCycles = {
     this.init();
     const mc = State.marketCycle;
     const phase = this.PHASES[mc.phase];
-    const elapsed = void 0;
     if (State.day - mc.phaseDay >= mc.phaseDuration) {
       const next = Utils.pick(this.TRANSITIONS[mc.phase]);
       mc.history.push({ phase: mc.phase, startDay: mc.phaseDay, endDay: State.day });
@@ -15074,8 +14963,6 @@ const MarketCycles = {
     }
   },
   _cycleTip() {
-    const mc = void 0;
-    const tips = void 0;
     const pool = {
       boom: [
         "Hochkonjunktur: Rahmenverträge jetzt zu Premiumpreisen abschließen",
@@ -15294,7 +15181,6 @@ const MergersAcquisitions = {
       State.integrations.forEach((integ) => {
         if (!integ.done && State.day >= integ.endDay) this._completeIntegration(integ);
       });
-    const value = void 0;
     if (this.companyValue() > 2e6 && Math.random() < 0.002 && !State.victory) this.offerSale();
   },
   acquisitionTargets() {
@@ -15681,7 +15567,6 @@ const PoliticalEvents = {
       title: "✊ Verdi-Streik: Logistik",
       category: "labor",
       generateContent: () => {
-        const days = void 0;
         return {
           subtitle: `Bundesweiter Streik ${Utils.randInt(2, 7)} Tage`,
           content: `Verdi ruft zum Warnstreik auf. Lager und Umschlagsanlagen teilweise geschlossen. Lieferketten gestört.\n\nIhre ${(State.trucks || []).filter((t) => "active" === t.status).length} aktiven Touren können verzögert werden.`,
@@ -15828,7 +15713,6 @@ const PoliticalEvents = {
       (e) => State.day >= (e.minDay || 0) && !ps.firedEvents.slice(-3).includes(e.id),
     );
     if (!available.length) return;
-    const weights = void 0;
     const total = available.map((e) => e.weight || 1).reduce((a, b) => a + b, 0);
     let r = Math.random() * total;
     const event =
@@ -16378,7 +16262,6 @@ const GFOffice = {
   dailyTick() {
     this.init();
     if (State.day < 3) return;
-    const callQueue = void 0;
     if (State.gfOffice.callQueue.length >= 3) return;
     const trucks = (State.trucks || []).length;
     const staff = (State.staff || []).filter((s) => "aktiv" === s.status).length;
@@ -16698,7 +16581,6 @@ const GFOffice = {
     if (0 === heads.length) return;
     const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
     heads.forEach((head) => {
-      const reports = void 0;
       const fn = {
         head_accounting: () => ({
           subject: "Monatsbericht Buchhaltung",
@@ -16932,7 +16814,6 @@ const SeasonCalendar = {
     this._active = this._active.filter((ev) => ev.endsDay > State.day);
     State.seasonEvents = this._active;
     if (this._active.length < before) EventManager.addNews("info", "📅 Sonderereignis beendet");
-    const heatActive = void 0;
     if (this._active.find((ev) => "heat_wave" === ev.id))
       (State.staff || [])
         .filter((s) => "driver" === s.roleId && "aktiv" === s.status)
@@ -17022,7 +16903,6 @@ const MaintenancePlan = {
       intervalDays: 730,
       warnDays: 30,
       cost: (truck) => {
-        const base = void 0;
         return truck.condition > 75 ? 110 : truck.condition > 50 ? 185 : 320;
       },
       failRisk: (truck) => Math.max(0, (75 - truck.condition) / 100),
@@ -17356,7 +17236,6 @@ const CustomerPortal = {
   },
   negotiateDiscount(customerId) {
     this.init();
-    const cp = void 0;
     const entry = State.customerPortal.loyaltyProgram.find((l) => l.customerId === customerId);
     const customer = (State.customers || []).find((c) => c.id === customerId);
     if (!entry || !customer) return;
@@ -17539,7 +17418,6 @@ const StaffDevelopment = {
         reason: `Mindesterfahrung ${course.requiresExperience}% erforderlich (aktuell ${Math.round(s.experience || 0)}%)`,
       };
     if (course.requiresBuilding) {
-      const hasBuilding = void 0;
       if (!(State.locations || []).some((l) => (l.infrastructure || []).includes(course.requiresBuilding))) {
         const b = void 0 !== LocationSystem ? LocationSystem.BUILDINGS[course.requiresBuilding] : null;
         return { ok: false, reason: `Gebäude benötigt: ${b?.name || course.requiresBuilding}` };
@@ -17764,8 +17642,6 @@ const MorningRoutine = {
   PARTNER_JOBS_N: ["selbstständig", "Freelancer", "Projektmanager/in"],
   _makePartner() {
     const isFemale = Math.random() < 0.5;
-    const name = void 0;
-    const job = void 0;
     return {
       name: isFemale ? Utils.pick(this.PARTNER_NAMES_F) : Utils.pick(this.PARTNER_NAMES_M),
       job: isFemale ? Utils.pick(this.PARTNER_JOBS_F) : Utils.pick(this.PARTNER_JOBS_M),
@@ -17797,7 +17673,6 @@ const MorningRoutine = {
     const hour = State.hour || 7;
     if (hour < 6 || hour > 9) return;
     if (Math.random() > 0.4) return;
-    const pending = void 0;
     if ((State.pendingDecisions || []).filter((d) => d.isMorningEvent).length > 0) return;
     this._triggerScenario();
   },
@@ -18173,7 +18048,6 @@ const StaffDepth = {
     (State.staff || [])
       .filter((s) => "aktiv" === s.status)
       .forEach((s) => {
-        const p = void 0;
         switch (s.personality || "pragmatic") {
           case "ambitious":
             if (State.day % 30 == 0 && !s._recentPromotion) {
@@ -19558,9 +19432,7 @@ const HomerunSystem = {
       const jFromC = MAP_DATA.getCity(j.from);
       const jToC = MAP_DATA.getCity(j.to);
       if (!jFromC || !jToC) return false;
-      const distToStart = void 0;
       if (MAP_DATA.distanceKm(fromC, jFromC) > this.RETURN_SEARCH_RADIUS) return false;
-      const distToHome2 = void 0;
       if (MAP_DATA.distanceKm(jToC, homeC) >= 0.8 * distToHome) return false;
       if (truck.capacity < (j.weight || 0)) return false;
       const daysNeeded = JobManager.totalDays(j, truck);
@@ -19574,7 +19446,6 @@ const HomerunSystem = {
       const aDist = aToC ? MAP_DATA.distanceKm(aToC, homeC) : 9999;
       const bDist = bToC ? MAP_DATA.distanceKm(bToC, homeC) : 9999;
       const aScore = a.price / (aDist + 1);
-      const bScore = void 0;
       return b.price / (bDist + 1) - aScore;
     })[0];
   },
@@ -19622,7 +19493,6 @@ const CompetitionSystem = {
   dailyTick() {
     this.init();
     if (State.day % 3 != 0) return;
-    const rivals = void 0;
     State.competition.rivals.forEach((rival) => {
       const growthRoll = Math.random();
       if (growthRoll < 0.05) rival.trucks = Math.max(2, rival.trucks - 1);
@@ -19701,7 +19571,6 @@ const CompetitionSystem = {
   },
   getLeaderboard() {
     this.init();
-    const player = void 0;
     return [
       { name: State.companyName, trucks: (State.trucks || []).length, reputation: State.reputation, isPlayer: true },
       ...State.competition.rivals,
@@ -19880,7 +19749,6 @@ const WeatherRoads = {
   applyToActiveJob(job) {
     const factors = this.getRouteFactors(job.from, job.to);
     if (factors.delayMul <= 1 && 0 === factors.extraKm) return;
-    const extraDays = void 0;
     if (Math.round((factors.delayMul - 1) * (job.daysTotal || 1)) > 0 && Math.random() < 0.3) {
       job.daysRemaining = (job.daysRemaining || 0) + 1;
       if (factors.events.length > 0)
@@ -20027,7 +19895,6 @@ const DriverTraits = {
       desc: "Einfluss auf Dieselverbrauch",
       visible: true,
       effect: (stars, val) => {
-        const mul = void 0;
         return { fuelMul: [1.2, 1.08, 1, 0.93, 0.85][stars - 1] };
       },
     },
@@ -20037,7 +19904,6 @@ const DriverTraits = {
       desc: "Pünktlichkeit und Termintreue",
       visible: true,
       effect: (stars) => {
-        const delayChance = void 0;
         return { delayChance: [0.3, 0.18, 0.1, 0.05, 0.02][stars - 1] };
       },
     },
@@ -20047,7 +19913,6 @@ const DriverTraits = {
       desc: "Zugang zu schwierigen Aufträgen",
       visible: true,
       effect: (stars) => {
-        const maxSkill = void 0;
         return { maxSkill: [1, 2, 3, 4, 5][stars - 1] };
       },
     },
@@ -20057,7 +19922,6 @@ const DriverTraits = {
       desc: "Wie lange der Fahrer unterwegs bleibt",
       visible: false,
       effect: (stars) => {
-        const wantsHomeAfter = void 0;
         return { wantsHomeAfter: [7, 10, 14, 21, 28][stars - 1] };
       },
     },
@@ -20067,7 +19931,6 @@ const DriverTraits = {
       desc: "Einfluss auf LKW-Verschleiß",
       visible: false,
       effect: (stars) => {
-        const wearMul = void 0;
         return { wearMul: [2, 1.4, 1, 0.85, 0.7][stars - 1] };
       },
     },
@@ -20115,7 +19978,6 @@ const DriverTraits = {
     },
   ],
   roll() {
-    const useArchetype = void 0;
     if (Math.random() < 0.65) {
       const arch = Utils.pick(this.ARCHETYPES);
       return { archetype: arch.name, desc: arch.desc, stars: { ...arch.stars }, revealed: false, revealDay: null };
@@ -20380,8 +20242,6 @@ const CashflowSystem = {
       }
   },
   _estimatedMonthlyCosts() {
-    const wages = void 0;
-    const leasing = void 0;
     return (
       (State.staff || []).reduce((s, st) => s + (st.salary || 0), 0) +
       (State.leasingContracts || []).filter((l) => l.active).reduce((s, l) => s + (l.monthlyRate || 0), 0) +
@@ -20431,10 +20291,6 @@ const CashflowSystem = {
   getStatus() {
     this.init();
     const recs = State.cashflow.receivables.filter((r) => !r.paid && !r.factored);
-    const total = void 0;
-    const overdue = void 0;
-    const due7 = void 0;
-    const due30 = void 0;
     return {
       total: recs.reduce((s, r) => s + r.amount, 0),
       overdue: recs.filter((r) => r.overdue).reduce((s, r) => s + r.amount, 0),
@@ -21471,7 +21327,6 @@ const RoadRouting = {
   getRouteSVGPath(fromId, toId) {
     const path = this.getPath(fromId, toId);
     if (!path || path.length < 2) return "";
-    const d = void 0;
     return path.map((p, i) => `${0 === i ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
   },
   clearCache() {
@@ -21518,8 +21373,6 @@ const GameDebugger = {
         : warn("Start", "Keine Familie");
       if (State.family?.partner) {
         const p = State.family.partner;
-        const maleNames = void 0;
-        const wrongCombo = void 0;
         ["Thomas", "Michael", "Stefan", "Andreas", "Markus", "Christian", "Daniel", "Sebastian", "Jan", "Tim"].includes(
           p.name,
         ) &&
@@ -21611,7 +21464,6 @@ const GameDebugger = {
       "function" == typeof Game.autoSave
         ? ok("Speichern", "autoSave", "vorhanden")
         : fail("Speichern", "autoSave fehlt");
-      const testOk = void 0;
       Game.saveToSlot(1) ? ok("Speichern", "Quick-Save Slot 1", "OK") : fail("Speichern", "Quick-Save fehlgeschlagen");
       const slots = Game.allSlots();
       const meta = slots[0]?.meta;
@@ -21637,7 +21489,6 @@ const GameDebugger = {
           ? ok("Karte", "Paris→Lyon", path2.length + " Wegpunkte")
           : fail("Karte", "Routing Paris→Lyon", "kein Pfad");
       }
-      const mapEl = void 0;
       document.getElementById("mapContainer")
         ? ok("Karte", "mapContainer", "vorhanden")
         : warn("Karte", "mapContainer nicht im DOM (Karte noch nicht geöffnet)");
@@ -21701,14 +21552,11 @@ const GameDebugger = {
       "position:fixed;bottom:60px;right:16px;z-index:999999;background:#0a0f1a;border:2px solid " +
       (totalFail > 0 ? "#f87171" : totalWarn > 0 ? "#fbbf24" : "#4ade80") +
       ";border-radius:12px;width:420px;max-height:70vh;overflow-y:auto;font-family:monospace;font-size:11px;box-shadow:0 8px 40px rgba(0,0,0,0.9);";
-    const summary = void 0;
-    const summaryColor = void 0;
     let html = `<div style="background:#111827;padding:10px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;">\n      <span style="font-weight:800;color:#e2e8f0;font-size:12px;">🔍 IN-GAME DEBUGGER</span>\n      <span style="color:${totalFail > 0 ? "#f87171" : totalWarn > 0 ? "#fbbf24" : "#4ade80"};font-weight:700;">${`${totalOk} ✅  ${totalWarn} ⚠  ${totalFail} ❌`}</span>\n      <button onclick="document.getElementById('game-debugger-panel').remove()" style="background:none;border:none;color:#888;cursor:pointer;font-size:16px;">✕</button>\n    </div>`;
     cats.forEach((cat) => {
       const cr = results.filter((r) => r.cat === cat);
       const cfail = cr.filter((r) => false === r.ok).length;
       const cwarn = cr.filter((r) => "warn" === r.ok).length;
-      const color = void 0;
       html += '<div style="padding:6px 14px;border-bottom:1px solid #1e293b;">';
       html += `<div style="color:${cfail > 0 ? "#f87171" : cwarn > 0 ? "#fbbf24" : "#4ade80"};font-weight:700;margin-bottom:3px;">${cfail > 0 ? "❌" : cwarn > 0 ? "⚠" : "✅"} ${cat}</div>`;
       cr.forEach((r) => {
@@ -22216,7 +22064,6 @@ const SelfTest = {
     return results;
   },
   runAndReport() {
-    const results = void 0;
     const failed = this.run().filter((r) => !r.pass);
     if (0 === failed.length) return;
     if (void 0 !== GFOffice)
@@ -22422,7 +22269,6 @@ const FinanceManager = {
     const totalRev = Object.values(departments).reduce((s, d) => s + d.revenue, 0);
     const totalCost = Object.values(departments).reduce((s, d) => s + d.fixedCosts + d.variableCosts, 0);
     const profitBeforeTax = totalRev - totalCost;
-    const baseTaxRate = 0.28;
     const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
     const taxRate = Math.max(0.1, Math.min(0.38, 0.28 + (fx.taxRate || 0)));
     const taxes = Math.max(0, profitBeforeTax * taxRate);
@@ -22736,7 +22582,6 @@ const EmployeeManager = {
     if (hasDispo)
       replacement = freeDrivers.sort((a, b) => {
         const skillA = void 0 !== FleetManager ? FleetManager.getDriverSkillLevel(a) : a.experience || 0;
-        const skillB = void 0;
         return (void 0 !== FleetManager ? FleetManager.getDriverSkillLevel(b) : b.experience || 0) - skillA;
       })[0];
     else replacement = Utils.pick(freeDrivers);
@@ -22868,7 +22713,6 @@ const EmployeeManager = {
           s.stress = Utils.clamp(s.stress - 20, 0, 100);
           EventManager.addNews("info", `💪 ${s.name} ist wieder arbeitsfähig`);
           const ownTruck = (State.trucks || []).find((t) => t.driverId !== s.id && !t.driverId && "idle" === t.status);
-          const hasTruck = void 0;
           if (!State.trucks.some((t) => t.driverId === s.id)) {
             const freeTruck = (State.trucks || []).find((t) => !t.driverId && "idle" === t.status);
             if (freeTruck) {
@@ -23140,8 +22984,6 @@ const FleetManager = {
           .replace(/[^A-Z]/g, "");
       else prefix = "XX";
     }
-    const letters = void 0;
-    const digits = void 0;
     return `${prefix}-${String.fromCharCode(65 + Math.floor(26 * Math.random())) + String.fromCharCode(65 + Math.floor(26 * Math.random()))} ${Utils.randInt(10, 999)}`;
   },
   buy(truck, price) {
@@ -23178,7 +23020,6 @@ const FleetManager = {
       return 0;
     }
     const targetCondition = fullRepair ? 100 : Math.min(100, t.condition + 35);
-    const conditionGap = void 0;
     const baseCost = 80 * (targetCondition - t.condition);
     const hasMech = State.staff.some((s) => "mechanic" === s.roleId && "aktiv" === s.status);
     const hasMeister = State.staff.some(
@@ -23208,7 +23049,6 @@ const FleetManager = {
       for (const a of cargoType.requiresAssist)
         if (!this.hasAssistance(truck, a) && !this.hasEquipment(truck, a)) return false;
     const truckModel = DATA.truckModels.find((m) => m.id === truck.modelId);
-    const truckType = void 0;
     if ("tractor" !== (truckModel?.type || "rigid")) {
       if (cargoType.requiresTrailer && cargoType.requiresTrailer.length > 0) {
         const specialTrailers = [
@@ -23223,7 +23063,6 @@ const FleetManager = {
           "walking_floor",
           "livestock",
         ];
-        const needsSpecial = void 0;
         if (cargoType.requiresTrailer.every((rt) => specialTrailers.includes(rt))) return false;
         const attachedTrailer = (State.trailers || []).find((t) => t.id === truck.trailerId);
         if (attachedTrailer && cargoType.requiresTrailer.includes(attachedTrailer.typeId)) return true;
@@ -23297,7 +23136,6 @@ const FleetManager = {
     if (exp >= 80) level = 4;
     if (exp >= 95) level = 5;
     if (void 0 !== DriverSkills && staff.skills) {
-      const sumLvl = void 0;
       if (Object.values(staff.skills).reduce((a, b) => a + b, 0) >= 6) level = Math.min(5, level + 1);
     }
     return level;
@@ -23388,7 +23226,6 @@ const JobManager = {
   },
   ensureMinJobs() {
     const rep = State.reputation || 50;
-    const minJobs = void 0;
     const missing = (rep < 40 ? 3 : rep < 60 ? 5 : rep < 80 ? 8 : 12) - (State.jobs || []).length;
     if (missing > 0) this.generateJobs(missing);
   },
@@ -23400,7 +23237,6 @@ const JobManager = {
     const homeC = MAP_DATA.getCity(homeCity);
     let cityPool = homeC
       ? MAP_DATA.cities.filter((c) => {
-          const dist = void 0;
           return MAP_DATA.distanceKm(homeC, c) <= maxKm && c.id !== homeCity;
         })
       : MAP_DATA.cities;
@@ -23494,7 +23330,6 @@ const JobManager = {
   truckFreeDay(truckId) {
     const job = (State.activeJobs || []).find((j) => j.truckId === truckId);
     const base = job ? State.day + (job.daysRemaining || 0) : State.day;
-    const queued = void 0;
     return (State.scheduledJobs || [])
       .filter((s) => s.truckId === truckId)
       .reduce((acc, s) => acc + (s.estimatedDays || 1), base);
@@ -23513,19 +23348,13 @@ const JobManager = {
       if ("urlaub" === driver.status) return;
       if ("schulung" === driver.status) return;
       if ("repair" === t.status) return;
-      const driverLvl = void 0;
-      const requiredLvl = void 0;
       if (FleetManager.getDriverSkillLevel(driver) < (job.skillRequired || 1)) return;
       const isIdle = "idle" === t.status;
       const freeDay = isIdle ? State.day : this.truckFreeDay(t.id);
-      const daysToDeadline = void 0;
-      const daysNeeded = void 0;
       if ((job.deadline ? job.deadline - freeDay : 999) < this.totalDays(job, t) - 2) return;
       const idleBonus = isIdle ? 300 : 0;
-      const queueDepth = void 0;
       const queuePenalty = 50 * (State.scheduledJobs || []).filter((s) => s.truckId === t.id).length;
       const tc = MAP_DATA.cities.find((c) => c.id === t.location);
-      const distPenalty = void 0;
       const score =
         idleBonus -
         queuePenalty -
@@ -23548,7 +23377,6 @@ const JobManager = {
     const mapKey = loc?.mapCityId || truckLocId;
     const truckC = MAP_DATA.cities.find((c) => c.id === mapKey);
     if (!truckC || !fromC) return Math.max(1, Math.ceil(job.km / 600));
-    const positioningDays = void 0;
     return (
       (mapKey === job.from || truck.location === job.from
         ? 0
@@ -23790,7 +23618,6 @@ const JobManager = {
       if (liveRoute) {
         liveRoute.progress = Math.max(0, Math.min(1, 1 - j.daysRemaining / j.daysTotal));
         if ("deadhead" === j.phase && j.deadheadDays > 0) {
-          const daysElapsed = void 0;
           if (j.daysTotal - j.daysRemaining >= j.deadheadDays) {
             j.phase = "driving";
             truck.location = j.from;
@@ -23813,8 +23640,6 @@ const JobManager = {
       truck.km += Math.round(dailyKm);
       truck.lifetimeKm += dailyKm;
       State.stats.totalDistance += dailyKm;
-      const wearMulLegacy = void 0;
-      const wearMulTrait = void 0;
       const wearMul =
         ("aggressiv" === driver.drivingStyle
           ? 1.5
@@ -23830,7 +23655,6 @@ const JobManager = {
         const fuelEff = FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1;
         const driverFuelMul = void 0 !== DriverTraits ? DriverTraits.getFuelMul(driver) : 1;
         const liters = (dailyKm / 100) * truck.mpg * fuelEff * driverFuelMul;
-        const hedgeResult = void 0;
         dailyFuel = FuelHedging.consumeFuel(liters).cost;
       } else
         dailyFuel =
@@ -24003,7 +23827,6 @@ const TrailerManager = {
     const truckModel = DATA.truckModels.find((m) => m.id === truck.modelId);
     const truckType = truckModel?.type || "rigid";
     const trailerData = DATA.trailers.find((t) => t.id === trailer.typeId);
-    const trailerType = void 0;
     if ("van" === truckType)
       if ("van_trailer" !== (trailerData?.type || ""))
         return {
@@ -24072,16 +23895,12 @@ const EventManager = {
     const driverFactor = driver.motivation < 40 ? 0.04 : 0;
     const styleFactor = "aggressiv" === driver.drivingStyle ? 0.03 : "sportlich" === driver.drivingStyle ? 0.015 : 0;
     const assistanceReduction = 1 - FleetManager.totalAccidentReduction(truck);
-    const safetyEquip = void 0;
     const totalRisk =
       (0.02 + 0.05 * reliFactor + conditionFactor + driverFactor + styleFactor) *
       (FleetManager.hasEquipment(truck, "safety") ? 0.7 : 1) *
       assistanceReduction;
     if (Math.random() < totalRisk) {
       const reverseCam = FleetManager.hasAssistance(truck, "reverse_cam");
-      const tirePress = void 0;
-      const nightVision = void 0;
-      const antitheft = void 0;
       const eventTypes = [
         { type: "breakdown", weight: FleetManager.hasAssistance(truck, "tire_pressure") ? 18 : 30 },
         { type: "accident", weight: 12 },
@@ -24094,7 +23913,6 @@ const EventManager = {
     }
   },
   eventVehicleIncident(truck, driver, job, type) {
-    const damages = void 0;
     const d = {
       breakdown: { dmg: 1500, condDrop: 12, label: "⚠ Panne" },
       accident: { dmg: 4500, condDrop: 30, label: "🚨 Unfall" },
@@ -24375,7 +24193,6 @@ const EventManager = {
   },
   queuePressEvent(reason, truck, driver) {
     State.stats.pressEvents++;
-    const pressConfs = void 0;
     const conf = {
       accident: {
         title: "📰 PRESSEANFRAGE NACH UNFALL",
@@ -24661,7 +24478,6 @@ const DayCycle = {
     State.departments.admin.fixedCosts += dailyRent;
     State.departments.admin.monthFixed += dailyRent;
     if (Math.random() < 0.12) PlayerManager.generateFamilyEvent();
-    const newDate = void 0;
     if (1 === new Date(State.date).getDate()) {
       EmployeeManager.payMonthlySalaries();
       if (void 0 !== DepartmentSystem) DepartmentSystem.monthlyDirectiveTick();
@@ -24759,7 +24575,6 @@ const DispoManager = {
         continue;
       }
       if (perKm > 0.5 && days <= daysLeft) {
-        const result = void 0;
         if (JobManager.acceptJob(job.id, perKm > 0.8 ? "fastest" : "cheapest").ok) {
           if (!State.stats.dispoAutoAccepted) State.stats.dispoAutoAccepted = 0;
           if (!State.stats.dispoTodayAccepted) State.stats.dispoTodayAccepted = 0;
@@ -24790,7 +24605,6 @@ const DispoManager = {
         recommendation: "Erst reparieren lassen",
       };
     if (job.hazard && job.cargoType?.requiresAssist?.includes("adr")) {
-      const hasAdr = void 0;
       if (!(FleetManager.hasAssistance(truck, "adr") || FleetManager.hasEquipment(truck, "adr")))
         return {
           reason: `Gefahrgut (${job.cargo}) ohne ADR-Zertifizierung — illegal und gefährlich.`,
@@ -24809,7 +24623,6 @@ const DispoManager = {
     if (!c) return;
     State.consultations = State.consultations.filter((x) => x.id !== consId);
     if ("accept" === decision) {
-      const r = void 0;
       if (JobManager.acceptJob(c.jobId).ok)
         EventManager.addNews("good", `✓ Bestätigt: ${c.job.fromName}→${c.job.toName}`);
     } else if ("reject" === decision) {
@@ -25028,7 +24841,6 @@ const DealerManager = {
   negotiate(offerId, factor, successProb) {
     const offer = [...State.dealer.newStock, ...State.dealer.usedStock].find((o) => o.id === offerId);
     if (!offer) return null;
-    const hasLawyer = void 0;
     const adjusted = State.staff.some((s) => "lawyer" === s.roleId && "aktiv" === s.status)
       ? successProb + 0.15
       : successProb;
@@ -25156,7 +24968,6 @@ const TrailerDealerManager = {
   },
   buy(offerId) {
     if (!State.trailerDealer) return false;
-    const allOffers = void 0;
     const offer = [...(State.trailerDealer.usedStock || []), ...(State.trailerDealer.newStock || [])].find(
       (o) => o.id === offerId,
     );
@@ -25252,7 +25063,6 @@ const VehicleLeasingManager = {
   },
   leaseTrailer(offerId, months = 36) {
     if (!State.trailerDealer) return { ok: false, reason: "Kein Bestand" };
-    const allOffers = void 0;
     const offer = [...(State.trailerDealer.usedStock || []), ...(State.trailerDealer.newStock || [])].find(
       (o) => o.id === offerId,
     );
@@ -25693,7 +25503,6 @@ const UI = {
     if (overlay)
       overlay.addEventListener("click", (e) => {
         if (e.target === overlay) {
-          const closeBtn = void 0;
           if (overlay.querySelector(".modal-close-x")) this.closeModal();
         }
       });
@@ -25701,7 +25510,6 @@ const UI = {
       const overlay = document.getElementById("modal-overlay");
       const modalOpen = overlay && overlay.classList.contains("show");
       if ("Escape" === e.key && modalOpen) {
-        const closeBtn = void 0;
         if (overlay.querySelector(".modal-close-x")) this.closeModal();
         return;
       }
@@ -25741,7 +25549,6 @@ const UI = {
     document.documentElement.setAttribute("data-theme", saved);
   },
   toggleTheme() {
-    const current = void 0;
     const next = "dark" === (document.documentElement.getAttribute("data-theme") || "dark") ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
     try {
@@ -25855,7 +25662,6 @@ const UI = {
     const city = loc?.name || "Ihrer Stadt";
     const name = State.companyName || "Ihre Spedition";
     const logo = State.companyLogo || "🚛";
-    const hasFam = void 0;
     const scene1 =
       "zusammen" === fam.status && partner
         ? `\n      <div style="display:flex;flex-direction:column;gap:16px;">\n        <div style="display:flex;gap:14px;align-items:flex-start;">\n          <span style="font-size:40px;flex-shrink:0;">🌅</span>\n          <div>\n            <div style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:4px;">Montag, 08:00 Uhr — Zu Hause</div>\n            <div style="font-size:12px;line-height:1.7;color:var(--fg);">\n              Der Wecker klingelt. Heute ist der erste Tag — ${name} öffnet offiziell die Tore.\n              Aufbruch um 07:15 Uhr, 45 Minuten Fahrt — um 08:00 Uhr im Büro sein.\n              ${partner.name} hat bereits Kaffee gemacht und steht in der Küchentür.\n            </div>\n          </div>\n        </div>\n\n        <div style="background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;font-style:italic;line-height:1.7;">\n          "${partner.name}:  Guten Morgen. Aufgeregt?"<br><br>\n          ${children.length > 0 ? `${children[0].name} schaut neugierig um die Ecke: <i>"Papa/Mama, fährst du heute mit dem großen LKW?"</i><br><br>` : ""}\n          "${partner.name}: Ich weiß, dass du das schaffst. Aber vergiss nicht — die Firma ist wichtig, wir ${children.length > 0 ? "auch" : "auch"}. Komm heute Abend pünktlich heim, ja?"\n        </div>\n\n        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">\n          ${[
@@ -26218,7 +26024,6 @@ const UI = {
     const slotCard = (slot, isAuto = false) => {
       const m = slot.meta;
       const label = isAuto ? "🔄 Auto-Save" : `Slot ${slot.n}`;
-      const empty = void 0;
       if (!m)
         return `\n        <div style="border:1px dashed var(--border);border-radius:8px;padding:12px;background:var(--bg2);opacity:0.6;display:flex;align-items:center;gap:10px;">\n          <span style="font-size:24px;">📭</span>\n          <div>\n            <div style="font-size:12px;font-weight:700;color:var(--muted);">${label}</div>\n            <div style="font-size:10px;color:var(--muted2);">Leer</div>\n          </div>\n          ${!isAuto ? `<button class="btn small primary" style="margin-left:auto;font-size:10px;"\n            onclick="window._callActions['save_${slot.n}']&&window._callActions['save_${slot.n}']()">\n            💾 Hier speichern\n          </button>` : ""}\n        </div>`;
       const city = (void 0 !== MAP_DATA && MAP_DATA.getCity(m.location))?.name || m.location;
@@ -26510,13 +26315,11 @@ const UI = {
     const betriebBadge = document.getElementById("badge-betrieb");
     if (betriebBadge && void 0 !== DepartmentSystem) {
       const critCount = Object.values(DepartmentSystem.DEPTS).filter((d) => {
-        const count = void 0;
         return (
           0 === (State.staff || []).filter((s) => d.roles.includes(s.roleId) && "aktiv" === s.status).length &&
           d.minStaff > 0
         );
       }).length;
-      const inv = void 0;
       const total = critCount + (State.invoices || []).filter((i) => "überfällig" === i.status).length;
       betriebBadge.textContent = total > 0 ? total : "";
       betriebBadge.style.background = critCount > 0 ? "var(--danger)" : "var(--warn)";
@@ -26793,9 +26596,6 @@ const UI = {
       return '\n      <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;font-size:11px;color:var(--muted2);">\n        💡 <b>Skonto</b> — Buchhalter oder Controller einstellen um Kunden Skonto anbieten zu können.\n      </div>';
     const stats = (() => {
       const invs = State.invoices || [];
-      const skontoUsed = void 0;
-      const skontoAbzug = void 0;
-      const fasterLiquid = void 0;
       return {
         skontoUsed: invs.filter((i) => i.skontoPaid && "offen" !== i.status).length,
         skontoAbzug: invs
@@ -27149,7 +26949,6 @@ const UI = {
     const price = State.fuelPriceCurrent;
     const loc = void 0 !== LocationSystem ? LocationSystem.getCurrentLocation() : null;
     const hasTankStorage = (loc?.infrastructure || []).includes("tank_storage_m");
-    const hasTankStorageL = void 0;
     const baseCapacity = 2e3;
     const maxCapacity = (loc?.infrastructure || []).includes("tank_storage_l") ? 5e4 : hasTankStorage ? 2e4 : 2e3;
     const storageUsed = Math.round(hedge.storage || 0);
@@ -27319,7 +27118,6 @@ const UI = {
     if (badge) badge.textContent = unread + calls > 0 ? unread + calls : "";
     const tabBtn = (id, icon, label, count) => {
       const active = tab === id;
-      const cnt = void 0;
       return `<button onclick="UI._officeTab='${id}';UI.renderOffice();"\n        style="padding:8px 16px;border-radius:6px;border:1px solid ${active ? "var(--accent)" : "var(--border)"};\n        background:${active ? "rgba(99,102,241,0.15)" : "var(--bg2)"};color:${active ? "var(--accent)" : "var(--muted)"};\n        cursor:pointer;font-size:12px;font-weight:${active ? 700 : 400};white-space:nowrap;">\n        ${icon} ${label}${count > 0 ? `<span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;margin-left:4px;">${count}</span>` : ""}\n      </button>`;
     };
     const trucks = State.trucks || [];
@@ -27501,7 +27299,6 @@ const UI = {
                     ? "🏖️ Urlaub"
                     : `Motivation: <span style="color:${motColor};">${mot}%</span>`;
               const dept = void 0 !== DepartmentSystem ? DepartmentSystem.DEPTS[m.dept || ""]?.name || m.role : m.role;
-              const roleIconMap = void 0;
               const rIcon =
                 {
                   accountant: "📊",
@@ -27769,8 +27566,6 @@ const UI = {
         },
       });
     } else {
-      const stakeholderTopics = void 0;
-      const stTopics = void 0;
       (
         ({
           bank_hausbank: [
@@ -27924,7 +27719,6 @@ const UI = {
           : "unterbesetzt" === status.status
             ? "var(--warn)"
             : "var(--accent2)";
-      const kpiMap = void 0;
       const kpis =
         {
           accounting: [
@@ -27971,7 +27765,6 @@ const UI = {
     if (void 0 === GFOffice) return "";
     GFOffice.init();
     const thresholds = GFOffice.DEFAULT_THRESHOLDS;
-    const rows = void 0;
     return `\n      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">\n        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;">\n          <b>🔽 Niedrige Schwellwerte</b> = <span style="color:var(--accent2);">Mehr Kontrolle</span><br>\n          Sie werden bei mehr Entscheidungen gefragt. Mehr Einfluss, aber mehr Aufwand im Posteingang.\n        </div>\n        <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;">\n          <b>🔼 Hohe Schwellwerte</b> = <span style="color:var(--warn);">Mehr Delegation</span><br>\n          Mitarbeiter entscheiden selbstständiger. Weniger Micromanagement, aber mehr Vertrauen nötig.\n        </div>\n      </div>\n      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;">\n        ${Object.entries(
       thresholds,
     )
@@ -28217,7 +28010,6 @@ const UI = {
               const sign = "number" == typeof v ? (v > 0 ? "+" : "") : "";
               const disp =
                 "number" == typeof v ? (Math.abs(v) < 1 ? `${sign}${Math.round(100 * v)}%` : `${sign}${v}`) : v;
-              const label = void 0;
               return `<span style="background:rgba(${"var(--danger)" === col ? "248,113,113" : "74,222,128"},0.12);color:${col};padding:1px 6px;border-radius:3px;font-size:9px;">${{ taxRate: "Steuer", invoiceDelay: "Zahlung", jobPriceMul: "Preis", jobVolumeMul: "Volumen", fuelMul: "Diesel", repairCostMul: "Reparatur", fineMul: "Bußgeld", quitRiskAdd: "Kündigung", motivationBonus: "Motivation", costMul: "Kosten", hiringQuality: "Bewerberkval.", contractBonus: "Vertrag", breakdownRisk: "Panne", legalCost: "Anwaltskosten", externalRevenue: "Extraumsatz", maxContracts: "Verträge" }[k] || k} ${disp}</span>`;
             })
             .join(" ");
@@ -28449,7 +28241,6 @@ const UI = {
     const form = LegalForms.currentForm();
     const legal = State.legal;
     const equity = FinanceManager.equity();
-    const allForms = void 0;
     const formCards = Object.values(LegalForms.FORMS).map((f) => {
       const isCurrent = f.id === form.id;
       const canUpgrade = !isCurrent && State.day >= f.minDay && equity >= f.minCapital && State.cash >= f.setupCost;
@@ -28580,8 +28371,6 @@ const UI = {
             const isBuilt = built.includes(b.id);
             const prereqsMet = b.requires.every((r) => built.includes(r));
             const canAfford = State.cash >= b.cost;
-            const borderColor = void 0;
-            const bgColor = void 0;
             return `\n                <div style="background:${isBuilt ? "rgba(74,222,128,0.06)" : "var(--bg)"}; border:1px solid ${isBuilt ? "var(--accent2)" : prereqsMet ? "var(--border)" : "rgba(255,255,255,0.04)"}; border-radius:8px; padding:10px; ${!prereqsMet && !isBuilt ? "opacity:0.45;" : ""}">\n                  <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">\n                    <div style="font-size:13px; font-weight:700; color:${isBuilt ? "var(--accent2)" : "var(--fg)"};">${b.icon} ${b.name}</div>\n                    ${isBuilt ? '<span style="font-size:16px;">✓</span>' : ""}\n                  </div>\n                  <div style="font-size:10px; color:var(--muted2); line-height:1.5; margin-bottom:6px;">${b.desc}</div>\n                  ${isBuilt || b.isBase ? `\n                    <div style="font-size:9px; color:var(--accent2);">${b.isBase ? "✓ Basisausstattung" : "✓ Gebaut · " + (b.monthlyMaint > 0 ? Utils.euro(b.monthlyMaint) + "/Mon." : "")}</div>\n                  ` : `\n                    <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:6px;">\n                      <span style="color:${canAfford ? "var(--fg)" : "var(--danger)"}; font-weight:700;">${Utils.euro(b.cost)}</span>\n                      ${b.monthlyMaint ? `<span style="color:var(--muted2);">+ ${Utils.euro(b.monthlyMaint)}/Mon.</span>` : ""}\n                    </div>\n                    ${!prereqsMet ? `\n                      <div style="font-size:9px; color:var(--warn); background:rgba(251,191,36,0.1); border-radius:4px; padding:3px 6px;">\n                        ⚠ Zuerst: ${b.requires.map((r) => LocationSystem.BUILDINGS[r]?.name || r).join(" + ")}\n                      </div>\n                    ` : `\n                      <button class="btn ${canAfford ? "primary" : ""} small" style="width:100%; font-size:10px; padding:5px;"\n                        ${!canAfford ? "disabled" : ""}\n                        onclick="UI._buildAtLocation('${loc.id}','${b.id}')">\n                        ${canAfford ? "🏗️ Jetzt bauen" : `💰 ${Utils.euro(b.cost - State.cash)} fehlen`}\n                      </button>\n                    `}\n                  `}\n                </div>`;
           })
           .join("")}\n          </div>\n        </div>`;
@@ -28886,7 +28675,6 @@ const UI = {
         : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;">\n          ${stock
             .map((o) => {
               const lease36 = VehicleLeasingManager.calcLeasingRate(o.askingPrice, 36, o.isUsed || false);
-              const catColors = void 0;
               const catColor =
                 {
                   standard: "#3a8aff",
@@ -28984,7 +28772,6 @@ const UI = {
     badge("badge-private", (State.familyMessages || []).filter((m) => !m.read).length);
   },
   renderDashboard() {
-    const el = void 0;
     if (!document.getElementById("view-dashboard")) return;
     const todayRev = State.history.revenue[State.history.revenue.length - 1] || 0;
     const todayProfit = State.history.profit[State.history.profit.length - 1] || 0;
@@ -29011,7 +28798,6 @@ const UI = {
     document.getElementById("alerts-area").innerHTML = warnings
       .map((w) => `<div class="alert-banner warn">${w}</div>`)
       .join("");
-    const consEl = void 0;
     document.getElementById("consultations-area").innerHTML = State.consultations
       .map(
         (c) =>
@@ -29042,7 +28828,6 @@ const UI = {
       if (contractsSub) {
         const slaOk = activeContracts.filter((c) => {
           if (!c.sla || void 0 === ContractSLA) return true;
-          const s = void 0;
           return "warn" !== ContractSLA.contractStatus(c).status;
         }).length;
         contractsSub.textContent =
@@ -29076,7 +28861,6 @@ const UI = {
     }
     const homerunEl = document.getElementById("dashboard-homerun");
     if (homerunEl && void 0 !== HomerunSystem) {
-      const status = void 0;
       const wantHome = HomerunSystem.getStatus().filter((s) => s.wantsHome);
       homerunEl.innerHTML =
         0 === wantHome.length
@@ -29198,7 +28982,6 @@ const UI = {
     let html = "";
     [0, 0.25, 0.5, 0.75, 1].forEach((frac) => {
       const y = (pad_t + ch * (1 - frac)).toFixed(1);
-      const v = void 0;
       html += `<line x1="${pad_l}" y1="${y}" x2="${w - pad_r}" y2="${y}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2,3"/>`;
       html += `<text x="${pad_l - 3}" y="${y}" font-size="9" fill="var(--muted)" text-anchor="end" dominant-baseline="middle">${fmt(min + range * frac)}</text>`;
     });
@@ -29316,7 +29099,6 @@ const UI = {
                   }
                 }
                 if (void 0 !== Pathfinding) {
-                  const ferryType = void 0;
                   if (Pathfinding.needsFerry(j.from, j.to))
                     ferrybadge =
                       '<div style="font-size:9px;color:var(--info);margin-top:2px;" title="Route erfordert Fähre">⛴️ Fähre erforderlich</div>';
@@ -29452,7 +29234,6 @@ const UI = {
   promoteToHead(staffId) {
     const s = (State.staff || []).find((x) => x.id === staffId);
     if (!s) return;
-    const headRoles = void 0;
     const newRole = {
       accountant: "head_accounting",
       hr: "head_hr",
@@ -29506,7 +29287,6 @@ const UI = {
           if (void 0 === GameDepth) return "";
           const tier = GameDepth.getAgingTier(t);
           if (t.km < 3e5) return "";
-          const tierColor = void 0;
           return ` · <span style="color:${t.km >= 6e5 ? "var(--danger)" : t.km >= 45e4 ? "var(--warn)" : "var(--muted)"}; font-weight:700;">${tier.label}</span>`;
         })()}\n              </div>\n              <div style="display:flex; align-items:center; gap:4px;">\n                <span style="color:var(--muted)">Zustand:</span>\n                <span class="health-bar" style="width:80px;"><span class="health-fill ${condClass}" style="width:${t.condition}%"></span></span>\n                <span>${Math.round(t.condition)}%</span>\n              </div>\n              <div><span style="color:var(--muted)">Versicherung:</span> <b>${ins.name}</b></div>\n              ${(() => {
           if (void 0 === GameDepth || !t.registeredAt) return "";
@@ -29542,7 +29322,6 @@ const UI = {
           let html = "";
           if (activeJob) {
             const pct = Math.round(100 * (1 - activeJob.daysRemaining / activeJob.daysTotal));
-            const daysLeft = void 0;
             html += `<div style="font-size:10px; background:rgba(74,222,128,0.07); border:1px solid rgba(74,222,128,0.2); border-radius:5px; padding:6px 8px; margin-bottom:4px;">\n              <div style="display:flex; justify-content:space-between; margin-bottom:3px;">\n                <span style="color:var(--accent2); font-weight:700;">🚛 AKTIVER AUFTRAG</span>\n                <span style="color:var(--muted2);">${activeJob.daysRemaining}d verbleibend</span>\n              </div>\n              <div style="font-weight:700;">${activeJob.fromName || activeJob.from} → ${activeJob.toName || activeJob.to}</div>\n              <div style="color:var(--muted2);">${activeJob.cargo || "Fracht"} · ${Utils.euro(activeJob.price)}</div>\n              <div style="height:3px; background:var(--bg2); border-radius:2px; margin-top:4px; overflow:hidden;">\n                <div style="height:100%; width:${pct}%; background:var(--accent2); transition:width .3s;"></div>\n              </div>\n            </div>`;
           }
           if (queued.length > 0)
@@ -29863,7 +29642,6 @@ const UI = {
             const isAlreadyHead = headRoleId && s.roleId === headRoleId;
             const isAzubi = s.roleId?.startsWith("azubi_");
             if (headRoleId && !isAlreadyHead && !isAzubi && State.day >= 60 && "aktiv" === s.status) {
-              const existingHead = void 0;
               if (!State.staff.find((x) => x.roleId === headRoleId && "aktiv" === x.status && x.id !== s.id))
                 return `<button class="btn small" onclick="UI.promoteToHead('${s.id}')" style="flex:1; background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.4); color:#818cf8;">👑 Befördern</button>`;
             }
@@ -29918,7 +29696,6 @@ const UI = {
     if (!s) return;
     const ws = s.warnings || [];
     const canTerminate = ws.length >= 3 || (ws.some((w) => "gross" === w.severity) && ws.length >= 2);
-    const reasonsByRole = void 0;
     const defaultReasons = [
       { reason: "Wiederholtes Zuspätkommen", severity: "mild" },
       { reason: "Fehlverhalten gegenüber Kollegen", severity: "serious" },
@@ -30478,7 +30255,6 @@ const UI = {
           label: "Angebot machen",
           primary: true,
           onclick: () => {
-            const bid = void 0;
             const factor = parseInt(document.getElementById("neg-slider").value) / offer.askingPrice;
             const prob = factor > 0.92 ? 0.7 : factor > 0.88 ? 0.5 : factor > 0.85 ? 0.35 : 0.15;
             const r = DealerManager.negotiate(offerId, factor, prob);
@@ -30701,7 +30477,6 @@ const UI = {
   _callPartner(type) {
     const partner = State.family?.partner;
     if (!partner) return;
-    const scripts = void 0;
     const s = {
       lunch: {
         text: `"${partner.name}? Ich bin's. Alles okay bei dir?" — Ein kurzes Gespräch. Du hörst zu.`,
@@ -30731,7 +30506,6 @@ const UI = {
     this.renderPrivate();
   },
   _doStressAction(idx) {
-    const ACTIONS = void 0;
     const a = [
       { icon: "🏃", label: "Sport", stress: -12, vacation: false, cost: 0 },
       { icon: "🧘", label: "Meditation", stress: -8, vacation: false, cost: 0 },
@@ -30975,7 +30749,6 @@ const UI = {
     el.innerHTML = Notifier.messages
       .slice(0, 20)
       .map((m) => {
-        const colors = void 0;
         return `\n        <div style="padding:6px 8px; margin-bottom:4px; background:var(--bg); border-left:3px solid ${{ info: "var(--accent2)", success: "var(--accent)", warn: "var(--warn)", error: "var(--danger)" }[m.type] || "var(--muted)"}; border-radius:3px; font-size:10px;">\n          <div style="color:var(--muted); font-size:9px;">Tag ${m.day} · ${String(Math.floor(m.hour)).padStart(2, "0")}:${String(Math.floor((m.hour % 1) * 60)).padStart(2, "0")}</div>\n          ${m.text}\n        </div>\n      `;
       })
       .join("");
@@ -31155,7 +30928,6 @@ const UI = {
       return;
     }
     const homeId = State.locations[0].cityId;
-    const hubs = void 0;
     const optsHTML = MAP_DATA.cities
       .filter((c) => c.hub && c.id !== homeId)
       .map((c) => `<option value="${c.id}">${c.name} (${MAP_DATA.getCountry(c.country)?.name})</option>`)
@@ -31168,7 +30940,6 @@ const UI = {
     const homeId = State.locations[0].cityId;
     const targetId = sel.value;
     const opts = Pathfinding.computeOptions(homeId, targetId);
-    const out = void 0;
     const formatPath = (o, name) => {
       if (!o) return `<div style="color:var(--danger);">${name}: kein Pfad</div>`;
       const stops = o.path.map((id) => MAP_DATA.getCity(id)?.name).join(" → ");
@@ -31238,7 +31009,6 @@ const UI = {
               const noCash = State.cash < next.cost;
               const disabled = noXP || noCash;
               const reason = noXP ? `XP fehlt (${xp}/${next.xpRequired})` : noCash ? "Kapital fehlt" : "";
-              const btnStyle = void 0;
               btnHTML = `<div style="text-align:right;">\n            <button class="btn" style="${"font-size:10px; padding:3px 8px; " + (disabled ? "opacity:0.5; cursor:not-allowed;" : "")}" ${disabled ? "disabled" : `onclick="UI._buyDriverSkill('${d.id}','${tree.id}')"`}>\n              → ${Utils.euro(next.cost)} (XP ${next.xpRequired})\n            </button>\n            ${disabled ? `<div style="font-size:9px; color:var(--warn); margin-top:1px;">${reason}</div>` : ""}\n          </div>`;
             }
             const xpPct = next ? Math.min(100, Math.round((xp / next.xpRequired) * 100)) : 100;
@@ -31250,7 +31020,6 @@ const UI = {
       .join("");
   },
   _buyDriverSkill(staffId, treeId) {
-    const result = void 0;
     if (void 0 !== DriverSkills && DriverSkills.buySkill(staffId, treeId)) {
       const s = State.staff.find((x) => x.id === staffId);
       const tree = DriverSkills.TREES[treeId];
