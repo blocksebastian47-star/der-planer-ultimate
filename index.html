@@ -21982,6 +21982,7 @@ const Onboarding = {
   },
   dailyTick() {
     if (this.isSkipped()) return;
+    this.init();
     const day = State.day;
     const msgs = this.COACH_MESSAGES[day];
     if (!msgs) return;
