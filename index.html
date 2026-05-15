@@ -4769,6 +4769,7 @@ function _planerDefaultState() {
     pendingDecisions: [],
     fuelPriceCurrent: 1.65,
     fuelPriceTrend: 0,
+    tollEvent: null,
     dealer: { mode: "new", newStock: [], usedStock: [], lastRefresh: 0 },
     trailerDealer: { mode: "new", newStock: [], usedStock: [], lastRefresh: 0 },
     spotMarket: null,
@@ -19177,11 +19178,15 @@ const CrisisSystem = {
               const fired = (State.staff || [])
                 .filter((s) => "aktiv" === s.status && "driver" !== s.roleId)
                 .slice(0, 3);
+              const totalSeverance = fired.reduce((sum, s) => sum + 2 * (s.salary || 0), 0);
               fired.forEach((s) => {
                 s.status = "entlassen";
-                State.cash += 2 * s.salary;
               });
-              EventManager.addNews("warn", `Restrukturierung: ${fired.length} Stellen gestrichen`);
+              if (totalSeverance > 0) FinanceManager.recordCost("personnel", totalSeverance, false);
+              EventManager.addNews(
+                "warn",
+                `Restrukturierung: ${fired.length} Stellen gestrichen — Abfindungen ${Utils.euro(totalSeverance)}`,
+              );
             },
           },
           {
@@ -19189,11 +19194,12 @@ const CrisisSystem = {
             action: () => {
               const t = (State.trucks || []).find((tr) => "idle" === tr.status);
               if (t) {
-                const val = Math.round(0.6 * (t.price || 8e4));
-                State.cash += val;
+                const val = Math.round(0.6 * (t.purchasePrice || 8e4) * ((t.condition || 100) / 100));
+                FinanceManager.recordRevenue("fleet", val);
+                if (State.subRevenue) State.subRevenue.truckSales += val;
                 State.trucks = (State.trucks || []).filter((tr) => tr.id !== t.id);
-                BankAccount.hookSale(val, t.plate);
-                EventManager.addNews("info", `${t.plate} verkauft: +${Utils.euro(val)}`);
+                if (void 0 !== BankAccount && BankAccount.hookSale) BankAccount.hookSale(val, t.plate);
+                EventManager.addNews("info", `${t.plate} unter Druck verkauft: +${Utils.euro(val)}`);
               }
             },
           },
@@ -23258,8 +23264,7 @@ const FleetManager = {
     const t = (State.trucks || []).find((x) => x.id === truckId);
     if (!t || "idle" !== t.status) return false;
     const value = Math.round(t.purchasePrice * (t.condition / 100) * 0.65);
-    State.cash += value;
-    State.departments.fleet.revenue += value;
+    FinanceManager.recordRevenue("fleet", value);
     if (State.subRevenue) State.subRevenue.truckSales += value;
     State.trucks = (State.trucks || []).filter((x) => x.id !== truckId);
     EventManager.addNews("info", `🚛 ${t.model} (${t.plate}) verkauft für ${Utils.euro(value)}`);
@@ -23362,7 +23367,8 @@ const FleetManager = {
         else if (!cargoType.requiresTrailer.includes(trailer.typeId))
           reasons.push(`Falscher Auflieger (benötigt: ${cargoType.requiresTrailer.join(" / ")})`);
       } else if (needsSpecial) reasons.push(`${truckModel?.name} kann keine Spezialauflieger ziehen`);
-      else if (trailer && !cargoType.requiresTrailer.includes(trailer.typeId));
+      else if (trailer && !cargoType.requiresTrailer.includes(trailer.typeId))
+        reasons.push(`Angehängter ${trailer.typeId}-Anhänger passt nicht (benötigt: ${cargoType.requiresTrailer.join(" / ")})`);
     }
     if (job.weight && truck.capacity < job.weight) reasons.push(`Kapazität ${truck.capacity}t < Fracht ${job.weight}t`);
     if (cargoType.requiresAssist && cargoType.requiresAssist.length > 0)
@@ -23924,7 +23930,8 @@ const JobManager = {
       const lobbyFx = void 0 !== LobbySystem ? LobbySystem.getEffects() : {};
       const mautBaseMul = truck.mautMul || 1;
       const globalMautMul = lobbyFx.globalMautMul || 1;
-      const dailyToll = ((j.route?.tollCost || 0) / j.daysTotal) * mautBaseMul * globalMautMul;
+      const tollEventMul = State.tollEvent && State.tollEvent.until > State.day ? State.tollEvent.mul : 1;
+      const dailyToll = ((j.route?.tollCost || 0) / j.daysTotal) * mautBaseMul * globalMautMul * tollEventMul;
       State.cash -= dailyFuel + dailyToll;
       State.departments.fuelToll.variableCosts += dailyFuel + dailyToll;
       State.departments.fuelToll.monthVariable += dailyFuel + dailyToll;
@@ -24258,7 +24265,10 @@ const EventManager = {
     if (job && job.cargoInsurance && void 0 !== CargoInsurance) {
       const cargoDamage = Math.round(job.price * ("theft" === type ? 1 : "accident" === type ? 0.4 : 0.15));
       const cargoResult = CargoInsurance.handleCargoClaim(job, type, cargoDamage);
-      if (cargoResult.covered && cargoResult.payout > 0);
+      if (cargoResult.covered && cargoResult.payout > 0) {
+        FinanceManager.recordRevenue("insurance", cargoResult.payout);
+        this.addNews("good", `🛡 Frachtversicherung zahlt ${Utils.euro(cargoResult.payout)} für ${d.label}`);
+      }
     }
     let newsText;
     if ("theft" === type) {
@@ -24387,7 +24397,12 @@ const EventManager = {
           State.economyDrop = State.day + 7;
         },
       },
-      { text: "⚠ Mautgebühren wurden erhöht (+10%)", impact: () => {} },
+      {
+        text: "⚠ Mautgebühren wurden erhöht (+10%, 14 Tage)",
+        impact: () => {
+          State.tollEvent = { mul: 1.1, until: State.day + 14 };
+        },
+      },
       {
         text: "✓ Neue Steuererleichterung für Mittelstand",
         impact: () => {
