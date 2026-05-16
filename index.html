@@ -12848,7 +12848,7 @@ const Tutorial = {
       day: 3,
       title: "💰 Bilanz prüfen",
       desc: 'Öffnen Sie die "Bilanz"-Ansicht. Dort sehen Sie Umsatz, Kosten und Gewinn — und ob Ihr Unternehmen wächst oder stirbt.',
-      target: "finance",
+      target: "finanzen",
       done: () => State.tutorial?.financeViewed,
       reward: null,
     },
@@ -12924,6 +12924,11 @@ const Tutorial = {
   renderHint() {
     const el = document.getElementById("tutorial-hint");
     if (!el) return;
+    // Tutorial steps are all work tasks — don't nag the player at home.
+    if ("view-private" === document.querySelector(".view.active")?.id) {
+      el.innerHTML = "";
+      return;
+    }
     const step = this.currentStep();
     if (!step || State.tutorial?.skipped) {
       el.innerHTML = "";
@@ -30409,6 +30414,7 @@ const UI = {
   renderFinance() {
     const el = UI._getContentEl("finanzen-content");
     if (!el) return;
+    if (void 0 !== Tutorial) Tutorial.onViewOpen("finance");
     const U = Utils;
     const sc = State.subCosts || {};
     const sr = State.subRevenue || {};
