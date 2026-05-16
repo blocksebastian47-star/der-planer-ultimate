@@ -13717,13 +13717,6 @@ const ContractSLA = {
   monthlyTick() {
     if (!State.contracts || 0 === State.contracts.length) return;
     const today = State.day;
-    State.contracts = State.contracts.filter((c) => {
-      if (c.endDay <= today) {
-        this._contractExpiry(c);
-        return false;
-      }
-      return true;
-    });
     let totalBilled = 0;
     State.contracts.forEach((c) => {
       const type = this.TYPES[c.contractType] || this.TYPES.standard;
@@ -13732,14 +13725,14 @@ const ContractSLA = {
       let slaNote = "";
       const deliveries = c.sla?.deliveriesThisMonth || 0;
       const promised = c.sla?.promisedThisMonth || 0;
-      const rate = promised > 0 ? (deliveries / promised) * 100 : 100;
+      const rate = promised > 0 ? (deliveries / promised) * 100 : 0;
       if (c.sla && rate >= type.slaTarget + 5 && type.bonusPct > 0) {
         const bonus = Math.round((baseRevenue * type.bonusPct) / 100);
         revenue += bonus;
         slaNote = `🌟 SLA Bonus +${Utils.euro(bonus)} (${Math.round(rate)}% Lieferquote)`;
         const cust = State.customers?.find((cu) => cu.id === c.customerId);
         if (cust) cust.relationship = Math.min(100, cust.relationship + 3);
-      } else if (rate < type.slaTarget) {
+      } else if (c.sla && rate < type.slaTarget) {
         const penalty = Math.round(((baseRevenue * type.penaltyPct) / 100) * (1 - rate / type.slaTarget));
         revenue = Math.max(0, revenue - penalty);
         slaNote = `⚠ SLA-Strafe -${Utils.euro(penalty)} (nur ${Math.round(rate)}% von ${type.slaTarget}% Ziel)`;
@@ -13800,6 +13793,13 @@ const ContractSLA = {
         c._renewalOffered = true;
         this._offerRenewal(c);
       }
+    });
+    State.contracts = State.contracts.filter((c) => {
+      if (c.endDay <= today) {
+        this._contractExpiry(c);
+        return false;
+      }
+      return true;
     });
     if (totalBilled > 0)
       Notifier.add(`📝 Rahmenverträge: ${Utils.euro(totalBilled)} eingenommen (${State.contracts.length} Verträge)`, "success");
