@@ -10127,7 +10127,7 @@ const DepartmentSystem = {
           const oldName = azubi.name;
           azubi.roleId = newRole;
           azubi.role = newRoleData?.name || newRole;
-          azubi.salary = newRoleData?.baseSalary || 2 * azubi.salary;
+          azubi.salary = Math.max(azubi.salary, newRoleData?.baseSalary || 2 * azubi.salary);
           azubi.productivity = 1;
           delete azubi._azubiYear;
           EventManager.addNews(
@@ -13013,7 +13013,7 @@ const CareerSystem = {
             action: () => {
               s._promotionOffered = true;
               s.motivation = Math.max(0, s.motivation - 20);
-              s.quitRisk = (s.quitRisk || 0) + 0.1;
+              s.quitRisk = Math.min(1, (s.quitRisk || 0) + 0.1);
               Notifier.add(`${s.name.split(" ")[0]} ist sehr unzufrieden — kündigt evtl.!`, "error");
             },
           },
@@ -22781,7 +22781,7 @@ const EmployeeManager = {
               text: "Ablehnen",
               action: () => {
                 s.motivation -= 20;
-                s.quitRisk += 0.4;
+                s.quitRisk = Math.min(1, (s.quitRisk || 0) + 0.4);
                 EventManager.addNews("warn", `${s.name} ist unzufrieden mit der Antwort`);
               },
             },
