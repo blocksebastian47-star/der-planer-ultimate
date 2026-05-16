@@ -22198,6 +22198,10 @@ const InsuranceManager = {
 };
 const FinanceManager = {
   recordRevenue(department, amount) {
+    if (!Number.isFinite(amount)) {
+      console.warn("FinanceManager.recordRevenue: non-finite amount", amount);
+      return;
+    }
     const dept = State.departments[department];
     if (!dept) {
       console.warn(`FinanceManager.recordRevenue: unknown department "${department}"`);
@@ -22209,6 +22213,10 @@ const FinanceManager = {
     State.stats.totalRevenue += amount;
   },
   recordCost(department, amount, isFixed = false) {
+    if (!Number.isFinite(amount)) {
+      console.warn("FinanceManager.recordCost: non-finite amount", amount);
+      return;
+    }
     const dept = State.departments[department];
     if (!dept) {
       console.warn(`FinanceManager.recordCost: unknown department "${department}"`);
@@ -25501,6 +25509,11 @@ const Game = {
   nextDay() {
     try {
       if (State.gameOver) return;
+      if (!Number.isFinite(State.cash)) {
+        console.warn("[nextDay] State.cash was non-finite — reset to 0", State.cash);
+        State.cash = 0;
+        if (void 0 !== EventManager) EventManager.addNews("bad", "⚠️ Kassenstand-Fehler erkannt und korrigiert");
+      }
       if (State.pendingDecisions.length > 0) {
         UI.toast("Erst offene Entscheidungen treffen!", "warn");
         UI.showNextDecision();
