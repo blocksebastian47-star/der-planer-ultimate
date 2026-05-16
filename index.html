@@ -802,6 +802,7 @@ footer {
         o && (o.style.color = e < 8 ? "#60a5fa" : e < 18 ? "var(--accent2)" : e < 21 ? "var(--warn)" : "var(--muted)"));
     },
     setSpeed(e) {
+      if (!this.MS_PER_HOUR[e]) return;
       const t = this.MS_PER_HOUR[this._speed] * this.HOURS,
         i = this.MS_PER_HOUR[e] * this.HOURS,
         n = this._dayMs / t;
@@ -9395,7 +9396,7 @@ const AdvancedEvents = {
     const num = 8 + Math.floor(8 * Math.random());
     for (let i = 0; i < num; i++) {
       const c = cities[Math.floor(Math.random() * cities.length)];
-      State.weather.push({ city: c.id, type: t, duration: 24 + 36 * Math.random() });
+      State.weather.push({ city: c.id, type: t, duration: Math.floor(2 + 4 * Math.random()) });
     }
     if (void 0 !== EventManager) EventManager.addNews("warn", `⛈️ Wetterchaos: ${t} über ganz Mitteleuropa`);
     Notifier.add(`Wetterchaos: ${t} (${num} Städte)`, "warn");
