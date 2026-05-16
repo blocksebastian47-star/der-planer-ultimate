@@ -22173,6 +22173,11 @@ const FinanceManager = {
     if (0 === cost) return null;
     return ((d.monthRevenue - cost) / cost) * 100;
   },
+  currentTaxRate() {
+    const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
+    const base = void 0 !== LegalForms ? LegalForms.currentForm().taxRate : 0.28;
+    return Math.max(0.1, Math.min(0.45, base + (fx.taxRate || 0)));
+  },
   closeMonth() {
     const departments = {};
     Object.entries(State.departments).forEach(([id, d]) => {
@@ -22186,12 +22191,9 @@ const FinanceManager = {
     const totalRev = Object.values(departments).reduce((s, d) => s + d.revenue, 0);
     const totalCost = Object.values(departments).reduce((s, d) => s + d.fixedCosts + d.variableCosts, 0);
     const profitBeforeTax = totalRev - totalCost;
-    const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
-    // Einzige Steuerbuchung des Spiels: Rechtsform-Quote (LegalForms) +
-    // Buchhaltungs-Effekt. Die alte LegalForms-Quartalssteuer wurde entfernt —
-    // sie besteuerte den Gewinn ein zweites Mal.
-    const baseTaxRate = void 0 !== LegalForms ? LegalForms.currentForm().taxRate : 0.28;
-    const taxRate = Math.max(0.1, Math.min(0.45, baseTaxRate + (fx.taxRate || 0)));
+    // Einzige Steuerbuchung des Spiels — Satz aus currentTaxRate()
+    // (Rechtsform + Buchhaltung). Die alte LegalForms-Quartalssteuer ist raus.
+    const taxRate = this.currentTaxRate();
     const taxes = Math.max(0, profitBeforeTax * taxRate);
     if (taxes > 0) {
       State.cash -= taxes;
@@ -30181,7 +30183,8 @@ const UI = {
     const ebit = sumErtrag - sumAufwand;
     const interest = Math.round(State.departments?.loans?.monthFixed || 0);
     const ebt = ebit - interest;
-    const tax = ebt > 0 ? Math.round(0.28 * ebt) : 0;
+    const taxRate = void 0 !== FinanceManager ? FinanceManager.currentTaxRate() : 0.28;
+    const tax = ebt > 0 ? Math.round(taxRate * ebt) : 0;
     const net = ebt - tax;
     const prev = State.monthlyReports?.[State.monthlyReports.length - 1];
     const eRow = (lbl, val) =>
@@ -30208,7 +30211,7 @@ const UI = {
       resRow("Betriebsergebnis (EBIT)", ebit) +
       aRow("Zinsaufwand (Kredite)", interest, true) +
       resRow("Ergebnis vor Steuern", ebt) +
-      aRow("Steuerrückstellung (≈28%)", tax, false) +
+      aRow(`Steuerrückstellung (≈${Math.round(taxRate * 100)}%)`, tax, false) +
       resRow("MONATSERGEBNIS", net, true) +
       `</table>` +
       (prev
