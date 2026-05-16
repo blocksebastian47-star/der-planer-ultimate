@@ -8557,7 +8557,6 @@ const FuelStations = {
       Notifier.add(`❌ Tankvorgang abgebrochen: nicht genug Cash (${cost.toFixed(0)} €)`, "error");
       return false;
     }
-    State.cash -= cost;
     if (void 0 !== FinanceManager) FinanceManager.recordCost("fuelToll", cost, false);
     route.fuelLevel = Math.min(100, (route.fuelLevel || 0) + liters / 6);
     Notifier.add(
@@ -8627,7 +8626,6 @@ const LeasingManager = {
       Notifier.add(`❌ Leasing nicht möglich: Anzahlung ${Utils.euro(offer.downPayment)} nicht verfügbar`, "error");
       return false;
     }
-    State.cash -= offer.downPayment;
     if (void 0 !== FinanceManager) FinanceManager.recordCost("fleet", offer.downPayment, true);
     if ("trailer" === offer.type) {
       const trailer = TrailerManager.createTrailer(offer.trailerId, { condition: 100, km: 0 });
@@ -8673,7 +8671,6 @@ const LeasingManager = {
       (State.trucks || [])
         .filter((t) => t.isLeased)
         .forEach((t) => {
-          State.cash -= t.leaseMonthlyRate;
           if (State.subCosts) State.subCosts.leasing += t.leaseMonthlyRate;
           if (void 0 !== FinanceManager) FinanceManager.recordCost("fleet", t.leaseMonthlyRate, true);
         });
@@ -8681,7 +8678,6 @@ const LeasingManager = {
       (State.trailers || [])
         .filter((tr) => tr.isLeased)
         .forEach((tr) => {
-          State.cash -= tr.leaseMonthlyRate;
           if (State.subCosts) State.subCosts.leasing += tr.leaseMonthlyRate;
           if (void 0 !== FinanceManager) FinanceManager.recordCost("fleet", tr.leaseMonthlyRate, true);
         });
@@ -9288,7 +9284,6 @@ const DriverSkills = {
       Notifier.add(`Nicht genug Cash für Schulung (${next.cost}€)`, "error");
       return false;
     }
-    State.cash -= next.cost;
     s.skills[treeId] = currentLvl + 1;
     if (void 0 !== FinanceManager) FinanceManager.recordCost("personnel", next.cost, false);
     Notifier.add(`📚 ${s.name} hat ${next.name} freigeschaltet!`, "success");
@@ -9427,7 +9422,6 @@ const TrailerUpgrades = {
       Notifier.add("Upgrade bereits installiert", "warn");
       return false;
     }
-    State.cash -= up.price;
     if (void 0 !== FinanceManager) FinanceManager.recordCost("fleet", up.price, false);
     trailer.upgrades.push(upgradeId);
     Notifier.add(`🔧 ${up.name} auf Anhänger #${trailer.id} installiert`, "success");
@@ -9513,7 +9507,6 @@ const AdvancedEvents = {
     if ((route.drivingHoursDay || 0) > MAP_DATA.rules.maxDailyDriving) fineProb += 0.4;
     if (Math.random() < fineProb) {
       const fine = 200 + Math.floor(1800 * Math.random());
-      State.cash -= fine;
       if (void 0 !== FinanceManager) FinanceManager.recordCost("admin", fine, false);
       if (void 0 !== EventManager) EventManager.addNews("error", `Großkontrolle Truck #${truck.id}: ${fine}€ Bußgeld`);
       Notifier.add(`👮 Bußgeld Truck #${truck.id}: ${fine}€`, "error");
@@ -9621,7 +9614,6 @@ const LocationExpansion = {
       Notifier.add(`❌ Setup-Kosten ${setupCost}€ nicht verfügbar`, "error");
       return false;
     }
-    State.cash -= setupCost;
     if (void 0 !== FinanceManager) FinanceManager.recordCost("admin", setupCost, false);
     const loc = {
       id: (State.locations.length || 0) + 1,
@@ -9647,7 +9639,6 @@ const LocationExpansion = {
     const buyPrice = (loc.rent || city?.baseRent || 5e3) * this.BUY_MULTIPLIER;
     if (State.cash < buyPrice)
       return { ok: false, reason: `Kaufpreis: ${Utils.euro(buyPrice)} — zu wenig Kapital (${Utils.euro(State.cash)})` };
-    State.cash -= buyPrice;
     FinanceManager.recordCost("admin", buyPrice, false);
     loc.owned = true;
     loc.ownedSince = State.day;
@@ -9675,7 +9666,6 @@ const LocationExpansion = {
     State.locations.forEach((loc) => {
       total += loc.rent || 0;
     });
-    State.cash -= total;
     if (void 0 !== FinanceManager) FinanceManager.recordCost("admin", total, true);
   },
   getJobMultiplier(loc, jobType) {
@@ -10131,7 +10121,6 @@ const DepartmentSystem = {
       if ("skonto_offen" === inv.status && today >= inv.skontoDeadline) {
         const skontoAmount = Math.round(inv.amount * (1 - inv.skontoPercent / 100));
         const abzug = inv.amount - skontoAmount;
-        State.cash += skontoAmount;
         FinanceManager.recordRevenue("fleet", skontoAmount);
         inv.status = "bezahlt";
         if (void 0 !== BankAccount) BankAccount.hookJobRevenue({ id: inv.jobId, from: "", to: "" }, skontoAmount);
@@ -10148,7 +10137,6 @@ const DepartmentSystem = {
           inv.status = "überfällig";
           Notifier.add(`⚠️ ${inv.customerName} hat nicht gezahlt — Rechnung ${inv.id} überfällig`, "warn");
         } else {
-          State.cash += inv.amount;
           FinanceManager.recordRevenue("fleet", inv.amount);
           inv.status = "bezahlt";
           return;
@@ -10176,7 +10164,6 @@ const DepartmentSystem = {
             if (cust) cust.relationship = Math.max(0, (cust.relationship || 50) - 20);
           } else {
             const received = hasAccountant ? inv.amount : Math.round(0.85 * inv.amount);
-            State.cash += received;
             FinanceManager.recordRevenue("fleet", received);
             inv.status = "bezahlt";
             if (received < inv.amount)
@@ -10264,7 +10251,6 @@ const DepartmentSystem = {
       contractRevenue += c.monthlyValue;
     });
     if (contractRevenue > 0) {
-      State.cash += contractRevenue;
       FinanceManager.recordRevenue("fleet", contractRevenue);
       if (State.contracts.length > 0)
         Notifier.add(
@@ -12030,7 +12016,6 @@ const LocationSystem = {
       }
     if (State.cash < bld.cost)
       return { ok: false, reason: `Zu wenig Kapital: ${bld.cost.toLocaleString("de-DE")}€ benötigt` };
-    State.cash -= bld.cost;
     FinanceManager.recordCost("admin", bld.cost, false);
     if (void 0 !== BankAccount) BankAccount.hookPurchase(bld.cost, bld.name);
     loc.infrastructure.push(buildingId);
@@ -12203,7 +12188,6 @@ const LocationSystem = {
               Notifier.add("Zu wenig Kapital", "error");
               return;
             }
-            State.cash -= amount;
             mgr.motivation = Math.min(100, mgr.motivation + 8);
             FinanceManager.recordCost("admin", amount, false);
             if (void 0 !== StaffInteraction)
@@ -12683,7 +12667,6 @@ const LocationSystem = {
       if (mgr) this._managerAutoAction(loc, mgr, city, branchStaff);
     });
     if (totalMaint > 0) {
-      State.cash -= totalMaint;
       if (void 0 !== BankAccount) BankAccount.hookRent(totalMaint);
       FinanceManager.recordCost("admin", totalMaint, false);
       Notifier.add(`🏗️ Gebäude-Wartungskosten: ${Utils.euro(totalMaint)}`, "info");
@@ -13214,7 +13197,6 @@ const SubcontractorSystem = {
       Notifier.add("Nicht genug Kapital für Subunternehmer-Vorkosten", "error");
       return false;
     }
-    State.cash -= cost;
     FinanceManager.recordCost("fleet", cost, false);
     State.jobs = (State.jobs || []).filter((j) => j.id !== jobId);
     const daysNeeded = Math.max(1, Math.ceil(job.km / 700));
@@ -13260,7 +13242,6 @@ const SubcontractorSystem = {
       if (j.daysRemaining <= 0) {
         const sub = this.POOL.find((s) => s.id === j.subcontractorId);
         if (Math.random() < (sub?.reliability || 0.88)) {
-          State.cash += j.price;
           FinanceManager.recordRevenue("fleet", j.price);
           State.stats.totalJobs++;
           EventManager.addNews("good", `✓ Subunternehmer: ${j.fromName}→${j.toName} (Marge: ${Utils.euro(j.margin)})`);
@@ -13303,9 +13284,9 @@ const AnnualClose = {
           bonusTotal += bonus;
         });
     const totalPayout = tax + bonusTotal;
-    if (State.cash >= totalPayout) State.cash -= totalPayout;
-    else {
-      const shortfall = totalPayout - State.cash;
+    FinanceManager.recordCost("admin", totalPayout, false);
+    if (State.cash < 0) {
+      const shortfall = -State.cash;
       State.cash = 0;
       State.debt = (State.debt || 0) + shortfall;
       EventManager.addNews(
@@ -13313,7 +13294,6 @@ const AnnualClose = {
         `⚠️ Steuerzahlung: ${Utils.euro(shortfall)} als Kredit aufgenommen — Liquidität kritisch!`,
       );
     }
-    FinanceManager.recordCost("admin", totalPayout, false);
     if (!State.annualReports) State.annualReports = [];
     State.annualReports.push({
       year: year,
@@ -14535,7 +14515,6 @@ const CO2ESG = {
     greenCusts.forEach((c) => {
       const bonus = Math.round((c.monthlySpend || 2e3) * rating.customerBonus);
       if (bonus > 0) {
-        State.cash += bonus;
         FinanceManager.recordRevenue("fleet", bonus);
         if (State.subRevenue) State.subRevenue.other += bonus;
       }
@@ -15533,7 +15512,6 @@ const DrivingSchool = {
     };
     ds.activeCourses.push(newCourse);
     if (extRevenue > 0) {
-      State.cash += extRevenue;
       if (void 0 !== FinanceManager) FinanceManager.recordRevenue("fleet", extRevenue);
       if (State.subRevenue) State.subRevenue.other += extRevenue;
       EventManager.addNews("good", `🏫 Kurs "${course.name}" gestartet — ext. Einnahmen: ${Utils.euro(extRevenue)}`);
@@ -20376,7 +20354,6 @@ const CashflowSystem = {
       const cust = (State.customers || []).find((c) => c.id === rec.customerId);
       if (cust) cust.relationship = Utils.clamp((cust.relationship || 50) + 3, 0, 100);
     }
-    State.cash += paidAmount;
     FinanceManager.recordRevenue("fleet", paidAmount);
     if (void 0 !== BankAccount)
       BankAccount.record(
@@ -20458,7 +20435,6 @@ const CashflowSystem = {
     rec.factorFee = fee;
     rec.factoredDay = State.day;
     State.cashflow.factoringUsed += rec.amount;
-    State.cash += payout;
     FinanceManager.recordRevenue("fleet", payout);
     FinanceManager.recordCost("admin", fee, false);
     if (void 0 !== BankAccount)
@@ -23868,7 +23844,6 @@ const JobManager = {
           CashflowSystem.createReceivable(j, finalPrice);
           if (State.subRevenue) State.subRevenue.jobs += finalPrice;
         } else {
-          State.cash += finalPrice;
           FinanceManager.recordRevenue("fleet", finalPrice);
           if (State.subRevenue) State.subRevenue.jobs += finalPrice;
         }
@@ -30588,7 +30563,7 @@ const UI = {
       maxWidth: "560px",
       content: `\n        <div style="display:flex;flex-direction:column;gap:8px;">\n          ${PRODUCTS.map((p) => {
         const has = existing.includes(p.id);
-        return `<div style="border:1px solid ${has ? "var(--accent2)" : "var(--border)"};border-radius:8px;padding:12px;background:${has ? "rgba(74,222,128,0.06)" : "var(--bg2)"};">\n              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">\n                <div>\n                  <b style="font-size:12px;">${p.name}</b>\n                  ${has ? '<span style="font-size:9px;color:var(--accent2);margin-left:6px;">✓ AKTIV</span>' : ""}\n                  <div style="font-size:10px;color:var(--muted2);margin-top:2px;">${p.desc}</div>\n                </div>\n                <div style="text-align:right;flex-shrink:0;margin-left:10px;">\n                  <div style="font-size:13px;font-weight:700;color:var(--danger);">−${Utils.euro(p.monthlyPremium)}/Mon.</div>\n                  ${p.coverage > 0 ? `<div style="font-size:9px;color:var(--muted2);">Deckung: ${Utils.euro(p.coverage)}</div>` : ""}\n                </div>\n              </div>\n              ${!has ? `<button class="btn small primary" style="margin-top:6px;width:100%;"\n                onclick="\n                  if(!State.insurances)State.insurances=[];\n                  State.insurances.push({id:'${p.id}',name:'${p.name}',monthlyPremium:${p.monthlyPremium},coverage:${p.coverage},desc:'${p.desc}',startDay:State.day});\n                  State.cash-=${p.monthlyPremium};\n                  if(typeof BankAccount!=='undefined')BankAccount.hookInsurance(${p.monthlyPremium},'${p.name} (Erstprämie)');\n                  if(typeof FinanceManager!=='undefined')FinanceManager.recordCost('insurance',${p.monthlyPremium},false);\n                  EventManager.addNews('good','🛡️ ${p.name} abgeschlossen — ${Utils.euro(p.monthlyPremium)}/Mon.');\n                  UI.closeModal();UI.renderInsurance();UI.renderHeader();">\n                Jetzt abschließen (${Utils.euro(p.monthlyPremium)}/Mon.)\n              </button>` : '<div style="font-size:10px;color:var(--accent2);margin-top:4px;">✓ Bereits versichert</div>'}\n            </div>`;
+        return `<div style="border:1px solid ${has ? "var(--accent2)" : "var(--border)"};border-radius:8px;padding:12px;background:${has ? "rgba(74,222,128,0.06)" : "var(--bg2)"};">\n              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">\n                <div>\n                  <b style="font-size:12px;">${p.name}</b>\n                  ${has ? '<span style="font-size:9px;color:var(--accent2);margin-left:6px;">✓ AKTIV</span>' : ""}\n                  <div style="font-size:10px;color:var(--muted2);margin-top:2px;">${p.desc}</div>\n                </div>\n                <div style="text-align:right;flex-shrink:0;margin-left:10px;">\n                  <div style="font-size:13px;font-weight:700;color:var(--danger);">−${Utils.euro(p.monthlyPremium)}/Mon.</div>\n                  ${p.coverage > 0 ? `<div style="font-size:9px;color:var(--muted2);">Deckung: ${Utils.euro(p.coverage)}</div>` : ""}\n                </div>\n              </div>\n              ${!has ? `<button class="btn small primary" style="margin-top:6px;width:100%;"\n                onclick="\n                  if(!State.insurances)State.insurances=[];\n                  State.insurances.push({id:'${p.id}',name:'${p.name}',monthlyPremium:${p.monthlyPremium},coverage:${p.coverage},desc:'${p.desc}',startDay:State.day});\n                  if(typeof BankAccount!=='undefined')BankAccount.hookInsurance(${p.monthlyPremium},'${p.name} (Erstprämie)');\n                  if(typeof FinanceManager!=='undefined')FinanceManager.recordCost('insurance',${p.monthlyPremium},false);\n                  EventManager.addNews('good','🛡️ ${p.name} abgeschlossen — ${Utils.euro(p.monthlyPremium)}/Mon.');\n                  UI.closeModal();UI.renderInsurance();UI.renderHeader();">\n                Jetzt abschließen (${Utils.euro(p.monthlyPremium)}/Mon.)\n              </button>` : '<div style="font-size:10px;color:var(--accent2);margin-top:4px;">✓ Bereits versichert</div>'}\n            </div>`;
       }).join("")}\n        </div>`,
       actions: [{ label: "Schließen", onclick: () => this.closeModal() }],
     });
