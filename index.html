@@ -15527,7 +15527,7 @@ const PoliticalEvents = {
               },
             },
             {
-              text: "🔄 ${city} aus Auftragspool ausschließen",
+              text: `🔄 ${city} aus Auftragspool ausschließen`,
               action: () => {
                 EventManager.addNews("warn", `🚫 Keine ${city}-Aufträge mehr angenommen (Fahrverbot)`);
                 if (!State.excludedCities) State.excludedCities = [];
@@ -19547,7 +19547,7 @@ const CompetitionSystem = {
     );
   },
   _tryUndercutJob(rival) {
-    if (0 === State.jobs.length) return;
+    if (!State.jobs || 0 === State.jobs.length) return;
     const lucrative = (State.jobs || []).filter((j) => j.price > 3e3).slice(0, 5);
     if (0 === lucrative.length) return;
     const target = Utils.pick(lucrative);
