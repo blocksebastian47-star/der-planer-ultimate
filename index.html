@@ -14567,8 +14567,8 @@ const FuelHedging = {
     if (hedge.storage >= liters) {
       const storageCost = liters * hedge.storagePrice;
       const wouldHavePaid = liters * spotPrice * (1 - discount);
-      cost = Math.round(storageCost);
-      saved = Math.max(0, Math.round(wouldHavePaid - cost));
+      cost = 0;
+      saved = Math.max(0, Math.round(wouldHavePaid - storageCost));
       hedge.storage -= liters;
     } else {
       const effective = spotPrice * (1 - discount);
