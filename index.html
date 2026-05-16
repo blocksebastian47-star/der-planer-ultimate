@@ -937,7 +937,7 @@ footer {
 
 <header>
   <div class="header-left">
-    <div class="logo">DER PLANER ULTIMATE<span style="font-size:9px;color:var(--muted2);margin-left:6px;font-family:'JetBrains Mono',monospace;letter-spacing:0;vertical-align:middle;">v2.0516</span><span class="sub"><span id="company-logo" style="margin-right:4px;"></span><span id="company-name">Spedition GmbH</span></span></div>
+    <div class="logo">DER PLANER ULTIMATE<span id="app-version" style="font-size:9px;color:var(--muted2);margin-left:6px;font-family:'JetBrains Mono',monospace;letter-spacing:0;vertical-align:middle;">v2.0516</span><span class="sub"><span id="company-logo" style="margin-right:4px;"></span><span id="company-name">Spedition GmbH</span></span></div>
   </div>
   <div class="stats-row">
     <!-- Uhrzeit + Datum (prominent) -->
@@ -1533,7 +1533,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.0516</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.0516</div>
       <div style="font-size:10px; color:var(--muted);">Mai 2026</div>
     </div>
   </div>
@@ -1685,6 +1685,8 @@ footer {
 <div id="toast-container"></div>
 
 <script>
+const APP_VERSION = "v2.0516";
+const BUILD_DATE = "16.05.2026";
 const DATA = {
   locations: {
     hamburg: {
@@ -22007,7 +22009,7 @@ const SelfTest = {
     const claudePrompt =
       0 === fail.length
         ? null
-        : `## 🔧 Der Planer Ultimate — Automatischer Bugbericht (v2.0516, Tag ${State.day})\n\n**Spielzustand:**\n- Firma: ${State.companyName} · Standort: ${State.locationId}\n- Tag ${State.day} · Kasse: ${Utils.euro(State.cash)} · Schulden: ${Utils.euro(State.debt)}\n- LKWs: ${(State.trucks || []).length} · Personal: ${(State.staff || []).length} · Aktive Aufträge: ${(State.activeJobs || []).length}\n\n**Gefundene Fehler (${fail.length}):**\n` +
+        : `## 🔧 Der Planer Ultimate — Automatischer Bugbericht (${APP_VERSION}, Tag ${State.day})\n\n**Spielzustand:**\n- Firma: ${State.companyName} · Standort: ${State.locationId}\n- Tag ${State.day} · Kasse: ${Utils.euro(State.cash)} · Schulden: ${Utils.euro(State.debt)}\n- LKWs: ${(State.trucks || []).length} · Personal: ${(State.staff || []).length} · Aktive Aufträge: ${(State.activeJobs || []).length}\n\n**Gefundene Fehler (${fail.length}):**\n` +
           fail
             .map((f, i) => `${i + 1}. **${f.label}**\n   Fehler: \`${f.msg}\`\n   Test-ID: \`${f.id}\``)
             .join("\n\n") +
@@ -25673,7 +25675,7 @@ const UI = {
     if (cn) cn.textContent = name;
     const cl = document.getElementById("company-logo");
     if (cl) cl.textContent = logo + " ";
-    document.title = `${logo} ${name} — Der Planer Ultimate · v2.0516`;
+    document.title = `${logo} ${name} — Der Planer Ultimate · ${APP_VERSION}`;
     Game.save();
     setTimeout(() => this._showStartMorning(), 200);
   },
@@ -26260,7 +26262,7 @@ const UI = {
           : "";
     this.showModal({
       title: "🚛 DER PLANER ULTIMATE",
-      subtitle: "v2.0516 — Speditions-Simulation",
+      subtitle: `${APP_VERSION} — Speditions-Simulation`,
       maxWidth: "560px",
       dismissible: hasGameRunning,
       content: `${continueBlock}
@@ -29047,7 +29049,7 @@ const UI = {
     const cl = document.getElementById("company-logo");
     if (cl) cl.textContent = State.companyLogo ? State.companyLogo + " " : "";
     if (State.companyLogo && State.companyName)
-      document.title = `${State.companyLogo} ${State.companyName} — Der Planer Ultimate · v2.0516`;
+      document.title = `${State.companyLogo} ${State.companyName} — Der Planer Ultimate · ${APP_VERSION}`;
     if (void 0 !== GFOffice) {
       GFOffice.init();
       const total = GFOffice.unreadCount() + (State.gfOffice?.callQueue?.length || 0);
@@ -31569,6 +31571,13 @@ const UI = {
   },
 };
 window.addEventListener("DOMContentLoaded", () => {
+  document.title = `Der Planer Ultimate · ${APP_VERSION}`;
+  const _buildMeta = document.querySelector('meta[name="build"]');
+  if (_buildMeta) _buildMeta.content = `${APP_VERSION} · Build ${BUILD_DATE}`;
+  ["app-version", "menu-version"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = APP_VERSION;
+  });
   UI.init();
   Game.init();
 });
