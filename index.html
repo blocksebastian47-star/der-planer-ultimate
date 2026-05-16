@@ -14750,16 +14750,16 @@ const MarketCycles = {
       label: "🚀 Hochkonjunktur",
       jobMul: 1.3,
       payMul: 1,
-      customerLoss: 0,
+      badDebtChance: 0,
       color: "#22c55e",
       duration: [60, 120],
     },
-    plateau: { label: "📊 Stabilität", jobMul: 1.05, payMul: 1, customerLoss: 0, color: "#86efac", duration: [30, 90] },
+    plateau: { label: "📊 Stabilität", jobMul: 1.05, payMul: 1, badDebtChance: 0, color: "#86efac", duration: [30, 90] },
     slowdown: {
       label: "📉 Abschwung",
       jobMul: 0.88,
       payMul: 0.98,
-      customerLoss: 0.01,
+      badDebtChance: 0.01,
       color: "#fbbf24",
       duration: [30, 60],
     },
@@ -14767,7 +14767,7 @@ const MarketCycles = {
       label: "❄️ Rezession",
       jobMul: 0.65,
       payMul: 0.92,
-      customerLoss: 0.03,
+      badDebtChance: 0.03,
       color: "#ef4444",
       duration: [45, 90],
     },
@@ -14775,7 +14775,7 @@ const MarketCycles = {
       label: "🌱 Erholung",
       jobMul: 0.9,
       payMul: 0.99,
-      customerLoss: 0.01,
+      badDebtChance: 0.01,
       color: "#60a5fa",
       duration: [30, 75],
     },
@@ -14804,6 +14804,9 @@ const MarketCycles = {
   jobMultiplier() {
     return this.currentPhase().jobMul;
   },
+  payMultiplier() {
+    return this.currentPhase().payMul;
+  },
   dailyTick() {
     this.init();
     const mc = State.marketCycle;
@@ -14818,13 +14821,13 @@ const MarketCycles = {
       mc.phaseDuration = Utils.randInt(...nextPhase.duration);
       this._onPhaseChange(mc.phase, next);
     }
-    if ("recession" === mc.phase && Math.random() < phase.customerLoss) {
+    if (phase.badDebtChance > 0 && Math.random() < phase.badDebtChance) {
       const openInvoices = (State.invoices || []).filter((i) => "offen" === i.status);
       if (openInvoices.length > 0) {
         const inv = Utils.pick(openInvoices);
         const loss = Math.round(inv.amount * (0.3 + 0.5 * Math.random()));
         inv.amount = Math.max(0, inv.amount - loss);
-        EventManager.addNews("bad", `💸 Forderungsausfall: Kunde zahlt ${Utils.euro(loss)} nicht (Rezession)`);
+        EventManager.addNews("bad", `💸 Forderungsausfall: Kunde zahlt ${Utils.euro(loss)} nicht (${phase.label})`);
       }
     }
     if (State.day >= mc.nextTip) {
@@ -18382,7 +18385,7 @@ const MarketIntel = {
       type: "good",
       headline: "Automobilindustrie meldet Rekordproduktion",
       preview: "Fahrzeugwerke erhöhen Kapazitäten — Zuliefererlogistik gesucht",
-      effect: { sector: "automotive", multiplier: 1.25, delaySdays: 14 },
+      effect: { globalMul: 1.15, delaySdays: 14 },
       advice: "Automotive-Aufträge werden lukrativer — Kapazitäten bereithalten",
     },
     {
@@ -18390,7 +18393,7 @@ const MarketIntel = {
       type: "good",
       headline: "Einzelhandel startet Weihnachtsbestellungen früher",
       preview: "Onlinehandel plant Lagerbefüllung 3 Wochen früher als sonst",
-      effect: { sector: "retail", multiplier: 1.3, delaySdays: 21 },
+      effect: { globalMul: 1.15, delaySdays: 21 },
       advice: "Kapazitäten für November freihalten — Weihnachts-Peak kommt früher",
     },
     {
@@ -18398,7 +18401,7 @@ const MarketIntel = {
       type: "good",
       headline: "Bundesregierung investiert 8 Mrd. in Straßen",
       preview: "Neue Umgehungen reduzieren Fahrzeiten auf Hauptkorridoren",
-      effect: { fuelSaving: 0.05, delaySdays: 30 },
+      effect: { fuelMul: 0.95, delaySdays: 30 },
       advice: "Routenplanung anpassen wenn neue Strecken freigegeben werden",
     },
     {
@@ -18406,7 +18409,7 @@ const MarketIntel = {
       type: "good",
       headline: "Deutscher Export auf Rekordniveau",
       preview: "Maschinenbau, Pharma und Chemie suchen Transportkapazitäten",
-      effect: { sector: "industrial", multiplier: 1.2, delaySdays: 10 },
+      effect: { globalMul: 1.12, delaySdays: 10 },
       advice: "Industrieaufträge werden knapper — Preise können steigen",
     },
     {
@@ -18414,7 +18417,7 @@ const MarketIntel = {
       type: "warn",
       headline: "VW und BMW drosseln Produktion",
       preview: "Auftragsrückgang in der Automobilindustrie erwartet",
-      effect: { sector: "automotive", multiplier: 0.7, delaySdays: 10 },
+      effect: { globalMul: 0.9, delaySdays: 10 },
       advice: "Automotive-Aufträge werden zurückgehen — andere Branchen erschließen",
     },
     {
@@ -18438,7 +18441,7 @@ const MarketIntel = {
       type: "warn",
       headline: "Bundestag beschließt LKW-Maut +25%",
       preview: "Neue Mautsätze gelten ab nächstem Quartal",
-      effect: { costMul: 1.08, delaySdays: 30 },
+      effect: { fuelMul: 1.06, delaySdays: 30 },
       advice: "Kalkulation anpassen — Mauterhöhung in Preise einrechnen",
     },
     {
@@ -18446,7 +18449,7 @@ const MarketIntel = {
       type: "warn",
       headline: "Fahrermangel verschärft sich weiter",
       preview: "80.000 Fahrerstellen unbesetzt — Gehälter steigen",
-      effect: { salaryPressure: 0.08, delaySdays: 14 },
+      effect: { globalMul: 0.95, delaySdays: 14 },
       advice: "Fahrer halten und gut behandeln — Neueinstellungen werden teurer",
     },
     {
@@ -18454,7 +18457,7 @@ const MarketIntel = {
       type: "bad",
       headline: "Hafenarbeiter kündigen Streik an",
       preview: "Hamburg und Bremen: Containerverkehr könnte zum Erliegen kommen",
-      effect: { sector: "port", multiplier: 0.3, delaySdays: 7 },
+      effect: { globalMul: 0.85, delaySdays: 7 },
       advice: "Hafenaufträge kurz meiden — Streik droht",
     },
     {
@@ -18462,7 +18465,7 @@ const MarketIntel = {
       type: "info",
       headline: "Förderprogramm für E-LKW aufgestockt",
       preview: "Bundesregierung zahlt bis zu 40.000€ pro Elektro-LKW",
-      effect: { esgBonus: true, delaySdays: 7 },
+      effect: { delaySdays: 0 },
       advice: "E-Fahrzeuge kaufen und Förderantrag stellen",
     },
     {
@@ -18470,7 +18473,7 @@ const MarketIntel = {
       type: "info",
       headline: "Neue TMS-Software reduziert Leerfahrten",
       preview: "Studie: Digitale Tourenplanung spart 12% Kraftstoff",
-      effect: { fuelSaving: 0.04, delaySdays: 0 },
+      effect: { fuelMul: 0.97, delaySdays: 4 },
       advice: "IT-Abteilung aufbauen für mehr Effizienz",
     },
   ],
@@ -18528,15 +18531,9 @@ const MarketIntel = {
     EventManager.addNews("bad" === news.type ? "warn" : "info", `📰 ${news.headline} — ${news.preview}`);
   },
   _applyEffect(eff) {
-    if (eff.globalMul) State._marketGlobalMul = (State._marketGlobalMul || 1) * eff.globalMul;
+    if (eff.globalMul)
+      State._marketGlobalMul = Utils.clamp((State._marketGlobalMul || 1) * eff.globalMul, 0.6, 1.5);
     if (eff.fuelMul) State.fuelPriceCurrent = (State.fuelPriceCurrent || 1.6) * eff.fuelMul;
-    if (eff.costMul) State._marketCostMul = (State._marketCostMul || 1) * eff.costMul;
-    if (eff.salaryPressure)
-      (State.staff || [])
-        .filter((s) => "driver" === s.roleId)
-        .forEach((s) => {
-          s._salaryPressure = (s._salaryPressure || 0) + eff.salaryPressure;
-        });
     const _effNews = this.NEWS_POOL.find((n) => n.id === eff.newsId);
     EventManager.addNews("warn", `📊 Markteffekt tritt ein: ${_effNews ? _effNews.headline : "Marktereignis"}`);
   },
@@ -23168,6 +23165,7 @@ const JobManager = {
     const skillBonus = Utils.clamp(1 + 0.18 * ((cargo.skill || 2) - 2), 1, 1.54);
     const restrictionsBonus = Utils.clamp(1 + 0.08 * (cargo.restrictions ? cargo.restrictions.length : 0), 1, 1.32);
     const seasonMul = void 0 !== GameDepth ? GameDepth.getCurrentSeason().priceMul : 1;
+    const cyclePayMul = void 0 !== MarketCycles ? MarketCycles.payMultiplier() : 1;
     const variability = 0.85 + 0.4 * Math.random();
     const sizeScale = rep < 20 ? 0.75 : rep < 40 ? 0.9 : 1;
     let price = Math.round(
@@ -23181,6 +23179,7 @@ const JobManager = {
         restrictionsBonus *
         dieselFactor *
         seasonMul *
+        cyclePayMul *
         variability *
         sizeScale,
     );
