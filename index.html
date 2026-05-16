@@ -1300,26 +1300,6 @@ footer {
   <div id="bank-content" style="padding:0 4px;"></div>
 </div>
 
-<div class="view" id="view-customers">
-  <div class="view-header">
-    <div>
-      <div class="view-title">🤝 KUNDEN & PORTAL</div>
-      <div class="view-subtitle">Stammkundschaft, Bewertungen und Rabattverhandlung</div>
-    </div>
-    <button class="btn primary" onclick="CustomerManager.acquire(); UI.renderAll();">+ Akquirieren (€ 200)</button>
-  </div>
-  <div class="card">
-    <table>
-      <thead><tr>
-        <th>Firma</th><th>Stadt</th><th>Branche</th><th>Beziehung</th><th>Vertrag</th><th>Aufträge</th><th>⭐ Ø</th>
-      </tr></thead>
-      <tbody id="customers-tbody"></tbody>
-    </table>
-  </div>
-  <div id="customer-ratings-box" style="margin-top:12px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px;"></div>
-</div>
-
-
 <!-- INSURANCE -->
 <div class="view" id="view-insurance">
   <div class="view-header">
@@ -1364,33 +1344,6 @@ footer {
     </div>
   </div>
   <div id="dealer-grid"></div>
-</div>
-
-<!-- MARKETING -->
-<div class="view" id="view-marketing">
-  <div class="view-header">
-    <div>
-      <div class="view-title">MARKETING & REPUTATION</div>
-      <div class="view-subtitle">Kampagnen schalten, Bekanntheit ausbauen</div>
-    </div>
-  </div>
-  <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">Reputation</div><div class="kpi-value" id="mkt-rep">0%</div></div>
-    <div class="kpi"><div class="kpi-label">Aktive Kampagnen</div><div class="kpi-value" id="mkt-active" style="font-size:14px; line-height:1.4;">—</div></div>
-  </div>
-  <div class="card">
-    <div class="card-title">Marketingkanäle</div>
-    <div id="marketing-options"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">Reputation – Auswirkungen</div>
-    <div style="font-size:11px; line-height:1.8;">
-      <div>📈 <b>Mehr Aufträge:</b> +1 Auftrag pro Tag pro 10 Reputationspunkte über 50</div>
-      <div>💰 <b>Bessere Preise:</b> +0,5% pro Reputationspunkt über 50</div>
-      <div>🏦 <b>Kreditwürdigkeit:</b> Großkredit ab 60, Investitionskredit ab 75 Reputation</div>
-      <div>👷 <b>Mitarbeiter:</b> Bewerber bevorzugen Spediteure mit gutem Ruf</div>
-    </div>
-  </div>
 </div>
 
 <!-- PRIVATE -->
@@ -1500,11 +1453,6 @@ footer {
 <div class="view" id="view-maintenance">
   <div class="view-header"><div class="view-title">🔍 WARTUNGSPLAN</div><div class="view-subtitle">HU, AU, Ölwechsel, Reifenwechsel — alle Fristen im Überblick</div></div>
   <div id="maintenance-content" style="padding:0 4px;"></div>
-</div>
-
-<div class="view" id="view-customer-portal">
-  <div class="view-header"><div class="view-title">⭐ KUNDENPORTAL</div><div class="view-subtitle">Kundenbewertungen, Stammkunden-Rabatte, Loyalitätsprogramm</div></div>
-  <div id="customer-portal-content" style="padding:0 4px;"></div>
 </div>
 
 <div class="view" id="view-staff-dev">
@@ -8891,19 +8839,8 @@ const Competition = {
     ];
   },
   dailyTick() {
+    // Auftrags-Diebstahl läuft über CompetitionSystem; hier nur den Wettbewerber-Bestand sicherstellen.
     this.generateCompetitors();
-    if (!State.availableJobs) return;
-    const playerStrength = (State.reputation || 50) / 100;
-    State.availableJobs = State.availableJobs.filter((job) => {
-      let snatchProb = 0.08;
-      if (playerStrength < 0.5) snatchProb += 0.05;
-      if (Math.random() < snatchProb) {
-        const competitor = State.competitors[Math.floor(Math.random() * State.competitors.length)];
-        if (void 0 !== Notifier) Notifier.add(`🏢 ${competitor.name} hat Auftrag #${job.id} weggeschnappt`, "warn");
-        return false;
-      }
-      return true;
-    });
   },
   checkPoachAttempts() {
     if (!State.staff || 0 === (State.staff || []).length) return;
@@ -13118,6 +13055,7 @@ const CustomerDepth = {
     { title: "Frau", name: "Anna Kowalski", role: "Logistikbeauftragte" },
   ],
   enrich(customer) {
+    if (!customer.id) customer.id = Utils.uid("C");
     if (customer._enriched) return customer;
     customer.industry = Utils.pick(this.INDUSTRIES_DE);
     customer.contact = Utils.pick(this.CONTACTS);
@@ -18599,7 +18537,8 @@ const MarketIntel = {
         .forEach((s) => {
           s._salaryPressure = (s._salaryPressure || 0) + eff.salaryPressure;
         });
-    EventManager.addNews("warn", `📊 Markteffekt tritt ein: ${eff.newsId || "Marktereignis"}`);
+    const _effNews = this.NEWS_POOL.find((n) => n.id === eff.newsId);
+    EventManager.addNews("warn", `📊 Markteffekt tritt ein: ${_effNews ? _effNews.headline : "Marktereignis"}`);
   },
   _updateCompetitors() {
     State.marketIntel.competitors.forEach((c) => {
@@ -24634,10 +24573,10 @@ const CustomerManager = {
       : Utils.pick(MAP_DATA.cities.filter((x) => x.id !== State.locationId && x.hub));
     if (!c) return null;
     return {
+      id: Utils.uid("C"),
       name: Utils.pick(DATA.companyNames),
       cityId: c.id,
       city: c.name,
-      industry: Utils.pick(DATA.industries),
       relationship: 50 + Utils.randInt(0, 20),
       contractType: "Spot",
       avgValue: 800 + Utils.randInt(0, 1500),
@@ -28411,6 +28350,20 @@ const UI = {
     const cp = State.customerPortal;
     const avg = CustomerPortal.avgRating();
     const stars = (n) => "⭐".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
+    const customers = State.customers || [];
+    if (void 0 !== CustomerDepth) customers.forEach((c) => CustomerDepth.enrich(c));
+    const customerRows =
+      0 === customers.length
+        ? '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;">Noch keine Kunden — über „+ Akquirieren" oder Marketing-Kampagnen gewinnen</td></tr>'
+        : customers
+            .map((c) => {
+              const rel = Math.round(c.relationship || 0);
+              const relColor = rel > 70 ? "var(--accent2)" : rel > 40 ? "var(--warn)" : "var(--danger)";
+              const cr = cp.ratings.filter((r) => r.customerId === c.id);
+              const cAvg = cr.length ? (cr.reduce((s, r) => s + r.stars, 0) / cr.length).toFixed(1) : null;
+              return `<tr><td><b>${c.name}</b></td><td>${c.city || "—"}</td><td>${c.industry || "—"}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:32px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;"><div style="height:6px;border-radius:3px;width:${rel}%;background:${relColor};"></div></div><span style="color:${relColor};">${rel}%</span></div></td><td>${c.contractType || "Spot"}</td><td>${c.jobsCompleted || 0}</td><td>${cAvg ? "⭐ " + cAvg : "—"}</td></tr>`;
+            })
+            .join("");
     const ratingsHTML = cp.ratings
       .slice(0, 20)
       .map(
@@ -28428,7 +28381,10 @@ const UI = {
         return `<tr><td>${l.customerName}</td><td style="color:${tc};font-weight:700;">${l.tier}</td><td>${l.orders}</td><td>${l.totalStars > 0 ? (l.totalStars / l.orders).toFixed(1) : "—"}</td><td style="color:var(--accent2);">${l.discount > 0 ? "-" + Math.round(100 * l.discount) + "%" : "—"}</td><td><button class="btn small" style="font-size:9px;" onclick="CustomerPortal.negotiateDiscount('${l.customerId}');UI.renderCustomerPortal();">Verhandeln</button></td></tr>`;
       })
       .join("");
-    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:24px;">${stars(avg || 0)}</div><div style="font-size:18px;font-weight:800;color:var(--accent2);">${avg.toFixed(1)}</div><div style="font-size:10px;color:var(--muted);">Ø Bewertung</div></div><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--accent);">${cp.ratings.length}</div><div style="font-size:10px;color:var(--muted);">Bewertungen gesamt</div></div><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:${cp.ratings.filter((r) => r.stars <= 2 && !r.responded).length > 0 ? "var(--danger)" : "var(--accent2)"};">${cp.ratings.filter((r) => r.stars <= 2 && !r.responded).length}</div><div style="font-size:10px;color:var(--muted);">Unbeantw. ⭐⭐</div></div><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--accent2);">${cp.loyaltyProgram.filter((l) => "Gold" === l.tier || "Platin" === l.tier).length}</div><div style="font-size:10px;color:var(--muted);">Gold/Platin-Kunden</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LETZTE BEWERTUNGEN</div>${ratingsHTML || '<div style="color:var(--muted);font-size:11px;">Noch keine Bewertungen</div>'}</div><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LOYALITÄTSPROGRAMM</div>${loyaltyHTML ? `<table class="data-table" style="width:100%;font-size:11px;"><thead><tr><th>Kunde</th><th>Stufe</th><th>Aufträge</th><th>⭐</th><th>Rabatt</th><th></th></tr></thead><tbody>${loyaltyHTML}</tbody></table>` : '<div style="color:var(--muted);font-size:11px;">Noch keine Stammkunden</div>'}</div></div>`;
+    const openBad = cp.ratings.filter((r) => r.stars <= 2 && !r.responded).length;
+    const kpiTile = (val, label, color) =>
+      `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:${color};">${val}</div><div style="font-size:10px;color:var(--muted);">${label}</div></div>`;
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;">🤝 KUNDEN & PORTAL</div><button class="btn small primary" onclick="CustomerManager.acquire();UI.renderAll();" ${State.cash < 200 ? "disabled" : ""}>+ Akquirieren (€ 200)</button></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;">${stars(avg || 0)}</div><div style="font-size:16px;font-weight:800;color:var(--accent2);">${avg.toFixed(1)}</div><div style="font-size:10px;color:var(--muted);">Ø Bewertung</div></div>${kpiTile(cp.ratings.length, "Bewertungen gesamt", "var(--accent)")}${kpiTile(openBad, "Unbeantw. ⭐⭐", openBad > 0 ? "var(--danger)" : "var(--accent2)")}${kpiTile(cp.loyaltyProgram.filter((l) => "Gold" === l.tier || "Platin" === l.tier).length, "Gold/Platin-Kunden", "var(--accent2)")}</div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">KUNDENSTAMM (${customers.length})</div><table class="data-table" style="width:100%;font-size:11px;margin-bottom:16px;"><thead><tr><th>Firma</th><th>Stadt</th><th>Branche</th><th>Beziehung</th><th>Vertrag</th><th>Aufträge</th><th>⭐ Ø</th></tr></thead><tbody>${customerRows}</tbody></table><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LETZTE BEWERTUNGEN</div>${ratingsHTML || '<div style="color:var(--muted);font-size:11px;">Noch keine Bewertungen</div>'}</div><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LOYALITÄTSPROGRAMM</div>${loyaltyHTML ? `<table class="data-table" style="width:100%;font-size:11px;"><thead><tr><th>Kunde</th><th>Stufe</th><th>Aufträge</th><th>⭐</th><th>Rabatt</th><th></th></tr></thead><tbody>${loyaltyHTML}</tbody></table>` : '<div style="color:var(--muted);font-size:11px;">Noch keine Stammkunden</div>'}</div></div>`;
   },
   _respondToRating(ratingId) {
     CustomerPortal.respondToRating(
@@ -30279,36 +30235,6 @@ const UI = {
   hireRole(roleId) {
     this.openCandidatePool(roleId);
   },
-  renderCustomers() {
-    const tb = document.getElementById("customers-tbody");
-    if (!tb) return;
-    if (void 0 !== CustomerDepth) (State.customers || []).forEach((c) => CustomerDepth.enrich(c));
-    tb.innerHTML =
-      0 === State.customers.length
-        ? '<tr><td colspan="7" style="text-align:center; color:var(--muted)">Keine Kunden</td></tr>'
-        : (State.customers || [])
-            .map((c) => {
-              const relClass = c.relationship > 70 ? "" : c.relationship > 40 ? "warn" : "bad";
-              const stars = (State.customerRatings || []).filter((r) => r.customerId === c.id);
-              const avgStars = stars.length ? (stars.reduce((s, r) => s + r.stars, 0) / stars.length).toFixed(1) : "—";
-              const starColor = avgStars >= 4 ? "var(--accent2)" : avgStars >= 3 ? "var(--warn)" : "var(--danger)";
-              const loyalBadge = c.loyaltyDiscount
-                ? `<span style="font-size:8px; background:rgba(74,222,128,0.15); color:var(--accent2); border-radius:3px; padding:1px 5px; margin-left:4px;">−${Math.round(100 * c.loyaltyDiscount)}%</span>`
-                : "";
-              return `<tr style="cursor:pointer;" onclick="UI.showCustomerDetail('${c.id}')">\n            <td><b>${c.name}</b>${loyalBadge}${c.contact ? `<br><span style="font-size:9px; color:var(--muted)">${c.contact.name}</span>` : ""}</td>\n            <td>${c.city || "—"}</td>\n            <td>${c.industry || "—"}</td>\n            <td><span class="health-bar"><span class="health-fill ${relClass}" style="width:${c.relationship}%"></span></span> ${Math.round(c.relationship)}%</td>\n            <td>${c.contractType || "Spot"}</td>\n            <td>${c.jobsCompleted || 0}</td>\n            <td style="color:${starColor};">${"—" !== avgStars ? "★ " : ""}${avgStars}</td>\n          </tr>`;
-            })
-            .join("");
-    const ratingsEl = document.getElementById("customer-ratings-box");
-    if (ratingsEl && void 0 !== CustomerPortal) {
-      CustomerPortal.init();
-      const recent = (State.customerPortal?.ratings || []).slice(0, 8);
-      const avg = CustomerPortal.avgRating().toFixed(1);
-      ratingsEl.innerHTML =
-        0 === recent.length
-          ? '<div style="color:var(--muted); font-size:11px;">Noch keine Bewertungen</div>'
-          : `\n        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n          <div style="font-family:'Bebas Neue'; font-size:16px; letter-spacing:1px;">⭐ KUNDENBEWERTUNGEN</div>\n          <div style="font-size:18px; font-weight:700; color:var(--accent2);">⌀ ${avg} / 5</div>\n        </div>\n        ${recent.map((r) => `\n          <div style="display:flex; gap:8px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05); font-size:11px;">\n            <div style="flex-shrink:0; font-size:16px;">${"★".repeat(r.stars)}${"☆".repeat(5 - r.stars)}</div>\n            <div>\n              <div style="color:var(--muted2);">${r.comment}</div>\n              <div style="font-size:9px; color:var(--muted);">${r.customerName} · Tag ${r.day} · ${r.wasOnTime ? "✓ Pünktlich" : "⚠ Verspätet"}</div>\n            </div>\n          </div>`).join("")}`;
-    }
-  },
   renderGuV() {
     const el = UI._getContentEl("finanzen-content");
     if (!el) return;
@@ -30775,6 +30701,9 @@ const UI = {
     });
   },
   renderMarketing() {
+    const host = UI._getContentEl("markt-content");
+    if (host)
+      host.innerHTML = `<div class="kpi-grid"><div class="kpi"><div class="kpi-label">Reputation</div><div class="kpi-value" id="mkt-rep">0%</div></div><div class="kpi"><div class="kpi-label">Aktive Kampagnen</div><div class="kpi-value" id="mkt-active" style="font-size:14px;line-height:1.4;">—</div></div></div><div class="card"><div class="card-title">Marketingkanäle</div><div id="marketing-options"></div></div><div class="card"><div class="card-title">Reputation — Auswirkungen</div><div style="font-size:11px;line-height:1.8;"><div>📈 <b>Mehr Aufträge:</b> +1 Auftrag pro Tag je 10 Reputationspunkte über 50</div><div>💰 <b>Bessere Preise:</b> +0,5 % pro Reputationspunkt über 50</div><div>🏦 <b>Kreditwürdigkeit:</b> Großkredit ab 60, Investitionskredit ab 75 Reputation</div><div>👷 <b>Mitarbeiter:</b> Bewerber bevorzugen Spediteure mit gutem Ruf</div></div></div>`;
     const optEl = document.getElementById("marketing-options");
     if (!optEl) return;
     optEl.innerHTML = DATA.marketingChannels
