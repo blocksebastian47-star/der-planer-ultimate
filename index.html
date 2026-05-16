@@ -26519,6 +26519,12 @@ const UI = {
   showView(name) {
     document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
     document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
+    // Privatleben is "zu Hause" — hide the office nav and work-task hints so it stays separate from the Büro.
+    const atHome = "private" === name;
+    const navEl = document.querySelector("nav");
+    if (navEl) navEl.style.display = atHome ? "none" : "";
+    const hintEl = document.getElementById("tutorial-hint");
+    if (hintEl) hintEl.style.display = atHome ? "none" : "";
     const btn = document.querySelector(`.nav-btn[data-view="${name}"]`);
     if (btn) btn.classList.add("active");
     if (this.SECTIONS[name]) {
