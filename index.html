@@ -15766,9 +15766,11 @@ const PoliticalEvents = {
     this.init();
     const ps = State.politicsState;
     if (State.day < ps.nextEventDay) return;
-    const available = this.EVENT_POOL.filter(
-      (e) => State.day >= (e.minDay || 0) && !ps.firedEvents.slice(-3).includes(e.id),
+    let available = this.EVENT_POOL.filter(
+      (e) => State.day >= (e.minDay || 0) && !ps.firedEvents.slice(-8).includes(e.id),
     );
+    if (!available.length)
+      available = this.EVENT_POOL.filter((e) => State.day >= (e.minDay || 0));
     if (!available.length) return;
     const total = available.map((e) => e.weight || 1).reduce((a, b) => a + b, 0);
     let r = Math.random() * total;
@@ -18824,7 +18826,7 @@ const CrisisSystem = {
       this._applyCrisisEffect(c);
       return true;
     });
-    if (State.activeCrises.length >= 1) return;
+    if (State.activeCrises.length >= 2) return;
     if (State.day < 5) return;
     for (const [key, ct] of Object.entries(this.CRISIS_TYPES)) {
       if (State.day < ct.minDay) continue;
