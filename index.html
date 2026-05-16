@@ -23018,7 +23018,7 @@ const FleetManager = {
   repair(truckId, fullRepair = false) {
     const t = (State.trucks || []).find((x) => x.id === truckId);
     if (!t) return false;
-    if (t.warrantyUntil && State.day <= t.warrantyUntil && t.condition < 85) {
+    if (t.warrantyUntil && State.day <= t.warrantyUntil && "broken" === t.status) {
       const targetCond = Math.min(100, t.condition + 35);
       t.condition = targetCond;
       if ("broken" === t.status) t.status = "idle";
