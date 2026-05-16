@@ -13730,7 +13730,6 @@ const ContractSLA = {
         const bonus = Math.round((baseRevenue * type.bonusPct) / 100);
         revenue += bonus;
         slaNote = `🌟 SLA Bonus +${Utils.euro(bonus)} (${Math.round(rate)}% Lieferquote)`;
-        c.customer && (State.customers.find((cu) => cu.id === c.customerId) || {}).relationship;
         const cust = State.customers?.find((cu) => cu.id === c.customerId);
         if (cust) cust.relationship = Math.min(100, cust.relationship + 3);
       } else if (rate < type.slaTarget) {
@@ -21591,7 +21590,7 @@ const Onboarding = {
     {
       icon: "🚛",
       title: "Willkommen bei deiner Spedition",
-      text: "Du startest mit 25.000€ Kapital, zwei LKWs und einem Disponent. Dein Ziel: eine profitable Spedition aufbauen — ohne pleite zu gehen.",
+      text: "Du startest mit 50.000€ Kapital, zwei LKWs und zwei Fahrern. Dein Ziel: eine profitable Spedition aufbauen — ohne pleite zu gehen.",
       hint: "Das wichtigste Prinzip: Geld rein muss mehr sein als Geld raus.",
     },
     {
@@ -24559,7 +24558,7 @@ const DispoManager = {
     const dispos = (State.staff || []).filter((s) => "dispo" === s.roleId && "aktiv" === s.status);
     if (0 === dispos.length) return;
     const totalCapacity = dispos.reduce((s, d) => s + 2 + Math.floor(d.experience / 30), 0);
-    const sortedJobs = State.jobs.slice().sort((a, b) => b.price / b.km - a.price / a.km);
+    const sortedJobs = State.jobs.slice().sort((a, b) => b.price / (b.km || 1) - a.price / (a.km || 1));
     let handled = 0;
     for (const job of sortedJobs) {
       if (handled >= totalCapacity) break;
@@ -24568,7 +24567,7 @@ const DispoManager = {
       const days = JobManager.totalDays(job, truck);
       const daysLeft = job.deadline - State.day + 1;
       const driver = (State.staff || []).find((s) => s.id === truck.driverId);
-      const perKm = job.price / job.km;
+      const perKm = job.price / (job.km || 1);
       const consult = this.checkConsultation(job, truck, driver, days, daysLeft, perKm);
       if (consult) {
         if (!State.consultations.some((c) => c.jobId === job.id)) {
@@ -25981,6 +25980,8 @@ const UI = {
         }
         State.family.status = "ledig";
         State.family.partner = null;
+        delete State.family._engagedDay;
+        delete State.family._marriedDay;
         State.family.children = State.family.children || [];
       },
     };
