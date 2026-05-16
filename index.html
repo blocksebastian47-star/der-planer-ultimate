@@ -4382,38 +4382,26 @@ const DATA = {
     "Popescu",
   ],
   companyNames: [
-    "BoschTeile GmbH",
-    "Aldi Logistik AG",
-    "Henkel & Söhne",
-    "Krause Möbel KG",
-    "Steiner Stahl",
-    "Frischfleisch Nord",
-    "Beton Zentrale",
-    "Metall Müller GmbH",
-    "Pharmadirekt",
-    "PaletWerk",
-    "Bauhandel Schmidt",
-    "Frizzi Getränke",
-    "Maschinenbau Weiss",
-    "TextilTrade",
-    "ChemieX AG",
-    "Nordfracht GmbH",
-    "Süd-West Logistik",
-    "Kompakt Spedition",
-    "Express24 AG",
-    "Autoteile Nord",
-  ],
-  industries: [
-    "Lebensmittel",
-    "Bau",
-    "Industrie",
-    "Pharma",
-    "Möbel",
-    "Chemie",
-    "Textil",
-    "Elektronik",
-    "Automotive",
-    "Getränke",
+    { name: "BoschTeile GmbH", industry: "Automobilindustrie" },
+    { name: "Aldi Logistik AG", industry: "Einzelhandel" },
+    { name: "Henkel & Söhne", industry: "Chemie & Pharma" },
+    { name: "Krause Möbel KG", industry: "Einzelhandel" },
+    { name: "Steiner Stahl", industry: "Maschinenbau" },
+    { name: "Frischfleisch Nord", industry: "Lebensmittelhandel" },
+    { name: "Beton Zentrale", industry: "Bauwirtschaft" },
+    { name: "Metall Müller GmbH", industry: "Maschinenbau" },
+    { name: "Pharmadirekt", industry: "Chemie & Pharma" },
+    { name: "PaletWerk", industry: "Logistik-Dienstleister" },
+    { name: "Bauhandel Schmidt", industry: "Bauwirtschaft" },
+    { name: "Frizzi Getränke", industry: "Lebensmittelhandel" },
+    { name: "Maschinenbau Weiss", industry: "Maschinenbau" },
+    { name: "TextilTrade", industry: "Textil & Mode" },
+    { name: "ChemieX AG", industry: "Chemie & Pharma" },
+    { name: "Nordfracht GmbH", industry: "Logistik-Dienstleister" },
+    { name: "Süd-West Logistik", industry: "Logistik-Dienstleister" },
+    { name: "Kompakt Spedition", industry: "Logistik-Dienstleister" },
+    { name: "Express24 AG", industry: "Logistik-Dienstleister" },
+    { name: "Autoteile Nord", industry: "Automobilindustrie" },
   ],
   marketingChannels: [
     { id: "local", name: "Lokale Anzeige", cost: 500, durationDays: 7, jobBoost: 1, repBoost: 0.5, reach: 0.2 },
@@ -13088,20 +13076,6 @@ const AnnualClose = {
   },
 };
 const CustomerDepth = {
-  INDUSTRIES_DE: [
-    "Automobilindustrie",
-    "Lebensmittelhandel",
-    "Chemie & Pharma",
-    "Maschinenbau",
-    "Bauwirtschaft",
-    "Elektronik & IT",
-    "Textil & Mode",
-    "Landwirtschaft",
-    "Gesundheitswesen",
-    "Energiewirtschaft",
-    "Einzelhandel",
-    "Logistik-Dienstleister",
-  ],
   CONTACTS: [
     { title: "Herr", name: "Klaus Berger", role: "Einkaufsleiter" },
     { title: "Frau", name: "Maria Schmidt", role: "Logistikmanagerin" },
@@ -13114,8 +13088,9 @@ const CustomerDepth = {
   ],
   enrich(customer) {
     if (!customer.id) customer.id = Utils.uid("C");
+    const co = DATA.companyNames.find((x) => x.name === customer.name);
+    if (co) customer.industry = co.industry;
     if (customer._enriched) return customer;
-    customer.industry = Utils.pick(this.INDUSTRIES_DE);
     customer.contact = Utils.pick(this.CONTACTS);
     customer.founded = Utils.randInt(1985, 2015);
     customer.size = Utils.pick(["Klein (1-50 MA)", "Mittel (51-250 MA)", "Groß (250+ MA)"]);
@@ -23014,7 +22989,7 @@ const JobManager = {
     } else {
       from = Utils.pick(cityPool).id;
       to = Utils.pick(cityPool.filter((c) => c.id !== from)).id;
-      customer = { name: Utils.pick(DATA.companyNames), id: "spot", relationship: 50 };
+      customer = { name: Utils.pick(DATA.companyNames).name, id: "spot", relationship: 50 };
     }
     const fromC = MAP_DATA.cities.find((c) => c.id === from);
     const toC = MAP_DATA.cities.find((c) => c.id === to);
@@ -23837,7 +23812,10 @@ const EventManager = {
     );
   },
   eventBigOpportunity() {
-    const customer = Utils.pick(DATA.companyNames);
+    const _used = (State.customers || []).map((cu) => cu.name);
+    const _free = DATA.companyNames.filter((x) => !_used.includes(x.name));
+    const co = Utils.pick(_free.length ? _free : DATA.companyNames);
+    const customer = co.name;
     const from = Utils.pick(MAP_DATA.cities).id;
     const to = Utils.pick(MAP_DATA.cities.filter((c) => c.id !== from)).id;
     const fromC = MAP_DATA.cities.find((c) => c.id === from);
@@ -23858,7 +23836,7 @@ const EventManager = {
               name: customer,
               cityId: from,
               city: fromC.name,
-              industry: Utils.pick(DATA.industries),
+              industry: co.industry,
               relationship: 70,
               contractType: "Großkunde",
               avgValue: price,
@@ -24445,9 +24423,13 @@ const CustomerManager = {
       ? MAP_DATA.cities.find((x) => x.id === cityId)
       : Utils.pick(MAP_DATA.cities.filter((x) => x.id !== State.locationId && x.hub));
     if (!c) return null;
+    const used = new Set((State.customers || []).map((x) => x.name));
+    const free = DATA.companyNames.filter((co) => !used.has(co.name));
+    const co = Utils.pick(free.length ? free : DATA.companyNames);
     return {
       id: Utils.uid("C"),
-      name: Utils.pick(DATA.companyNames),
+      name: co.name,
+      industry: co.industry,
       cityId: c.id,
       city: c.name,
       relationship: 50 + Utils.randInt(0, 20),
