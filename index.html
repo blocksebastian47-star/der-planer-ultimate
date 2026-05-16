@@ -26108,6 +26108,11 @@ const UI = {
   showNextDecision() {
     if (0 === State.pendingDecisions.length) return;
     const d = State.pendingDecisions[0];
+    if (!d || !Array.isArray(d.choices) || 0 === d.choices.length) {
+      console.warn("showNextDecision: malformed decision dropped", d);
+      State.pendingDecisions.shift();
+      return this.showNextDecision();
+    }
     const overlay = document.getElementById("modal-overlay");
     const box = document.getElementById("modal-box");
     const isTier2 = 2 === d.tier;
