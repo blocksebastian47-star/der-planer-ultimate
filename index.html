@@ -951,9 +951,8 @@ footer {
     <div class="stat"><span class="label">Reputation</span><span class="val" id="stat-rep">—</span></div>
     <div class="stat"><span class="label">Bekanntheit</span><span class="val" id="stat-fame">—</span></div>
     <div class="stat"><span class="label">Stress</span><span class="val" id="stat-stress">—</span></div>
-    <button class="btn" title="Hauptmenü (Weiterspielen, Neues Spiel, Laden)" onclick="UI.showStartMenu()" style="font-size:14px; padding:8px 12px;">☰</button>
-    <button class="btn" title="Manuell speichern" onclick="UI.manualSave()" style="font-size:14px; padding:8px 12px;">💾</button>
-    <button class="btn" title="Spiel-Menü (Slots, Optionen)" onclick="UI.openGameMenu()" style="font-size:14px; padding:8px 12px;">⚙</button>
+    <button class="btn" title="Menü — Spielstände, Einstellungen, Daten" onclick="UI.showStartMenu()" style="font-size:14px; padding:8px 12px;">☰</button>
+    <button class="btn" title="Schnell speichern" onclick="UI.manualSave()" style="font-size:14px; padding:8px 12px;">💾</button>
     <!-- Spielgeschwindigkeit -->
     <div class="speed-controls">
       <button class="speed-btn pause-btn" id="btn-pause" onclick="GameClock.togglePause()" title="Pause / Weiter">⏸</button>
@@ -25403,6 +25402,7 @@ const Game = {
     }
   },
   autoSave() {
+    if ("off" === localStorage.getItem("planer_autosave")) return;
     try {
       const json = JSON.stringify(this._buildSnapshot());
       localStorage.setItem(this.AUTO_KEY, json);
@@ -26136,15 +26136,120 @@ const UI = {
     const meta = Game.newestSaveMeta();
     const hasGameRunning = !!State.locationId;
     const theme = document.documentElement.getAttribute("data-theme");
-    const continueBlock = meta
-      ? `<button class="btn primary" style="width:100%;padding:14px;font-size:16px;font-family:'Bebas Neue';letter-spacing:2px;margin-bottom:4px;" onclick="UI._continueGame()">▶ WEITERSPIELEN</button>\n         <div style="font-size:11px;color:var(--muted2);text-align:center;margin-bottom:16px;">${meta.company} · Tag ${meta.day} · ${Math.round(meta.cash).toLocaleString("de-DE")} €</div>`
-      : `<div style="font-size:11px;color:var(--muted2);text-align:center;margin-bottom:16px;padding:10px;background:var(--bg);border-radius:6px;">Noch kein Spielstand — starte ein neues Spiel.</div>`;
+    const autosaveOn = "off" !== localStorage.getItem("planer_autosave");
+    const slots = Game.allSlots();
+    const autoMeta = Game.slotMeta(Game.AUTO_KEY);
+    const slotCard = (slot, isAuto = false) => {
+      const m = slot.meta;
+      const label = isAuto ? "🔄 Auto-Save" : `Slot ${slot.n}`;
+      if (!m)
+        return `<div style="border:1px dashed var(--border);border-radius:8px;padding:12px;background:var(--bg2);opacity:0.6;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:24px;">📭</span>
+          <div><div style="font-size:12px;font-weight:700;color:var(--muted);">${label}</div><div style="font-size:10px;color:var(--muted2);">Leer</div></div>
+          ${!isAuto ? `<button class="btn small primary" style="margin-left:auto;font-size:10px;" onclick="window._callActions['save_${slot.n}']&&window._callActions['save_${slot.n}']()">💾 Hier speichern</button>` : ""}
+        </div>`;
+      const city = (void 0 !== MAP_DATA && MAP_DATA.getCity(m.location))?.name || m.location;
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2);display:flex;align-items:center;gap:10px;">
+        <div style="font-size:28px;">🏢</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:12px;font-weight:800;">${label} — ${m.company}</div>
+            <div style="font-size:9px;color:var(--muted2);">${m.date || ""}</div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Tag ${m.day} · ${Math.round(m.cash).toLocaleString("de-DE")} € · ${m.trucks} LKW · ${m.staff} MA · Rep. ${m.rep}%</div>
+          <div style="font-size:10px;color:var(--muted2);">📍 ${city}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          ${!isAuto ? `<button class="btn small primary" style="font-size:10px;" onclick="window._callActions['save_${slot.n}']&&window._callActions['save_${slot.n}']()">💾 Überschreiben</button>` : ""}
+          <button class="btn small" style="font-size:10px;" onclick="window._callActions['load_${isAuto ? "auto" : slot.n}']&&window._callActions['load_${isAuto ? "auto" : slot.n}']()">📂 Laden</button>
+          ${!isAuto ? `<button class="btn small" style="font-size:10px;color:var(--danger);" onclick="window._callActions['del_${slot.n}']&&window._callActions['del_${slot.n}']()">🗑 Löschen</button>` : ""}
+        </div>
+      </div>`;
+    };
+    window._callActions = window._callActions || {};
+    slots.forEach((slot) => {
+      window._callActions[`save_${slot.n}`] = () => {
+        const cm = slot.meta ? `Slot ${slot.n} (${slot.meta.company}, Tag ${slot.meta.day}) wirklich überschreiben?` : null;
+        if (cm && !confirm(cm)) return;
+        if (Game.saveToSlot(slot.n)) {
+          UI.toast(`💾 Slot ${slot.n} gespeichert`, "good");
+          UI.showStartMenu();
+        } else UI.toast("Speichern fehlgeschlagen", "warn");
+      };
+      window._callActions[`load_${slot.n}`] = () => {
+        if (!confirm(`Slot ${slot.n} laden? Ungespeicherter Fortschritt geht verloren.`)) return;
+        if (Game.loadFromSlot(slot.n)) {
+          if ("undefined" != typeof GameClock) GameClock.init();
+          UI.closeModal();
+          UI.renderAll();
+          UI.toast(`📂 Slot ${slot.n} geladen`, "good");
+        } else UI.toast("Laden fehlgeschlagen", "warn");
+      };
+      window._callActions[`del_${slot.n}`] = () => {
+        if (!confirm(`Slot ${slot.n} wirklich löschen?`)) return;
+        try {
+          localStorage.removeItem(Game.SLOT_KEY(slot.n));
+        } catch (e) {}
+        UI.toast(`🗑 Slot ${slot.n} gelöscht`, "info");
+        UI.showStartMenu();
+      };
+    });
+    window._callActions.load_auto = () => {
+      if (!autoMeta) return;
+      if (!confirm("Auto-Save laden? Ungespeicherter Fortschritt geht verloren.")) return;
+      try {
+        const raw = localStorage.getItem(Game.AUTO_KEY);
+        if (raw) {
+          Object.assign(State, JSON.parse(raw));
+          Game._reconcileTruckStatuses();
+          if ("undefined" != typeof GameClock) GameClock.init();
+          UI.closeModal();
+          UI.renderAll();
+          UI.toast("Auto-Save geladen", "good");
+        }
+      } catch (e) {
+        UI.toast("Laden fehlgeschlagen", "warn");
+      }
+    };
+    const sec = (t) =>
+      `<div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:16px 0 8px;border-top:1px solid var(--border);padding-top:12px;">${t}</div>`;
+    const fb = "width:100%;padding:11px;font-size:13px;text-align:left;";
+    const continueBlock =
+      !hasGameRunning && meta
+        ? `<button class="btn primary" style="width:100%;padding:14px;font-size:16px;font-family:'Bebas Neue';letter-spacing:2px;margin-bottom:4px;" onclick="UI._continueGame()">▶ WEITERSPIELEN</button>
+           <div style="font-size:11px;color:var(--muted2);text-align:center;">${meta.company} · Tag ${meta.day} · ${Math.round(meta.cash).toLocaleString("de-DE")} €</div>`
+        : !hasGameRunning
+          ? `<div style="font-size:11px;color:var(--muted2);text-align:center;padding:10px;background:var(--bg);border-radius:6px;">Noch kein Spielstand — starte ein neues Spiel.</div>`
+          : "";
     this.showModal({
       title: "🚛 DER PLANER ULTIMATE",
       subtitle: "v2.0512 — Speditions-Simulation",
-      maxWidth: "440px",
+      maxWidth: "560px",
       dismissible: hasGameRunning,
-      content: `${continueBlock}\n        <div style="display:flex;flex-direction:column;gap:8px;">\n          <button class="btn ${meta ? "" : "primary"}" style="width:100%;padding:12px;font-size:13px;" onclick="UI._startFreshFromMenu()">🎮 Neues Spiel</button>\n          <button class="btn" style="width:100%;padding:12px;font-size:13px;" onclick="UI._showSaveLoadScreen()">💾 Spielstand laden &amp; verwalten</button>\n          <button class="btn" style="width:100%;padding:12px;font-size:13px;" onclick="UI.toggleTheme();UI.showStartMenu();">${"light" === theme ? "🌙 Dark Mode" : "☀️ Light Mode"}</button>\n        </div>`,
+      content: `${continueBlock}
+        ${sec("🎮 SPIEL")}
+        <button class="btn ${meta ? "" : "primary"}" style="${fb}" onclick="UI._startFreshFromMenu()">🎮 Neues Spiel — frische Spedition aufbauen</button>
+        ${sec("💾 SPEICHERSTÄNDE")}
+        ${hasGameRunning ? `<button class="btn primary" style="${fb}margin-bottom:6px;" onclick="window._callActions['save_1']&&window._callActions['save_1']()">💾 Schnell in Slot 1 speichern</button>` : ""}
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${slots.map((s) => slotCard(s)).join("")}
+          ${autoMeta ? slotCard({ n: "auto", meta: autoMeta }, true) : ""}
+        </div>
+        ${sec("⚙ EINSTELLUNGEN")}
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button class="btn" style="${fb}" onclick="UI.toggleTheme();UI.showStartMenu();">${"light" === theme ? "🌙" : "☀️"} Darstellung: ${"light" === theme ? "Hell" : "Dunkel"} — umschalten</button>
+          <button class="btn" style="${fb}" onclick="UI._toggleAutosave()">${autosaveOn ? "✅" : "⬜"} Automatisches Speichern: ${autosaveOn ? "AN" : "AUS"}</button>
+        </div>
+        ${sec("📁 DATEN")}
+        <div id="menu-data-actions" style="display:flex;flex-direction:column;gap:6px;">
+          <button class="btn" style="${fb}color:var(--danger);" onclick="UI._resetAllSaves()">⚠ Alle Spielstände löschen / Spiel zurücksetzen</button>
+        </div>
+        ${sec("❓ HILFE — TASTATUR")}
+        <div style="background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:8px 10px;font-size:10px;color:var(--muted);line-height:2;">
+          <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Esc</kbd> Modal schließen &nbsp;
+          <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Leertaste</kbd> Nächster Tag &nbsp;
+          <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Strg+S</kbd> Speichern
+        </div>`,
       actions: hasGameRunning ? [{ label: "← Zurück zum Spiel", onclick: () => this.closeModal() }] : [],
     });
   },
@@ -26169,75 +26274,27 @@ const UI = {
     this.closeModal();
     this.showLocationSelector();
   },
-  openGameMenu() {
-    this._showSaveLoadScreen();
+  _toggleAutosave() {
+    const on = "off" !== localStorage.getItem("planer_autosave");
+    try {
+      localStorage.setItem("planer_autosave", on ? "off" : "on");
+    } catch (e) {}
+    this.toast(on ? "Automatisches Speichern deaktiviert" : "Automatisches Speichern aktiviert", "info");
+    this.showStartMenu();
   },
-  _showSaveLoadScreen(mode = "menu") {
-    const slots = Game.allSlots();
-    const autoMeta = Game.slotMeta(Game.AUTO_KEY);
-    const slotCard = (slot, isAuto = false) => {
-      const m = slot.meta;
-      const label = isAuto ? "🔄 Auto-Save" : `Slot ${slot.n}`;
-      if (!m)
-        return `\n        <div style="border:1px dashed var(--border);border-radius:8px;padding:12px;background:var(--bg2);opacity:0.6;display:flex;align-items:center;gap:10px;">\n          <span style="font-size:24px;">📭</span>\n          <div>\n            <div style="font-size:12px;font-weight:700;color:var(--muted);">${label}</div>\n            <div style="font-size:10px;color:var(--muted2);">Leer</div>\n          </div>\n          ${!isAuto ? `<button class="btn small primary" style="margin-left:auto;font-size:10px;"\n            onclick="window._callActions['save_${slot.n}']&&window._callActions['save_${slot.n}']()">\n            💾 Hier speichern\n          </button>` : ""}\n        </div>`;
-      const city = (void 0 !== MAP_DATA && MAP_DATA.getCity(m.location))?.name || m.location;
-      return `\n        <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2);display:flex;align-items:center;gap:10px;">\n          <div style="font-size:28px;">🏢</div>\n          <div style="flex:1;min-width:0;">\n            <div style="display:flex;justify-content:space-between;align-items:center;">\n              <div style="font-size:12px;font-weight:800;">${label} — ${m.company}</div>\n              <div style="font-size:9px;color:var(--muted2);">${m.date || ""}</div>\n            </div>\n            <div style="font-size:10px;color:var(--muted);margin-top:3px;">\n              Tag ${m.day} · ${Math.round(m.cash).toLocaleString("de-DE")} € · ${m.trucks} LKW · ${m.staff} MA · Rep. ${m.rep}%\n            </div>\n            <div style="font-size:10px;color:var(--muted2);">📍 ${city}</div>\n          </div>\n          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">\n            ${!isAuto ? `<button class="btn small primary" style="font-size:10px;"\n              onclick="window._callActions['save_${slot.n}']&&window._callActions['save_${slot.n}']()">\n              💾 Überschreiben\n            </button>` : ""}\n            <button class="btn small" style="font-size:10px;"\n              onclick="window._callActions['load_${isAuto ? "auto" : slot.n}']&&window._callActions['load_${isAuto ? "auto" : slot.n}']()">\n              📂 Laden\n            </button>\n            ${!isAuto ? `<button class="btn small" style="font-size:10px;color:var(--danger);"\n              onclick="window._callActions['del_${slot.n}']&&window._callActions['del_${slot.n}']()">\n              🗑 Löschen\n            </button>` : ""}\n          </div>\n        </div>`;
-    };
-    window._callActions = window._callActions || {};
-    slots.forEach((slot) => {
-      window._callActions[`save_${slot.n}`] = () => {
-        const confirm_msg = slot.meta
-          ? `Slot ${slot.n} (${slot.meta.company}, Tag ${slot.meta.day}) wirklich überschreiben?`
-          : null;
-        if (confirm_msg && !confirm(confirm_msg)) return;
-        if (Game.saveToSlot(slot.n)) {
-          UI.toast(`💾 Slot ${slot.n} gespeichert`, "good");
-          UI._showSaveLoadScreen();
-        } else UI.toast("Speichern fehlgeschlagen", "warn");
-      };
-      window._callActions[`load_${slot.n}`] = () => {
-        if (!confirm(`Slot ${slot.n} laden? Ungespeicherter Fortschritt geht verloren.`)) return;
-        if (Game.loadFromSlot(slot.n)) {
-          if ("undefined" != typeof GameClock) GameClock.init();
-          UI.closeModal();
-          UI.renderAll();
-          UI.toast(`📂 Slot ${slot.n} geladen`, "good");
-        } else UI.toast("Laden fehlgeschlagen", "warn");
-      };
-      window._callActions[`del_${slot.n}`] = () => {
-        if (!confirm(`Slot ${slot.n} wirklich löschen?`)) return;
-        try {
-          localStorage.removeItem(Game.SLOT_KEY(slot.n));
-        } catch (e) {}
-        UI.toast(`🗑 Slot ${slot.n} gelöscht`, "info");
-        UI._showSaveLoadScreen();
-      };
-    });
-    window._callActions.load_auto = () => {
-      if (!autoMeta) return;
-      if (!confirm("Auto-Save laden? Ungespeicherter Fortschritt geht verloren.")) return;
-      try {
-        const raw = localStorage.getItem(Game.AUTO_KEY);
-        if (raw) {
-          Object.assign(State, JSON.parse(raw));
-          Game._reconcileTruckStatuses();
-          if ("undefined" != typeof GameClock) GameClock.init();
-          UI.closeModal();
-          UI.renderAll();
-          UI.toast("Auto-Save geladen", "good");
-        }
-      } catch (e) {
-        UI.toast("Laden fehlgeschlagen", "warn");
-      }
-    };
-    const theme = document.documentElement.getAttribute("data-theme");
-    this.showModal({
-      title: "⚙ SPIEL-MENÜ",
-      subtitle: `Tag ${State.day} · ${Math.round(State.cash).toLocaleString("de-DE")} € · ${State.companyName || ""}`,
-      maxWidth: "560px",
-      content: `\n        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">\n\n          \x3c!-- Aktionen oben --\x3e\n          <div style="display:flex;gap:8px;flex-wrap:wrap;">\n            <button class="btn primary" style="flex:1;font-size:12px;"\n              onclick="window._callActions['save_1']&&window._callActions['save_1']()">\n              💾 Schnell in Slot 1 speichern\n            </button>\n            <button class="btn" style="font-size:12px;"\n              onclick="UI.toggleTheme();UI._showSaveLoadScreen();">\n              ${"light" === theme ? "🌙 Dark Mode" : "☀️ Light Mode"}\n            </button>\n            <button class="btn" style="font-size:12px;"\n              onclick="if(confirm('Wirklich neues Spiel? Alle Spielstände werden gelöscht!')){try{for(let i=1;i<=5;i++)localStorage.removeItem(Game.SLOT_KEY(i));localStorage.removeItem(Game.AUTO_KEY);localStorage.removeItem('planer_save');}catch(e){}location.reload();}">\n              🔄 Neues Spiel\n            </button>\n          </div>\n\n          \x3c!-- Tastatur-Shortcuts --\x3e\n          <div style="background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:8px 10px;font-size:10px;color:var(--muted);">\n            <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Esc</kbd> Modal schließen &nbsp;\n            <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Leertaste</kbd> Nächster Tag &nbsp;\n            <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Strg+S</kbd> Speichern\n          </div>\n        </div>\n\n        \x3c!-- Slot-Übersicht --\x3e\n        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:8px;">SPEICHERSTÄNDE</div>\n        <div style="display:flex;flex-direction:column;gap:6px;">\n          ${slots.map((s) => slotCard(s)).join("")}\n          ${autoMeta ? slotCard({ n: "auto", meta: autoMeta }, true) : ""}\n        </div>`,
-      actions: [{ label: "Schließen", onclick: () => this.closeModal() }],
-    });
+  _resetAllSaves() {
+    if (
+      !confirm(
+        "Wirklich ALLE Spielstände löschen?\n\nAlle 5 Slots, der Auto-Save und der aktuelle Fortschritt werden unwiderruflich entfernt. Das Spiel startet danach neu.",
+      )
+    )
+      return;
+    try {
+      for (let i = 1; i <= 5; i++) localStorage.removeItem(Game.SLOT_KEY(i));
+      localStorage.removeItem(Game.AUTO_KEY);
+      localStorage.removeItem("planer_save");
+    } catch (e) {}
+    location.reload();
   },
   _sectionTabs: {
     finanzen: "bilanz",
