@@ -30781,7 +30781,7 @@ const UI = {
     { icon: "🍳", label: "Mit Partner kochen", stress: -8, cost: 25, family: 12, needsPartner: true },
     { icon: "📖", label: "Mit den Kindern Zeit", stress: -5, cost: 0, family: 14, needsKids: true },
     { icon: "🏥", label: "Arzt / Therapie", stress: -22, cost: 80, family: 0 },
-    { icon: "🏖️", label: "Urlaubs-Tag nehmen", stress: -28, cost: 0, family: 0, vacation: true },
+    { icon: "🏖️", label: "Urlaubstag einlösen", stress: -28, cost: 0, family: 0, vacation: true },
   ],
   _renderDayPhase() {
     // Both routine slots are always shown (no fragile State.hour < 12 split):
@@ -30847,7 +30847,12 @@ const UI = {
     State.stress = Math.max(0, Math.min(100, (State.stress || 30) + a.stress));
     this._applyFamilyEffect(a.family);
     State.eveningActionDay = State.day;
-    EventManager.addNews("good", `${a.icon} Feierabend: ${a.label}`);
+    EventManager.addNews(
+      "good",
+      a.vacation
+        ? `${a.icon} Urlaubstag eingelöst — Sie schalten komplett ab (Stress ${a.stress}). Das Team hält den Betrieb am Laufen.`
+        : `${a.icon} Feierabend: ${a.label}`,
+    );
     this.toast(`${a.icon} ${a.label} — Stress ${a.stress}`, "good");
     this.renderPrivate();
     this.renderHeader();
