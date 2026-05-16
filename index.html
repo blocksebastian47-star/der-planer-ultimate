@@ -22300,8 +22300,12 @@ const FinanceManager = {
     const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
     const taxRate = Math.max(0.1, Math.min(0.38, 0.28 + (fx.taxRate || 0)));
     const taxes = Math.max(0, profitBeforeTax * taxRate);
-    State.cash -= taxes;
-    State.departments.admin.variableCosts += taxes;
+    if (taxes > 0) {
+      State.cash -= taxes;
+      // Steuer als echte Kontoauszug-Buchung — vorher als getarnte
+      // admin-Variable-Kosten gebucht, was einen Tag-1-Kostenspike erzeugte.
+      if (void 0 !== BankAccount) BankAccount.record("tax", taxes, "Ertragsteuer — Monatsabschluss");
+    }
     const report = {
       day: State.day,
       month: new Date(State.date).getMonth() + 1,
