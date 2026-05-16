@@ -17247,10 +17247,10 @@ const StaffDevelopment = {
       id: "adr_basis",
       name: "ADR-Grundkurs (Gefahrgut)",
       icon: "⚠️",
-      targetRoles: ["driver", "azubi_driver"],
+      targetRoles: ["driver"],
       durationDays: 5,
       cost: 1200,
-      effect: { unlocksCargoTypes: ["hazmat_basic"], reliabilityBonus: 3 },
+      effect: { accidentRiskReduction: 0.08, reliabilityBonus: 3 },
       desc: "Pflichtschulung für Gefahrguttransporte nach ADR-Klassen 1-9",
       requiresBuilding: null,
     },
@@ -17258,7 +17258,7 @@ const StaffDevelopment = {
       id: "defensive_driving",
       name: "Defensives Fahren",
       icon: "🛡️",
-      targetRoles: ["driver", "azubi_driver"],
+      targetRoles: ["driver"],
       durationDays: 2,
       cost: 650,
       effect: { accidentRiskReduction: 0.25, fuelSaving: 0.05 },
@@ -17271,7 +17271,7 @@ const StaffDevelopment = {
       targetRoles: ["driver"],
       durationDays: 2,
       cost: 480,
-      effect: { unlocksVehicleType: "lng" },
+      effect: { fuelSaving: 0.03, reliabilityBonus: 2 },
       desc: "Pflicht für Fahrer von LNG/CNG-Fahrzeugen",
     },
     schwerlast: {
@@ -17281,7 +17281,7 @@ const StaffDevelopment = {
       targetRoles: ["driver"],
       durationDays: 10,
       cost: 2800,
-      effect: { unlocksCargoTypes: ["heavy_haul"], salaryBonus: 200 },
+      effect: { reliabilityBonus: 4, salaryBonus: 200 },
       desc: "Ausbildung für Tieflader, Schwertransporte über 44t",
     },
     meisterpruefung: {
@@ -17303,7 +17303,7 @@ const StaffDevelopment = {
       targetRoles: ["mechanic", "kfz_meister"],
       durationDays: 5,
       cost: 1800,
-      effect: { unlocksVehicleType: "electric", reliabilityBonus: 5 },
+      effect: { reliabilityBonus: 5, motivationBonus: 6 },
       desc: "Qualifikation für Hochvolt-Systeme in E-LKW (Pflicht nach DGUV)",
     },
     zoll_schulung: {
@@ -17313,7 +17313,7 @@ const StaffDevelopment = {
       targetRoles: ["accountant", "dispo", "head_accounting", "azubi_kaufmann"],
       durationDays: 3,
       cost: 780,
-      effect: { unlocksFeature: "customs_advanced", taxSaving: 0.02 },
+      effect: { reliabilityBonus: 4, quitRiskReduction: 0.05 },
       desc: "ATLAS, Incoterms, Zolltarif — Grundlage für internationale Aufträge",
     },
     fuhrpark_management: {
@@ -17323,7 +17323,7 @@ const StaffDevelopment = {
       targetRoles: ["fleet_manager", "dispo", "head_fleet"],
       durationDays: 5,
       cost: 1500,
-      effect: { fuelSaving: 0.04, truckUtilizationBonus: 0.05 },
+      effect: { reliabilityBonus: 4, motivationBonus: 6 },
       desc: "DEKRA/TÜV-Zertifikat Fuhrparkmanagement — Routenoptimierung, TCO-Analyse",
     },
     it_logistics: {
@@ -17333,7 +17333,7 @@ const StaffDevelopment = {
       targetRoles: ["it_admin", "dispo", "head_it"],
       durationDays: 4,
       cost: 1200,
-      effect: { reportAccuracyBonus: 0.1, fuelSaving: 0.02 },
+      effect: { reliabilityBonus: 4, motivationBonus: 5 },
       desc: "SAP TM, Transporeon oder ähnliche TMS-Systeme",
     },
     leadership: {
@@ -17418,6 +17418,7 @@ const StaffDevelopment = {
       if (fx.salaryBonus) s.salary += fx.salaryBonus;
       if (fx.quitRiskReduction) s.quitRisk = Math.max(0, (s.quitRisk || 0) - fx.quitRiskReduction);
       if (fx.accidentRiskReduction) s._accidentBonus = (s._accidentBonus || 0) + fx.accidentRiskReduction;
+      if (fx.fuelSaving) s._courseFuelSaving = (s._courseFuelSaving || 0) + fx.fuelSaving;
       if (fx.promoteTo) {
         const newRole = DATA.staffRoles.find((r) => r.id === fx.promoteTo);
         if (newRole) {
@@ -23610,17 +23611,19 @@ const JobManager = {
         _wearTrailer.condition = Math.max(0, (_wearTrailer.condition || 100) - 0.0012 * dailyKm * wearMul);
       }
       let dailyFuel;
+      const courseFuelMul = 1 - Math.min(0.3, driver._courseFuelSaving || 0);
       if (void 0 !== FuelHedging) {
         const fuelEff = FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1;
         const driverFuelMul = void 0 !== DriverTraits ? DriverTraits.getFuelMul(driver) : 1;
-        const liters = (dailyKm / 100) * truck.mpg * fuelEff * driverFuelMul;
+        const liters = (dailyKm / 100) * truck.mpg * fuelEff * driverFuelMul * courseFuelMul;
         dailyFuel = FuelHedging.consumeFuel(liters).cost;
       } else
         dailyFuel =
           (dailyKm / 100) *
           truck.mpg *
           LocationManager.fuelPrice() *
-          (FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1);
+          (FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1) *
+          courseFuelMul;
       const lobbyFx = void 0 !== LobbySystem ? LobbySystem.getEffects() : {};
       const mautBaseMul = truck.mautMul || 1;
       const globalMautMul = lobbyFx.globalMautMul || 1;
@@ -23856,7 +23859,8 @@ const EventManager = {
     const totalRisk =
       (0.02 + 0.05 * reliFactor + conditionFactor + driverFactor + styleFactor) *
       (FleetManager.hasEquipment(truck, "safety") ? 0.7 : 1) *
-      assistanceReduction;
+      assistanceReduction *
+      (1 - Math.min(0.6, driver._accidentBonus || 0));
     if (Math.random() < totalRisk) {
       const reverseCam = FleetManager.hasAssistance(truck, "reverse_cam");
       const eventTypes = [
@@ -28456,14 +28460,7 @@ const UI = {
         salaryBonus: (v) => `<span class="_etag _epos">Gehalt +${Utils.euro(v)}/Mon.</span>`,
         accidentRiskReduction: (v) => `<span class="_etag _epos">Unfallrisiko −${Math.round(100 * v)}%</span>`,
         fuelSaving: (v) => `<span class="_etag _epos">Kraftstoff −${Math.round(100 * v)}%</span>`,
-        taxSaving: (v) => `<span class="_etag _epos">Steuer −${Math.round(100 * v)}%</span>`,
-        truckUtilizationBonus: (v) => `<span class="_etag _epos">Auslastung +${Math.round(100 * v)}%</span>`,
-        reportAccuracyBonus: (v) => `<span class="_etag _epos">Berichte +${Math.round(100 * v)}%</span>`,
         quitRiskReduction: (v) => `<span class="_etag _epos">Kündigung −${Math.round(100 * v)}%</span>`,
-        xpMultiplier: (v) => `<span class="_etag _einfo">XP ×${v}</span>`,
-        unlocksCargoTypes: (v) => `<span class="_etag _eunlock">🔓 ${Array.isArray(v) ? v.join(", ") : v}</span>`,
-        unlocksVehicleType: (v) => `<span class="_etag _eunlock">🔓 Fahrzeugtyp: ${v}</span>`,
-        unlocksFeature: (v) => `<span class="_etag _eunlock">🔓 Funktion: ${v}</span>`,
         promoteTo: (v) => {
           const r = DATA.staffRoles.find((x) => x.id === v);
           return `<span class="_etag _egold">👑 Wird: ${r?.name || v}</span>`;
@@ -28796,31 +28793,6 @@ const UI = {
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
       el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.11.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Leerfahrt-System — LKW fährt realistisch vom aktuellen Standort zum Auftragsort. Kosten und Zeit werden automatisch berechnet und abgerechnet.<br>\n          <span style="color:var(--accent2);">NEU:</span> Fähren — UK↔Kontinent (Eurotunnel, Dover-Calais) und Skandinavien (Kiel-Göteborg, Rostock-Trelleborg) als echte Route-Pflichtpunkte mit Kosten und Zeit.<br>\n          <span style="color:var(--accent2);">NEU:</span> Leasing für LKW und Anhänger (24/36/48 Monate, Restwert, automatische Monatsraten).<br>\n          <span style="color:var(--accent2);">NEU:</span> Wartungsverträge (Basis/Komfort/Premium/Gebraucht-Garantie) für Fuhrpark ohne eigene Werkstatt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Tanklager-Infrastruktur (20.000/50.000L) mit Volumenrabatten bis −6%.<br>\n          <span style="color:var(--accent2);">NEU:</span> Neu- und Gebrauchtanhänger im Händler. Einstellungs-Button direkt im Personal-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Ausgehende Anrufe (Büro) mit kontextbewussten Gesprächsthemen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Systemcheck (❓ Hilfe) — 30 automatische Tests, Claude-Bugbericht per Knopfdruck.<br>\n          <span style="color:var(--warn);">FIX:</span> Alle Tab-Render-Funktionen schreiben jetzt in den korrekten sichtbaren Container.\n        ')}\n        ${v("v2.10.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Direktiven-System — 7 Abteilungen mit je 4 Direktiven und echten messbaren Spieleffekten (Kraftstoff, Bußgelder, Auftragspreise, Personalkosten etc.)<br>\n          <span style="color:var(--accent2);">NEU:</span> Fahrer-Karriere — 5 XP-Stufen (Berufseinsteiger → Experten-Fahrer) mit Fortschrittsbalken, automatischer Gehaltsanpassung, Mentor-System<br>\n          <span style="color:var(--accent2);">NEU:</span> Mitarbeiter-Tiefe — Persönlichkeits-Effekte, Beziehungssystem zwischen MA, Karriere-Meilensteine<br>\n          <span style="color:var(--accent2);">NEU:</span> Kundengeschichten — Persönlichkeitstypen, Stammkunden-Entwicklung, Kettenaufträge, Exklusivpartnerschaften<br>\n          <span style="color:var(--accent2);">NEU:</span> Markt-Intelligenz — 12 Branchen-News als Vorzeichen, 3–6 Konkurrenten die wachsen/schrumpfen und Übernahmen anbieten<br>\n          <span style="color:var(--accent2);">NEU:</span> Krisen-System — Schwere Unfälle (mehrtägig), Insolvenzgefahr, Naturkatastrophen, Cyberangriff, Medienskandale<br>\n          <span style="color:var(--accent2);">NEU:</span> Lebens-Ereignisse — Kind Schulstart/Abitur, Partner verliert Job, GF-Gesundheit, 13 Langzeit-Meilensteine<br>\n          <span style="color:var(--accent2);">NEU:</span> Light/Dark Mode im Spielmenü, persistiert via localStorage<br>\n          <span style="color:var(--accent2);">NEU:</span> Firmenname + Logo-Emoji beim Spielstart individuell wählbar<br>\n          <span style="color:var(--warn);">FIX:</span> Doppelte render-Funktionen (renderCustomerPortal, renderBank, renderMaintenance) bereinigt\n        ')}\n        ${v("v2.9.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> KFZ-Meister als eigene Rolle (4.200€) — −50% Reparaturkosten mit Werkstatt, Meisterbetrieb-Badge, darf Azubis ausbilden.<br>\n          <span style="color:var(--accent2);">NEU:</span> Drei Azubi-Typen (Berufskraftfahrer 850€, KFZ-Mechatroniker 750€, Kaufm. Spedition 800€). Betreuer-System mit −15% Output-Malus. Nach 1095 Tagen automatisch Vollkraft.<br>\n          <span style="color:var(--accent2);">NEU:</span> 7 Abteilungsleiter-Rollen (ab Tag 60). Ab 5 Leitern: GF-Delegation aktiv — nur noch monatliche Reports.<br>\n          <span style="color:var(--accent2);">NEU:</span> Beförderung bestehender Mitarbeiter — 👑-Button auf Personal-Karte, +25% Gehalt, Modal mit Vorschau.<br>\n          <span style="color:var(--accent2);">NEU:</span> Standortverwaltung als eigener Tab (🏗️) — alle 22 Gebäude mit realistischen deutschen Marktpreisen kaufbar.<br>\n          <span style="color:var(--accent2);">NEU:</span> Realistische Gebäude-Kosten: Werkstatt 2 Stände 220k€/3.500€ mtl., Sicherheitsdienst 65k€/9.500€ mtl., Kantine 145k€/8.500€ mtl., Kühlhaus 620k€/9.800€ mtl.<br>\n          <span style="color:var(--accent2);">NEU:</span> Herstellergarantie 24 Monate bei Neuwagen und Leasing — Reparaturen kostenlos in dieser Zeit.<br>\n          <span style="color:var(--accent2);">NEU:</span> Anhänger-Leasing (1,4% Rate, 10% Anzahlung, 36 Monate) neben LKW-Leasing.<br>\n          <span style="color:var(--warn);">FIX:</span> Kredit-Exploit geschlossen — Mikro/Standard je 2×, Groß/Invest je 1× nutzbar. Dynamisches Gesamtlimit (3× Monatsumsatz).<br>\n          <span style="color:var(--warn);">FIX:</span> Azubi-Alter realistisch (15–21 Jahre), Abteilungsleiter 30–58 Jahre, KFZ-Meister 27–52 Jahre. Kein 41-jähriger Azubi für 850€ mehr.\n        ')}\n        ${v("v2.8.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Spielgeschwindigkeit komplett überarbeitet — ein kontinuierlicher Loop mit korrekter Echtzeit-Basis (1× = 3 Echtmin./Spielstunde, nahtloser Speedwechsel ohne Zurückspringen).<br>\n          <span style="color:var(--accent2);">NEU:</span> Hilfe & Handbuch vollständig ausgebaut — FAQ, Einstiegs-Guide, Systemübersicht, Tipps, Changelog.<br>\n          <span style="color:var(--accent2);">NEU:</span> Versionsnummern im Hilfe-Bereich sichtbar.<br>\n          <span style="color:var(--warn);">FIX:</span> Doppelte Buttons (+1T / ▶1T) zu einem zusammengeführt.\n        ')}\n        ${v("v2.7.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Uhrzeit im Header (06:00–22:00, flüssige Animation). Geschwindigkeitssteuerung 1×/2×/4×/16×/32× mit Pause-Button.<br>\n          <span style="color:var(--accent2);">NEU:</span> Rechtsformen nach deutschem Recht (e.K. → UG → GmbH → GmbH & Co. KG → AG → SE) mit Steuersätzen, Haftung und GF-Gehalt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Gewinnentnahme für e.K./GbR/KG direkt im Rechtsform-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Iveco Daily / Vans können jetzt leichte Kastenanhänger (3,5t) ziehen. Neue Anhängertypen im Hänger-Markt.<br>\n          <span style="color:var(--warn);">FIX:</span> Englische Fachbegriffe (Curtainsider/Tautliner) durch deutsche Bezeichnungen ersetzt.\n        ')}\n        ${v("v2.6.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Niederlassungs-GF-Sicht: Finanz-KPIs, 6-Monats-Verlauf, Personal- und Fuhrpark-Übersicht pro Filiale, GF kann direkt eingreifen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Niederlassungsleiter handeln autonom: stellen Fahrer ein, organisieren Krankheitsvertretungen, senden monatliche Berichte.<br>\n          <span style="color:var(--warn);">FIX:</span> View-Routing-Bug: Tuning/ESG/Hedging/Lobbying/M&A/Fahrerschule/Konjunktur wurden nie gerendert (classList vs. style-Fehler).\n        ')}\n        ${v("v2.5.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Bewerber-Pool beim Einstellen: 3 Kandidaten mit vollem Profil (Alter, Fahrstil, Vorarbeitgeber, Hobbies, Fun-Fact, Charakter).<br>\n          <span style="color:var(--accent2);">NEU:</span> Hover-Tooltips auf Personal (Persönlichkeit, Familie, Qualifikationen) und LKW (Lebenszeit-KPIs, Restwert, letzter Unfall).<br>\n          <span style="color:var(--accent2);">NEU:</span> Urlaubs-Anzeige auf Personal-Karte mit Fortschrittsbalken und Urlaub-Schicken-Button.<br>\n          <span style="color:var(--accent2);">NEU:</span> Frachtenversicherung (CMR, Waren-Vollkasko, Totalverlust-Police) beim Routenwahl-Dialog buchbar.\n        ')}\n        ${v("v2.4.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Disponent weist bei Fahrerkrankheit automatisch Ersatzfahrer zu (mit/ohne Disponent im Team unterschiedlich gut).<br>\n          <span style="color:var(--accent2);">NEU:</span> Diebstahl-Logik: Schaden = echter Fahrzeugrestwert (nicht mehr fix 8.000€). Teilkasko erstattet ~65%, Vollkasko ~90%.<br>\n          <span style="color:var(--accent2);">NEU:</span> Entscheidungs-Event nach Diebstahl: Versicherung akzeptieren, Anwalt einschalten (+15%), Polizei-Report (20% Wiederfund-Chance).<br>\n          <span style="color:var(--warn);">FIX:</span> Fahrer-Skills Button hatte keine Reaktion (XP wurde nie vergeben). XP-System jetzt aktiv bei Auftragsabschluss.\n        ')}\n        ${v("v2.3.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Lobby-Maßnahmen laufen jetzt korrekt ab (Bug: expiresDay=0 wurde als "kein Ablauf" gewertet).<br>\n          <span style="color:var(--accent2);">NEU:</span> 100 cargoTypes erhalten slug-basierte IDs (paletten_mehl, tiefkuhlkost etc.).<br>\n          <span style="color:var(--warn);">FIX:</span> Job-Preis-Cap: Multiplikatoren geclampt, absoluter Deckel bei 80.000€.<br>\n          <span style="color:var(--warn);">FIX:</span> Truck-Status-Leak nach Fahrerkündigung während aktiver Tour behoben.<br>\n          <span style="color:var(--warn);">FIX:</span> Trucks im Umbau und Fahrer in Schulung werden nicht mehr disponiert.\n        ')}\n        ${v("v2.2.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Module 22–33 implementiert: Frachtenbörse, Fahrer-Karriere, SLA-Verträge, BAG-Compliance, Fahrzeug-Tuning, CO₂/ESG, Fuel-Hedging, Bonussystem, Lobbying, Marktzyklen, M&A, Fahrerschule, Politische Events.<br>\n          <span style="color:var(--accent2);">NEU:</span> 21 Startorte (Hamburg, Berlin, München, Frankfurt, Köln, Dortmund, Dresden, Kiel u.a.).<br>\n          <span style="color:var(--warn);">FIX:</span> Frankfurt, Köln, Dortmund crashten beim Spielstart (fehlten in DATA.locations).\n        ')}\n        ${v("v2.1.0", "April 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Europa-Karte mit 110 Städten, Live-Truck-Positionen, Routenanimation.<br>\n          <span style="color:var(--accent2);">NEU:</span> Abteilungssystem (8 Departments), Rechnungssystem mit Zahlungszielen, Rahmenverträge.<br>\n          <span style="color:var(--accent2);">NEU:</span> Mitarbeiter-Interaktionen: Persönlichkeitstypen, Gehaltsverhandlungen, Abmahnungen, Kündigung.<br>\n          <span style="color:var(--accent2);">NEU:</span> Privatleben: Familie, Burnout, Luxusgüter, GF-Stress-System.\n        ')}\n        ${v("v2.0.0", "April 2026", '\n          <span style="color:var(--accent2);">RELEASE:</span> Erster spielbarer Stand. Fuhrpark, Aufträge, Personal, Finanzen, Versicherungen, Kunden, Marketing, Dashboard.\n        ')}\n      `;
     }
-  },
-  renderDevelopment() {
-    const el = UI._getContentEl("personal-content");
-    if (!el || void 0 === StaffDevelopment) return;
-    const activeStaff = (State.staff || []).filter((s) => "aktiv" === s.status || "schulung" === s.status);
-    el.innerHTML = `\n      \x3c!-- Aktive Schulungen --\x3e\n      ${(() => {
-      const inTraining = (State.staff || []).filter((s) => s._inTraining);
-      if (!inTraining.length) return "";
-      return `<div style="background:rgba(74,222,128,0.07); border:1px solid var(--accent2); border-radius:10px; padding:12px; margin-bottom:16px;">\n          <div style="font-size:12px; font-weight:700; color:var(--accent2); margin-bottom:8px;">📚 LAUFENDE SCHULUNGEN (${inTraining.length})</div>\n          ${inTraining
-        .map((s) => {
-          const left = s._inTraining.endsDay - State.day;
-          const pct = Math.round(100 * (1 - left / StaffDevelopment.COURSES[s._inTraining.courseId]?.duration));
-          return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid rgba(255,255,255,0.06);">\n              <div><b>${s.name}</b> <span style="color:var(--muted); font-size:10px;">${s._inTraining.name}</span></div>\n              <div style="display:flex; align-items:center; gap:8px;">\n                <div style="width:80px; background:var(--bg); border-radius:4px; height:6px;"><div style="width:${pct}%; background:var(--accent2); border-radius:4px; height:6px;"></div></div>\n                <span style="font-size:10px; color:var(--muted);">noch ${left}T</span>\n              </div>\n            </div>`;
-        })
-        .join("")}\n        </div>`;
-    })()}\n\n      \x3c!-- Personal-Liste mit Schulungs-Buttons --\x3e\n      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px,1fr)); gap:12px;">\n        ${activeStaff
-      .map((s) => {
-        const courses = StaffDevelopment.availableFor(s.id);
-        if (!courses.length) return "";
-        return `\n            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px;">\n              <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">\n                ${Visuals.staff(s, 44, 44)}\n                <div>\n                  <div style="font-weight:700;">${s.name}</div>\n                  <div style="font-size:10px; color:var(--muted);">${s.role} · ${Math.round(s.experience || 0)}% Erfahrung</div>\n                  ${s._inTraining ? `<div style="font-size:9px; color:var(--warn);">📚 In Schulung: ${s._inTraining.name}</div>` : ""}\n                  ${(s.qualifications || []).length ? `<div style="font-size:9px; color:var(--accent2);">${(s.qualifications || []).join(" · ")}</div>` : ""}\n                </div>\n              </div>\n              <div style="display:flex; flex-direction:column; gap:4px;">\n                ${courses.map((c) => `\n                  <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); border-radius:6px; padding:6px 8px;">\n                    <div>\n                      <span style="font-size:11px;">${c.icon} ${c.name}</span>\n                      <span style="font-size:9px; color:var(--muted); display:block;">${c.desc.substring(0, 55)}…</span>\n                    </div>\n                    <div style="text-align:right; flex-shrink:0; margin-left:8px;">\n                      <div style="font-size:10px; color:var(--accent2);">${Utils.euro(c.cost)}</div>\n                      <div style="font-size:9px; color:var(--muted);">${c.duration}T</div>\n                      <button class="btn small primary" style="font-size:9px; padding:2px 6px; margin-top:2px;"\n                        onclick="const r=StaffDevelopment.startCourse('${s.id}','${c.id}'); r.ok ? (UI.toast('Schulung gestartet','good'), UI.renderAll()) : UI.toast(r.reason,'warn');">\n                        Buchen\n                      </button>\n                    </div>\n                  </div>`).join("")}\n              </div>\n            </div>`;
-      })
-      .filter(Boolean)
-      .join(
-        "",
-      )}\n      </div>\n      ${activeStaff.every((s) => !StaffDevelopment.availableFor(s.id).length) ? '<div style="text-align:center; color:var(--muted); padding:40px;">Kein Personal mit verfügbaren Weiterbildungen</div>' : ""}\n    `;
   },
   renderMarketCycle() {
     if (void 0 === MarketCycles) return;
