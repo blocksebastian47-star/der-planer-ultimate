@@ -26242,6 +26242,8 @@ const UI = {
         </div>
         ${sec("📁 DATEN")}
         <div id="menu-data-actions" style="display:flex;flex-direction:column;gap:6px;">
+          <button class="btn" style="${fb}" onclick="UI._exportSave()">⬇ Spielstand als Datei exportieren (Backup)</button>
+          <button class="btn" style="${fb}" onclick="UI._importSave()">⬆ Spielstand aus Datei importieren</button>
           <button class="btn" style="${fb}color:var(--danger);" onclick="UI._resetAllSaves()">⚠ Alle Spielstände löschen / Spiel zurücksetzen</button>
         </div>
         ${sec("❓ HILFE — TASTATUR")}
@@ -26295,6 +26297,53 @@ const UI = {
       localStorage.removeItem("planer_save");
     } catch (e) {}
     location.reload();
+  },
+  _exportSave() {
+    try {
+      const json = JSON.stringify(Game._buildSnapshot());
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `planer-spielstand-tag${State.day || 0}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      this.toast("⬇ Spielstand als Datei exportiert", "good");
+    } catch (e) {
+      this.toast("Export fehlgeschlagen", "warn");
+    }
+  },
+  _importSave() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!data || "object" != typeof data || void 0 === data.day) {
+            this.toast("Keine gültige Spielstand-Datei", "warn");
+            return;
+          }
+          if (!confirm("Spielstand aus Datei importieren? Der aktuelle Fortschritt wird überschrieben.")) return;
+          Object.assign(State, data);
+          if (void 0 !== Game._reconcileTruckStatuses) Game._reconcileTruckStatuses();
+          if ("undefined" != typeof GameClock) GameClock.init();
+          this.closeModal();
+          this.renderAll();
+          this.toast("⬆ Spielstand importiert", "good");
+        } catch (e) {
+          this.toast("Import fehlgeschlagen — Datei beschädigt?", "warn");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   },
   _sectionTabs: {
     finanzen: "bilanz",
