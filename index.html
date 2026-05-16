@@ -25068,8 +25068,8 @@ const VehicleLeasingManager = {
     };
     truck.owned = false;
     const deposit = 3 * calc.monthlyRate;
-    State.cash -= deposit;
-    if (void 0 !== BankAccount) BankAccount.record("leasing_out", -deposit, `Leasing Anzahlung: ${offer.model}`);
+    FinanceManager.recordCost("fleet", deposit, false);
+    if (void 0 !== BankAccount) BankAccount.record("lease", -deposit, `Leasing Anzahlung: ${offer.model}`);
     State.trucks.push(truck);
     if (!State.leasingContracts) State.leasingContracts = [];
     State.leasingContracts.push({ truckId: truck.id, ...truck.leasing });
@@ -25106,8 +25106,8 @@ const VehicleLeasingManager = {
     };
     tr.owned = false;
     const deposit = 2 * calc.monthlyRate;
-    State.cash -= deposit;
-    if (void 0 !== BankAccount) BankAccount.record("leasing_out", -deposit, `Leasing Anzahlung: ${offer.name}`);
+    FinanceManager.recordCost("fleet", deposit, false);
+    if (void 0 !== BankAccount) BankAccount.record("lease", -deposit, `Leasing Anzahlung: ${offer.name}`);
     State.trailers.push(tr);
     State.trailerDealer.usedStock = (State.trailerDealer.usedStock || []).filter((o) => o.id !== offerId);
     if (State.trailerDealer.newStock)
@@ -25118,14 +25118,15 @@ const VehicleLeasingManager = {
   monthlyTick() {
     (State.trucks || []).forEach((t) => {
       if (!t.leasing?.active) return;
-      if (State.cash < t.leasing.monthlyRate) {
-        EventManager.addNews("warn", `⚠ Leasing-Rate ${t.plate} nicht zahlbar — Mahngebühr +10%`);
-        State.cash -= Math.round(0.1 * t.leasing.monthlyRate);
-        return;
+      let rate = t.leasing.monthlyRate;
+      if (State.cash < rate) {
+        const fee = Math.round(0.1 * rate);
+        rate += fee;
+        EventManager.addNews("warn", `⚠ Leasing-Rate ${t.plate} verspätet — Mahngebühr +${Utils.euro(fee)}`);
       }
-      State.cash -= t.leasing.monthlyRate;
+      FinanceManager.recordCost("fleet", rate, true);
       if (void 0 !== BankAccount)
-        BankAccount.record("leasing_out", -t.leasing.monthlyRate, `Leasing: ${t.plate} (${t.model})`);
+        BankAccount.record("lease", -rate, `Leasing: ${t.plate} (${t.model})`);
       t.leasing.monthsRemaining--;
       if (t.leasing.monthsRemaining <= 0) {
         t.leasing.active = false;
@@ -25146,8 +25147,8 @@ const VehicleLeasingManager = {
     });
     (State.trailers || []).forEach((tr) => {
       if (!tr.leasing?.active) return;
-      State.cash -= tr.leasing.monthlyRate;
-      if (void 0 !== BankAccount) BankAccount.record("leasing_out", -tr.leasing.monthlyRate, "Anhänger-Leasing");
+      FinanceManager.recordCost("fleet", tr.leasing.monthlyRate, true);
+      if (void 0 !== BankAccount) BankAccount.record("lease", -tr.leasing.monthlyRate, "Anhänger-Leasing");
       tr.leasing.monthsRemaining--;
       if (tr.leasing.monthsRemaining <= 0) tr.leasing.active = false;
     });
@@ -25214,9 +25215,9 @@ const ServiceContractManager = {
       breakdown: def.breakdown,
     };
     State.serviceContracts.push(contract);
-    State.cash -= def.monthlyCost;
+    FinanceManager.recordCost("repairs", def.monthlyCost, false);
     if (void 0 !== BankAccount)
-      BankAccount.record("repair_out", -def.monthlyCost, `Wartungsvertrag: ${def.name} (${truck.plate})`);
+      BankAccount.record("repair", -def.monthlyCost, `Wartungsvertrag: ${def.name} (${truck.plate})`);
     EventManager.addNews(
       "good",
       `🔧 Wartungsvertrag: ${def.name} für ${truck.plate} (${Utils.euro(def.monthlyCost)}/Mon.)`,
@@ -25235,8 +25236,8 @@ const ServiceContractManager = {
     (State.serviceContracts || [])
       .filter((c) => c.active)
       .forEach((c) => {
-        State.cash -= c.monthlyCost;
-        if (void 0 !== BankAccount) BankAccount.record("repair_out", -c.monthlyCost, `Wartungsvertrag: ${c.name}`);
+        FinanceManager.recordCost("repairs", c.monthlyCost, true);
+        if (void 0 !== BankAccount) BankAccount.record("repair", -c.monthlyCost, `Wartungsvertrag: ${c.name}`);
         const truck = (State.trucks || []).find((t) => t.id === c.truckId);
         if (truck) {
           truck.condition = Math.min(100, truck.condition + c.conditionProtect);
