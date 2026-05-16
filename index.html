@@ -13130,7 +13130,7 @@ const AnnualClose = {
           s.loyalty = Utils.clamp((s.loyalty || 50) + 5, 0, 100);
           s.quitRisk = Math.max(0, (s.quitRisk || 0) - 0.1);
         });
-    const totalPayout = tax + bonusTotal;
+    const totalPayout = bonusTotal;
     FinanceManager.recordCost("admin", totalPayout, false);
     if (State.cash < 0) {
       const shortfall = -State.cash;
@@ -20187,7 +20187,6 @@ const CashflowSystem = {
         if (State.day >= rec.dueDay + extraDelay) this._processPayment(rec);
         else if (!rec.overdue) {
           rec.overdue = true;
-          cf.overdueTotal += rec.amount;
           EventManager.addNews("warn", `⚠️ ${rec.customerName} zahlt zu spät — ${Utils.euro(rec.amount)} überfällig`);
         }
       }
@@ -22190,7 +22189,7 @@ const InsuranceManager = {
       const insurancePays = Math.round((totalDamage - ins.deductible) * reduction);
       const playerPays = totalDamage - Math.max(0, insurancePays);
       result = {
-        playerPays: Math.max(ins.deductible, playerPays),
+        playerPays: Math.min(totalDamage, Math.max(ins.deductible, playerPays)),
         insurancePays: Math.max(0, insurancePays),
         deductible: ins.deductible,
         covered: true,
@@ -22248,9 +22247,7 @@ const FinanceManager = {
   },
   todayRevenue: () => Object.values(State.departments).reduce((s, d) => s + d.revenue, 0),
   todayCosts: () => Object.values(State.departments).reduce((s, d) => s + d.fixedCosts + d.variableCosts, 0),
-  todayProfit() {
-    return this.todayRevenue() - this.todayCosts();
-  },
+  todayProfit: () => FinanceManager.todayRevenue() - FinanceManager.todayCosts(),
   resetDaily() {
     Object.values(State.departments).forEach((d) => {
       d.fixedCosts = 0;
