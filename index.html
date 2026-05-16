@@ -10047,7 +10047,7 @@ const DepartmentSystem = {
       if ("aktiv" !== s.status || "driver" === s.roleId) return;
       const baseQuit = (s.quitRisk || 0) + fx.quitRiskAdd;
       if (Math.random() < 0.05 * baseQuit) {
-        s.status = "gekündigt";
+        EmployeeManager.removeStaff(s.id);
         if (s._mentoringAzubiId) {
           const azubi = (State.staff || []).find((a) => a.id === s._mentoringAzubiId);
           if (azubi) delete azubi._mentorId;
@@ -10521,7 +10521,7 @@ const StaffInteraction = {
               driver.quitRisk = (driver.quitRisk || 0) + 0.08;
               if ("difficult" === driver.personality) {
                 this._staffReaction(driver, "angry", "Verstanden. Dann kündige ich eben. War's das?");
-                driver.status = "gekündigt";
+                EmployeeManager.removeStaff(driver.id);
               } else this._staffReaction(driver, "sad", "Okay... ich mach weiter. Muss ja.");
             },
           },
@@ -18249,7 +18249,7 @@ const StaffDepth = {
         if (s._promisedPromotion && State.day - s._recentPromotion > 90) {
           s.quitRisk = Math.min(1, (s.quitRisk || 0.05) + 0.2);
           if (Math.random() < 0.15) {
-            s.status = "gekündigt";
+            EmployeeManager.removeStaff(s.id);
             EventManager.addNews("bad", `😤 ${s.name} kündigt — Beförderungsversprechen nicht eingelöst`);
           }
         }
@@ -18912,7 +18912,7 @@ const CrisisSystem = {
                 .slice(0, 3);
               const totalSeverance = fired.reduce((sum, s) => sum + 2 * (s.salary || 0), 0);
               fired.forEach((s) => {
-                s.status = "entlassen";
+                EmployeeManager.removeStaff(s.id);
               });
               if (totalSeverance > 0) FinanceManager.recordCost("personnel", totalSeverance, false);
               EventManager.addNews(
@@ -22550,6 +22550,12 @@ const EmployeeManager = {
     });
     EventManager.addNews("warn", `${s.name} entlassen (Abfindung ${Utils.euro(2 * s.salary)})`);
     return true;
+  },
+  removeStaff(staffId) {
+    State.staff = (State.staff || []).filter((x) => x.id !== staffId);
+    (State.trucks || []).forEach((t) => {
+      if (t.driverId === staffId) t.driverId = null;
+    });
   },
   _reassignAfterSickness(sickDriver) {
     const affectedTruck = (State.trucks || []).find((t) => t.driverId === sickDriver.id);
