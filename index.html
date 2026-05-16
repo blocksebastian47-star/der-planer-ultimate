@@ -8276,6 +8276,7 @@ const SundayBan = {
     const day = (State.day || 1) % 7;
     const hour = Math.floor(State.hour || 8);
     if (0 !== day) return false;
+    if (void 0 !== LobbySystem && LobbySystem.getEffects().sundayExceptions) return false;
     const fromCity = MAP_DATA.getCity(route.fromCity);
     const toCity = MAP_DATA.getCity(route.toCity);
     if (!fromCity && !toCity) return false;
