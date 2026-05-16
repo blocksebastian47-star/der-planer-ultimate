@@ -19247,8 +19247,6 @@ const LifeEvents = {
   },
 };
 const HomerunSystem = {
-  MAX_AWAY_DAYS: 14,
-  MAX_AWAY_DAYS_SINGLE: 21,
   HOMESICK_THRESHOLD: 10,
   RETURN_SEARCH_RADIUS: 600,
   dailyTick() {
@@ -19261,7 +19259,7 @@ const HomerunSystem = {
       if (!driver) return;
       const daysAway = driver.daysAway || 0;
       const isCouple = "zusammen" === State.family?.status;
-      const maxAway = isCouple ? this.MAX_AWAY_DAYS : this.MAX_AWAY_DAYS_SINGLE;
+      const maxAway = driver.wantsHomeAfter || 18;
       if (daysAway >= this.HOMESICK_THRESHOLD) {
         const homesickPenalty = Math.floor((daysAway - this.HOMESICK_THRESHOLD) / 2);
         driver.motivation = Math.max(10, driver.motivation - 0.5 * homesickPenalty);
@@ -19361,17 +19359,18 @@ const HomerunSystem = {
     })[0];
   },
   getStatus() {
-    return State.trucks
-      .filter((t) => "idle" === t.status)
+    return (State.trucks || [])
       .map((t) => {
         const driver = (State.staff || []).find((s) => s.id === t.driverId);
         if (!driver) return null;
+        const daysAway = driver.daysAway || 0;
         return {
           plate: t.plate,
           driver: driver.name,
-          daysAway: driver.daysAway || 0,
+          daysAway: daysAway,
           location: t.location,
-          wantsHome: (driver.daysAway || 0) >= this.MAX_AWAY_DAYS,
+          status: t.status,
+          wantsHome: daysAway >= (driver.wantsHomeAfter || 18),
           homeReturnScheduled: !!t._homeReturnScheduled,
         };
       })
@@ -29175,10 +29174,15 @@ const UI = {
         0 === wantHome.length
           ? '<div style="font-size:10px;color:var(--muted);">Alle Fahrer im Soll — kein Heimfahrtbedarf</div>'
           : wantHome
-              .map(
-                (s) =>
-                  `\n          <div style="font-size:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">\n            <span style="color:var(--warn);">🏠 ${s.driver.split(" ")[0]} (${s.plate})</span>\n            <span style="color:var(--muted2);margin-left:6px;">${s.daysAway}T weg${s.homeReturnScheduled ? " · Leerfahrt geplant" : " · Rückfracht gesucht"}</span>\n          </div>`,
-              )
+              .map((s) => {
+                const note =
+                  "active" === s.status
+                    ? "auf Tour — kehrt danach heim"
+                    : s.homeReturnScheduled
+                      ? "Leerfahrt geplant"
+                      : "Rückfracht gesucht";
+                return `\n          <div style="font-size:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">\n            <span style="color:var(--warn);">🏠 ${s.driver.split(" ")[0]} (${s.plate})</span>\n            <span style="color:var(--muted2);margin-left:6px;">${s.daysAway}T weg · ${note}</span>\n          </div>`;
+              })
               .join("");
     }
     const weatherEl = document.getElementById("dashboard-weather");
@@ -29678,7 +29682,7 @@ const UI = {
           if (queued.length > 0)
             html += `<div style="font-size:10px; background:var(--bg2); border-radius:5px; padding:6px 8px; margin-bottom:4px;">\n              <div style="color:var(--warn); font-weight:700; margin-bottom:4px;">📋 WARTESCHLANGE (${queued.length})</div>\n              ${queued.map((sq, i) => `<div style="display:flex; justify-content:space-between; padding:2px 0; border-top:${i > 0 ? "1px solid var(--border)" : "none"};">\n                <span style="color:var(--muted);">${i + 1}. ${sq.job.fromName || sq.job.from} → ${sq.job.toName || sq.job.to}</span>\n                <span style="color:var(--muted2);">ab ~Tag ${sq.estimatedStartDay}</span>\n              </div>`).join("")}\n              ${queued.length > 0 ? `<button class="btn small" onclick="UI.openQueueModal('${t.id}')" style="width:100%; margin-top:4px; font-size:9px;">Warteschlange verwalten</button>` : ""}\n            </div>`;
           return html;
-        })()}\n\n        \x3c!-- Driver --\x3e\n        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n          <div style="font-size:10px;">\n            <span style="color:var(--muted)">Fahrer:</span>\n            ${driver ? `<b>${driver.name}</b> · \n              ${"krank" === driver.status ? `<span style="color:var(--danger);">🤒 krank (${driver.sickDaysRemaining}d)</span>` : "urlaub" === driver.status ? `<span style="color:var(--warn);">🏖️ Urlaub bis Tag ${driver.vacationEnd}</span>` : (driver.daysAway || 0) > (driver.wantsHomeAfter || 18) ? '<span style="color:var(--warn);">🏠 will nach Hause</span>' : `<span style="color:var(--muted2);">Stil: ${driver.drivingStyle} · ${driver.daysAway || 0}d unterwegs</span>`}` : '<span style="color:var(--warn)">Keiner</span>'}\n          </div>\n          <select onchange="UI.assignDriver('${t.id}', this.value)" ${"active" === t.status ? "disabled" : ""} style="font-size:10px;">\n            <option value="">— kein Fahrer —</option>\n            ${drivers.map((d) => `<option value="${d.id}" ${d.id === t.driverId ? "selected" : ""}>${d.name}${"aktiv" !== d.status ? " (" + d.status + ")" : ""}</option>`).join("")}\n          </select>\n        </div>\n\n        \x3c!-- Actions --\x3e\n        <div style="display:flex; gap:4px; flex-wrap:wrap;">\n          <button class="btn small" onclick="UI.openTruckDetail('${t.id}')" style="flex:1; min-width:80px;">📋 Details</button>\n          <button class="btn small" onclick="UI.repairTruck('${t.id}')" ${"active" === t.status || "repair" === t.status ? "disabled" : ""} style="flex:1; min-width:80px;">🔧 Reparieren</button>\n          <button class="btn small" onclick="UI.openAssistanceModal('${t.id}')" style="flex:1; min-width:80px;">🛡 Assistenten</button>\n          <button class="btn small" onclick="UI.openEquipmentModal('${t.id}')" style="flex:1; min-width:80px;">🔧 Zubehör</button>\n          <button class="btn small danger" onclick="UI.sellTruckConfirm('${t.id}')" ${"idle" !== t.status ? "disabled" : ""} style="flex:1; min-width:80px;">Verkaufen</button>\n        </div>\n      </div>`;
+        })()}\n\n        \x3c!-- Driver --\x3e\n        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n          <div style="font-size:10px;">\n            <span style="color:var(--muted)">Fahrer:</span>\n            ${driver ? `<b>${driver.name}</b> · \n              ${"krank" === driver.status ? `<span style="color:var(--danger);">🤒 krank (${driver.sickDaysRemaining}d)</span>` : "urlaub" === driver.status ? `<span style="color:var(--warn);">🏖️ Urlaub bis Tag ${driver.vacationEnd}</span>` : (driver.daysAway || 0) >= (driver.wantsHomeAfter || 18) ? '<span style="color:var(--warn);">🏠 will nach Hause</span>' : `<span style="color:var(--muted2);">Stil: ${driver.drivingStyle} · ${driver.daysAway || 0}d unterwegs</span>`}` : '<span style="color:var(--warn)">Keiner</span>'}\n          </div>\n          <select onchange="UI.assignDriver('${t.id}', this.value)" ${"active" === t.status ? "disabled" : ""} style="font-size:10px;">\n            <option value="">— kein Fahrer —</option>\n            ${drivers.map((d) => `<option value="${d.id}" ${d.id === t.driverId ? "selected" : ""}>${d.name}${"aktiv" !== d.status ? " (" + d.status + ")" : ""}</option>`).join("")}\n          </select>\n        </div>\n\n        \x3c!-- Actions --\x3e\n        <div style="display:flex; gap:4px; flex-wrap:wrap;">\n          <button class="btn small" onclick="UI.openTruckDetail('${t.id}')" style="flex:1; min-width:80px;">📋 Details</button>\n          <button class="btn small" onclick="UI.repairTruck('${t.id}')" ${"active" === t.status || "repair" === t.status ? "disabled" : ""} style="flex:1; min-width:80px;">🔧 Reparieren</button>\n          <button class="btn small" onclick="UI.openAssistanceModal('${t.id}')" style="flex:1; min-width:80px;">🛡 Assistenten</button>\n          <button class="btn small" onclick="UI.openEquipmentModal('${t.id}')" style="flex:1; min-width:80px;">🔧 Zubehör</button>\n          <button class="btn small danger" onclick="UI.sellTruckConfirm('${t.id}')" ${"idle" !== t.status ? "disabled" : ""} style="flex:1; min-width:80px;">Verkaufen</button>\n        </div>\n      </div>`;
       })
       .join("");
   },
