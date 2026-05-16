@@ -826,7 +826,11 @@ footer {
       (State.overtimeLog || (State.overtimeLog = { totalDays: 0, lastWeekDays: 0, weekStart: State.day }),
         State.day - State.overtimeLog.weekStart >= 7 &&
           ((State.overtimeLog.lastWeekDays = 0), (State.overtimeLog.weekStart = State.day)),
-        e > 18 && (State.overtimeLog.totalDays++, State.overtimeLog.lastWeekDays++),
+        e >= 19 &&
+          State.overtimeLog.lastCountedDay !== State.day &&
+          (State.overtimeLog.totalDays++,
+          State.overtimeLog.lastWeekDays++,
+          (State.overtimeLog.lastCountedDay = State.day)),
         this.stop(),
         "undefined" != typeof EveningScreen
           ? EveningScreen.open(e)
