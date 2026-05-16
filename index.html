@@ -23117,47 +23117,42 @@ const RouteManager = {
     const baseKm = Utils.dist(from, to);
     const truck = truckId ? (State.trucks || []).find((t) => t.id === truckId) : null;
     const condFactor = truck ? Utils.clamp(truck.condition / 100, 0.5, 1) : 1;
-    const equipBonus = truck && FleetManager.hasEquipment(truck, "gps") ? 0.95 : 1;
+    const tollMul = LocationManager.tollMultiplier();
     const fastest = {
       type: "fastest",
       name: "Schnellste Route",
       icon: "⚡",
-      km: Math.round(1.05 * baseKm * equipBonus),
-      hours: ((1.05 * baseKm) / 70) * (1 / condFactor),
-      tollCost: Math.round(0.18 * baseKm * LocationManager.tollMultiplier()),
-      fuelCost: 0,
+      km: Math.round(1.05 * baseKm),
+      speed: 70,
+      tollCost: Math.round(0.18 * baseKm * tollMul),
       jamRisk: 0.2,
-      restStops: Math.ceil((1.05 * baseKm) / 600),
     };
     const cheapest = {
       type: "cheapest",
       name: "Günstigste Route",
       icon: "💰",
-      km: Math.round(1.18 * baseKm * equipBonus),
-      hours: ((1.18 * baseKm) / 60) * (1 / condFactor),
-      tollCost: Math.round(0.05 * baseKm * LocationManager.tollMultiplier()),
-      fuelCost: 0,
+      km: Math.round(1.18 * baseKm),
+      speed: 60,
+      tollCost: Math.round(0.05 * baseKm * tollMul),
       jamRisk: 0.1,
-      restStops: Math.ceil((1.18 * baseKm) / 600),
     };
     const tollFree = {
-      type: "tollfree",
+      type: "tollFree",
       name: "Mautfrei",
       icon: "🛣",
-      km: Math.round(1.32 * baseKm * equipBonus),
-      hours: ((1.32 * baseKm) / 55) * (1 / condFactor),
+      km: Math.round(1.32 * baseKm),
+      speed: 55,
       tollCost: 0,
-      fuelCost: 0,
-      jamRisk: 0.15,
-      restStops: Math.ceil((1.32 * baseKm) / 600),
+      jamRisk: 0.08,
     };
     const fuel = LocationManager.fuelPrice();
-    const fuelEffMul = truck && FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1;
+    const consumption = (truck?.mpg || 25) * (truck && FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1);
+    const DRIVE_HOURS_PER_DAY = 9;
     [fastest, cheapest, tollFree].forEach((r) => {
-      const consumption = (truck?.mpg || 25) * fuelEffMul;
+      r.hours = (r.km / r.speed) * (1 / condFactor);
+      r.daysNeeded = Math.max(1, Math.ceil(r.hours / DRIVE_HOURS_PER_DAY));
       r.fuelCost = Math.round((r.km / 100) * consumption * fuel);
       r.totalCost = r.fuelCost + r.tollCost;
-      r.daysNeeded = Math.max(1, Math.ceil(r.km / 600));
     });
     return { fastest: fastest, cheapest: cheapest, tollFree: tollFree };
   },
@@ -23596,7 +23591,7 @@ const JobManager = {
           }
         }
       }
-      const dailyKm = j.km / j.daysTotal;
+      const dailyKm = (j.route?.km || j.km) / j.daysTotal;
       truck.km += Math.round(dailyKm);
       truck.lifetimeKm += dailyKm;
       State.stats.totalDistance += dailyKm;
@@ -29490,6 +29485,9 @@ const UI = {
       return;
     }
     const routes = RouteManager.computeRoutes(job.from, job.to, truck.id);
+    const _bestKey = ["fastest", "cheapest", "tollFree"].reduce((a, b) =>
+      routes[b].totalCost < routes[a].totalCost ? b : a,
+    );
     const insProducts = void 0 !== CargoInsurance ? Object.values(CargoInsurance.PRODUCTS) : [];
     const insHTML =
       insProducts.length > 0
@@ -29498,12 +29496,12 @@ const UI = {
     this.showModal({
       title: "🛣 ROUTE WÄHLEN",
       subtitle: `${job.fromName} → ${job.toName} (${job.km} km Luftlinie)`,
-      content: `<div>Wählen Sie eine Route. Truck: <b>${truck.plate}</b> ${truck.model} · Zustand ${Math.round(truck.condition)}%\n        ${insHTML}\n      </div>`,
+      content: `<div>Wählen Sie eine Route. Truck: <b>${truck.plate}</b> ${truck.model} · Zustand ${Math.round(truck.condition)}% · <span style="color:var(--accent2)">💡 = günstigste Gesamtkosten</span>\n        ${insHTML}\n      </div>`,
       isChoice: true,
       choices: ["fastest", "cheapest", "tollFree"].map((key) => {
         const r = routes[key];
         return {
-          text: `${r.icon} ${r.name}: ${r.km} km · ${r.daysNeeded} Tage · Diesel ${Utils.euro(r.fuelCost)} · Maut ${Utils.euro(r.tollCost)} · Stau-Risiko ${Math.round(100 * r.jamRisk)}%`,
+          text: `${key === _bestKey ? "💡 " : ""}${r.icon} ${r.name}: ${r.km} km · ${r.daysNeeded} Tage · Diesel ${Utils.euro(r.fuelCost)} · Maut ${Utils.euro(r.tollCost)} · Gesamt ${Utils.euro(r.totalCost)} · Stau ${Math.round(100 * r.jamRisk)}%`,
           onclick: () => {
             const insSelect = document.getElementById("cargo-ins-select");
             const insProduct = insSelect?.value;
@@ -29516,7 +29514,7 @@ const UI = {
                   "good",
                 );
             }
-            const result = JobManager.acceptJob(jobId, "tollFree" === key ? "tollFree" : key);
+            const result = JobManager.acceptJob(jobId, key);
             if (result.ok)
               if (result.queued) {
                 this.toast(`In Warteschlange — ${result.truck.plate} frei ab Tag ${result.estimatedStartDay}`, "info");
