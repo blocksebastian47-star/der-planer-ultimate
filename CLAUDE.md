@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Der Planer Ultimate" — a German-language freight/logistics dispatcher simulation game. The **entire game is one file**: `index.html` (~31,400 lines, ~1.3 MB) with embedded CSS and JavaScript. No build step, no dependencies, no framework, no package manager. It runs by opening the file in a browser.
 
+**Project history:** `git log` is the authoritative record of what has been built and why — every change is its own commit with a detailed message. To learn what was implemented recently (features, fixes, refactors), read `git log` rather than relying on any conversation summary.
+
 ## Running & verifying
 
 - **Run locally:** open `index.html` directly in a browser, or serve it: `python -m http.server 8765`, then open `http://localhost:8765/index.html`. The Claude Code preview config is in `.claude/launch.json` (config name: `planer`).
