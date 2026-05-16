@@ -10246,18 +10246,6 @@ const DepartmentSystem = {
           );
         });
     }
-    let contractRevenue = 0;
-    State.contracts.forEach((c) => {
-      contractRevenue += c.monthlyValue;
-    });
-    if (contractRevenue > 0) {
-      FinanceManager.recordRevenue("fleet", contractRevenue);
-      if (State.contracts.length > 0)
-        Notifier.add(
-          `📝 Rahmenverträge: ${Utils.euro(contractRevenue)} eingenommen (${State.contracts.length} Verträge)`,
-          "success",
-        );
-    }
     if (0 === salesStaff && Math.random() < fx.customerLossRate) {
       const custs = State.customers || [];
       if (custs.length > 3) {
@@ -12429,7 +12417,6 @@ const LocationSystem = {
         {
           text: "✓ Einlagern — 800€/Mon. Zusatzeinnahme",
           action: () => {
-            State.cash += 800;
             State.contracts = State.contracts || [];
             State.contracts.push({
               id: Utils.uid("C"),
@@ -13877,16 +13864,16 @@ const ContractSLA = {
       }
       return true;
     });
+    let totalBilled = 0;
     State.contracts.forEach((c) => {
-      if (!c.sla) return;
-      const deliveries = c.sla.deliveriesThisMonth || 0;
-      const promised = c.sla.promisedThisMonth || 0;
-      const rate = promised > 0 ? (deliveries / promised) * 100 : 100;
       const type = this.TYPES[c.contractType] || this.TYPES.standard;
-      const baseRevenue = c.monthlyValue;
+      const baseRevenue = c.monthlyValue || 0;
       let revenue = baseRevenue;
       let slaNote = "";
-      if (rate >= type.slaTarget + 5 && type.bonusPct > 0) {
+      const deliveries = c.sla?.deliveriesThisMonth || 0;
+      const promised = c.sla?.promisedThisMonth || 0;
+      const rate = promised > 0 ? (deliveries / promised) * 100 : 100;
+      if (c.sla && rate >= type.slaTarget + 5 && type.bonusPct > 0) {
         const bonus = Math.round((baseRevenue * type.bonusPct) / 100);
         revenue += bonus;
         slaNote = `🌟 SLA Bonus +${Utils.euro(bonus)} (${Math.round(rate)}% Lieferquote)`;
@@ -13938,6 +13925,7 @@ const ContractSLA = {
       }
       if (revenue > 0) {
         FinanceManager.recordRevenue("fleet", revenue);
+        totalBilled += revenue;
         if (State.subRevenue) State.subRevenue.contracts += revenue;
         if (slaNote)
           EventManager.addNews(
@@ -13954,6 +13942,8 @@ const ContractSLA = {
         this._offerRenewal(c);
       }
     });
+    if (totalBilled > 0)
+      Notifier.add(`📝 Rahmenverträge: ${Utils.euro(totalBilled)} eingenommen (${State.contracts.length} Verträge)`, "success");
   },
   recordDelivery(customerId, onTime) {
     if (!State.contracts) return;
@@ -16740,9 +16730,9 @@ const GFOffice = {
             if (!State.contracts) State.contracts = [];
             State.contracts.push({
               id: Utils.uid("RC"),
-              customer: caller,
-              monthlyRevenue: monthly,
-              monthsRemaining: months,
+              customerName: caller,
+              monthlyValue: monthly,
+              endDay: State.day + 30 * months,
               penalty: penalty,
               startDay: State.day,
             });
@@ -16760,9 +16750,9 @@ const GFOffice = {
               if (!State.contracts) State.contracts = [];
               State.contracts.push({
                 id: Utils.uid("RC"),
-                customer: caller,
-                monthlyRevenue: Math.round(0.9 * monthly),
-                monthsRemaining: months + 6,
+                customerName: caller,
+                monthlyValue: Math.round(0.9 * monthly),
+                endDay: State.day + 30 * (months + 6),
                 penalty: Math.round(0.5 * penalty),
                 startDay: State.day,
               });
@@ -18540,10 +18530,10 @@ const CustomerStories = {
               if (!State.contracts) State.contracts = [];
               State.contracts.push({
                 id: Utils.uid("EX"),
-                customer: cust.name,
+                customerName: cust.name,
                 customerId: cust.id,
-                monthlyRevenue: cust.exclusiveRevenue,
-                monthsRemaining: 12,
+                monthlyValue: cust.exclusiveRevenue,
+                endDay: State.day + 30 * 12,
                 penalty: Math.round(0.2 * cust.exclusiveRevenue),
                 startDay: State.day,
               });
