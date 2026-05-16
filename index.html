@@ -18032,6 +18032,10 @@ const MorningRoutine = {
               c.extraAction();
             } catch (e) {}
           if (c.missWork) State.stress = Utils.clamp(State.stress + 5, 0, 100);
+          // A resolved morning event fills the morning-routine slot, so the
+          // manual MORGENROUTINE buttons in Privatleben show "erledigt" and
+          // cannot be used to double up on stress relief the same day.
+          State.morningActionDay = State.day;
         },
       })),
     });
