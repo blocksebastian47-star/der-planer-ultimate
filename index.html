@@ -30658,7 +30658,7 @@ const UI = {
     const sleepLast = State.sleepLog?.[State.sleepLog.length - 1];
     const moodColor = (m) => (m >= 70 ? "var(--accent2)" : m >= 40 ? "var(--warn)" : "var(--danger)");
     const moodEmoji = (m) => (m >= 80 ? "😊" : m >= 60 ? "🙂" : m >= 40 ? "😐" : m >= 20 ? "😔" : "😠");
-    const stressColor = (s) => (s < 40 ? "var(--accent2)" : s < 65 ? "var(--warn)" : "var(--danger)");
+    const stressColor = (s) => (s < 50 ? "var(--accent2)" : s < 70 ? "var(--warn)" : "var(--danger)");
     const stressLabel = (s) =>
       s < 30
         ? "Entspannt 😌"
@@ -30671,13 +30671,13 @@ const UI = {
               : "Burnout-Grenze 🆘";
     const sleepHours = sleepLast ? sleepLast.hours : 7;
     const form =
-      sleepHours >= 8 && stress < 40
+      sleepHours >= 8 && stress < 30
         ? { label: "💪 Topform", color: "var(--accent2)", bonus: "Erholt & ausgeglichen" }
-        : sleepHours >= 6 && stress < 60
+        : sleepHours >= 6 && stress < 50
           ? { label: "🙂 Gut drauf", color: "var(--accent2)", bonus: "Stabil — alles im grünen Bereich" }
-          : sleepHours >= 5 && stress < 75
+          : sleepHours >= 5 && stress < 70
             ? { label: "😐 Müde", color: "var(--warn)", bonus: "Mehr Ruhe einplanen" }
-            : { label: "😩 Ausgelaugt", color: "var(--danger)", bonus: "Hoher Stress zehrt an der Familienbindung" };
+            : { label: "😩 Ausgelaugt", color: "var(--danger)", bonus: "Zu wenig Schlaf oder hoher Stress — Erholung nötig" };
     const burnoutRisk = Math.min(
       100,
       0.6 * stress + (overtime >= 5 ? 30 : overtime >= 3 ? 15 : 0) + (sleepHours < 6 ? 20 : 0),
