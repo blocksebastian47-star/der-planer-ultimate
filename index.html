@@ -13122,6 +13122,9 @@ const AnnualClose = {
         .forEach((s) => {
           const bonus = Math.round(s.salary * ("driver" === s.roleId ? 0.05 : 0.08));
           bonusTotal += bonus;
+          s.motivation = Utils.clamp((s.motivation || 60) + 8, 0, 100);
+          s.loyalty = Utils.clamp((s.loyalty || 50) + 5, 0, 100);
+          s.quitRisk = Math.max(0, (s.quitRisk || 0) - 0.1);
         });
     const totalPayout = tax + bonusTotal;
     FinanceManager.recordCost("admin", totalPayout, false);
