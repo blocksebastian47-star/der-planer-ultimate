@@ -26244,6 +26244,7 @@ const UI = {
     finanzen: {
       tabs: [
         { id: "bilanz", icon: "💰", label: "Bilanz", render: () => UI.renderFinance() },
+        { id: "guv", icon: "📊", label: "GuV", render: () => UI.renderGuV() },
         {
           id: "forderungen",
           icon: "🧾",
@@ -30158,6 +30159,70 @@ const UI = {
           ? '<div style="color:var(--muted); font-size:11px;">Noch keine Bewertungen</div>'
           : `\n        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n          <div style="font-family:'Bebas Neue'; font-size:16px; letter-spacing:1px;">⭐ KUNDENBEWERTUNGEN</div>\n          <div style="font-size:18px; font-weight:700; color:var(--accent2);">⌀ ${avg} / 5</div>\n        </div>\n        ${recent.map((r) => `\n          <div style="display:flex; gap:8px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05); font-size:11px;">\n            <div style="flex-shrink:0; font-size:16px;">${"★".repeat(r.stars)}${"☆".repeat(5 - r.stars)}</div>\n            <div>\n              <div style="color:var(--muted2);">${r.comment}</div>\n              <div style="font-size:9px; color:var(--muted);">${r.customerName} · Tag ${r.day} · ${r.wasOnTime ? "✓ Pünktlich" : "⚠ Verspätet"}</div>\n            </div>\n          </div>`).join("")}`;
     }
+  },
+  renderGuV() {
+    const el = UI._getContentEl("finanzen-content");
+    if (!el) return;
+    const U = Utils;
+    const sr = State.subRevenue || {};
+    const sc = State.subCosts || {};
+    const monthLabel = new Date(State.date).toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+    const ertraege = [
+      ["Transporterlöse (Aufträge)", sr.jobs || 0],
+      ["Rahmenverträge", sr.contracts || 0],
+      ["Sonstige Erträge", sr.other || 0],
+    ];
+    const aufwand = [
+      ["Personalkosten", sc.salaries || 0, false],
+      ["Kraftstoff", sc.fuelActual || 0, false],
+      ["Maut", sc.toll || 0, false],
+      ["Reparaturen & Wartung", sc.repairs || 0, false],
+      ["Versicherungen", sc.insurance || 0, false],
+      ["Leasing-Raten", sc.leasing || 0, false],
+      ["Weiterbildung & Sonstiges", sc.other || 0, false],
+      ["Bußgelder & Strafen", sc.fines || 0, true],
+      ["Unfallkosten (Selbstbeteiligung)", sc.accidents || 0, true],
+    ];
+    const sumErtrag = ertraege.reduce((s, r) => s + r[1], 0);
+    const sumAufwand = aufwand.reduce((s, r) => s + r[1], 0);
+    const ebit = sumErtrag - sumAufwand;
+    const interest = Math.round(State.departments?.loans?.monthFixed || 0);
+    const ebt = ebit - interest;
+    const tax = ebt > 0 ? Math.round(0.28 * ebt) : 0;
+    const net = ebt - tax;
+    const prev = State.monthlyReports?.[State.monthlyReports.length - 1];
+    const eRow = (lbl, val) =>
+      `<tr><td style="padding:3px 8px 3px 22px;color:var(--muted);">${lbl}</td><td style="text-align:right;padding:3px 8px;color:var(--accent2);">+${U.euro(val)}</td></tr>`;
+    const aRow = (lbl, val, warn) =>
+      `<tr><td style="padding:3px 8px 3px 22px;color:${warn && val > 0 ? "var(--danger)" : "var(--muted)"};">${lbl}</td><td style="text-align:right;padding:3px 8px;color:${warn && val > 0 ? "var(--danger)" : "var(--muted2)"};">−${U.euro(val)}</td></tr>`;
+    const headRow = (t) =>
+      `<tr style="background:var(--bg);"><td colspan="2" style="padding:5px 8px;font-weight:700;font-size:10px;letter-spacing:1px;color:var(--muted);">${t}</td></tr>`;
+    const sumRow = (lbl, val, sign) =>
+      `<tr style="border-top:2px solid var(--border);"><td style="padding:5px 8px;font-weight:700;">${lbl}</td><td style="text-align:right;padding:5px 8px;font-weight:700;color:${val >= 0 ? "var(--accent2)" : "var(--danger)"};">${sign}${U.euro(Math.abs(val))}</td></tr>`;
+    const resRow = (lbl, val, big) =>
+      `<tr style="border-top:3px solid var(--accent);background:${val >= 0 ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)"};"><td style="padding:${big ? "8px" : "6px 8px"};font-weight:900;font-size:${big ? "14px" : "12px"};">${lbl}</td><td style="text-align:right;padding:${big ? "8px" : "6px 8px"};font-weight:900;font-size:${big ? "14px" : "12px"};color:${val >= 0 ? "var(--accent2)" : "var(--danger)"};">${val >= 0 ? "+" : "−"}${U.euro(Math.abs(val))}</td></tr>`;
+    el.innerHTML =
+      `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;max-width:640px;">` +
+      `<div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;color:var(--accent2);">📊 GEWINN- UND VERLUSTRECHNUNG</div>` +
+      `<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Laufender Monat — ${monthLabel} · periodengerecht</div>` +
+      `<table style="width:100%;border-collapse:collapse;font-size:12px;">` +
+      headRow("ERTRÄGE") +
+      ertraege.map((r) => eRow(r[0], r[1])).join("") +
+      sumRow("Summe Erträge", sumErtrag, "+") +
+      headRow("AUFWENDUNGEN") +
+      aufwand.map((r) => aRow(r[0], r[1], r[2])).join("") +
+      sumRow("Summe Aufwendungen", -sumAufwand, "−") +
+      resRow("Betriebsergebnis (EBIT)", ebit) +
+      aRow("Zinsaufwand (Kredite)", interest, true) +
+      resRow("Ergebnis vor Steuern", ebt) +
+      aRow("Steuerrückstellung (≈28%)", tax, false) +
+      resRow("MONATSERGEBNIS", net, true) +
+      `</table>` +
+      (prev
+        ? `<div style="font-size:10px;color:var(--muted2);margin-top:10px;">Vormonat lt. Abschluss: Ergebnis <b style="color:${(prev.profitNet || 0) >= 0 ? "var(--accent2)" : "var(--danger)"};">${U.euro(prev.profitNet || 0)}</b> · Umsatz ${U.euro(prev.totalRevenue || 0)}</div>`
+        : "") +
+      `<div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.6;border-top:1px solid var(--border);padding-top:8px;">Die GuV erfasst Erträge bei <b>Auftragsabschluss</b> — unabhängig davon, wann der Kunde zahlt. Den tatsächlichen Geldfluss zeigt die <b>Cashflowrechnung</b>; dort stehen auch Fahrzeugkäufe/-verkäufe (Investitionen).</div>` +
+      `</div>`;
   },
   renderFinance() {
     const el = UI._getContentEl("finanzen-content");
