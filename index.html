@@ -16863,7 +16863,7 @@ const MaintenancePlan = {
       shortName: "AU",
       intervalDays: 730,
       warnDays: 20,
-      cost: (truck) => ("van" === truck.type ? 35 : 75),
+      cost: (truck) => ("van" === FleetManager.modelType(truck) ? 35 : 75),
       failRisk: (truck) => (truck.yearBuilt && 2026 - truck.yearBuilt > 10 ? 0.15 : 0.03),
       failPenalty: "Auflagen: Motorüberholung oder Stilllegung",
     },
@@ -16885,7 +16885,7 @@ const MaintenancePlan = {
       icon: "☀️",
       shortName: "Sommer",
       scheduledMonth: 3,
-      cost: (truck) => ("van" === truck.type ? 120 : 420),
+      cost: (truck) => ("van" === FleetManager.modelType(truck) ? 120 : 420),
       warnDays: 14,
     },
     tires_winter: {
@@ -16894,7 +16894,7 @@ const MaintenancePlan = {
       icon: "❄️",
       shortName: "Winter",
       scheduledMonth: 10,
-      cost: (truck) => ("van" === truck.type ? 120 : 420),
+      cost: (truck) => ("van" === FleetManager.modelType(truck) ? 120 : 420),
       warnDays: 14,
     },
     inspection: {
@@ -16904,7 +16904,7 @@ const MaintenancePlan = {
       shortName: "Inspektion",
       intervalDays: 365,
       warnDays: 21,
-      cost: (truck) => ("van" === truck.type ? 280 : 680),
+      cost: (truck) => ("van" === FleetManager.modelType(truck) ? 280 : 680),
       failRisk: () => 0,
     },
   },
@@ -16960,7 +16960,8 @@ const MaintenancePlan = {
         entry._warned = true;
         Notifier.add(`${type.icon} ${truck.plate}: ${type.shortName} in ${daysUntil} Tagen fällig`, "warn");
       }
-      if (State.day >= entry.nextDue && !entry._overdue) {
+      if (State.day >= entry.nextDue && (!entry._overdue || (State.day - entry.nextDue) % 30 === 0)) {
+        const _firstOverdue = !entry._overdue;
         entry._overdue = true;
         const failChance = type.failRisk ? type.failRisk(truck) : 0;
         if (Math.random() < failChance) {
@@ -16981,7 +16982,7 @@ const MaintenancePlan = {
                     State.cash += loan;
                     EventManager.addNews("warn", `${truck.plate}: Reparatur per Kredit finanziert (${Utils.euro(loan)})`);
                   }
-                  State.cash -= cost;
+                  FinanceManager.recordCost("repairs", cost, false);
                   truck.status = "idle";
                   entry.nextDue = State.day + (type.intervalDays || 730);
                   entry.lastDone = State.day;
@@ -16993,7 +16994,7 @@ const MaintenancePlan = {
               },
             ],
           });
-        } else
+        } else if (_firstOverdue)
           EventManager.addNews(
             "warn",
             `${type.icon} ${truck.plate}: ${type.shortName} ÜBERFÄLLIG — bitte jetzt durchführen!`,
@@ -17027,7 +17028,7 @@ const MaintenancePlan = {
       "hu" === typeId && (State.locations || []).some((l) => (l.infrastructure || []).includes("workshop_l"));
     const cost = Math.round(type.cost(truck) * (hasTuev ? 0.7 : 1));
     if (State.cash < cost) return { ok: false, reason: `Nicht genug Kapital (${Utils.euro(cost)} benötigt)` };
-    State.cash -= cost;
+    FinanceManager.recordCost("repairs", cost, false);
     if (State.subCosts) State.subCosts.repairs = (State.subCosts.repairs || 0) + cost;
     const entry = truck.maintenance[typeId] || {};
     if (type.intervalDays) {
@@ -22849,6 +22850,7 @@ const FleetManager = {
       jobId: null,
       purchasePrice: options.purchasePrice || m.price,
       purchaseDay: State.day,
+      yearBuilt: options.yearBuilt ?? new Date(State.date).getFullYear(),
       insuranceTier: options.insuranceTier || "haftpflicht",
       equipment: options.equipment || [],
       assistance: options.assistance || [],
@@ -22943,7 +22945,7 @@ const FleetManager = {
     const t = (State.trucks || []).find((x) => x.id === truckId);
     if (!t || "idle" !== t.status) return false;
     if (t.trailerId && void 0 !== TrailerManager) TrailerManager.detach(t.trailerId);
-    const value = Math.round(t.purchasePrice * (t.condition / 100) * 0.65);
+    const value = this.resaleValue(t);
     FinanceManager.recordRevenue("fleet", value);
     if (State.subRevenue) State.subRevenue.truckSales += value;
     State.trucks = (State.trucks || []).filter((x) => x.id !== truckId);
@@ -22964,7 +22966,8 @@ const FleetManager = {
       return 0;
     }
     const targetCondition = fullRepair ? 100 : Math.min(100, t.condition + 35);
-    const baseCost = 80 * (targetCondition - t.condition);
+    const maintFactor = DATA.truckModels.find((m) => m.id === t.modelId)?.maint || 1;
+    const baseCost = 80 * (targetCondition - t.condition) * maintFactor;
     const hasMech = State.staff.some((s) => "mechanic" === s.roleId && "aktiv" === s.status);
     const hasMeister = State.staff.some(
       (s) => ("kfz_meister" === s.roleId || "head_workshop" === s.roleId) && "aktiv" === s.status,
@@ -22986,6 +22989,17 @@ const FleetManager = {
   },
   hasEquipment: (truck, equipId) => truck.equipment && truck.equipment.includes(equipId),
   hasAssistance: (truck, assistId) => truck.assistance && truck.assistance.includes(assistId),
+  modelType: (truck) => DATA.truckModels.find((m) => m.id === truck?.modelId)?.type || "rigid",
+  resaleValue(truck) {
+    if (!truck) return 0;
+    const m = DATA.truckModels.find((x) => x.id === truck.modelId);
+    const year = new Date(State.date).getFullYear();
+    const age = Math.max(0, year - (truck.yearBuilt || year));
+    const ageFactor = Math.pow(1 - (m?.valueDeprec || 0.12), age);
+    return Math.round(
+      (truck.purchasePrice || 0) * (truck.condition / 100) * 0.65 * ageFactor * (1 + (truck.valueBonus || 0)),
+    );
+  },
   canHaul(truck, cargoType) {
     if (cargoType.requiresAssist && cargoType.requiresAssist.length > 0)
       for (const a of cargoType.requiresAssist)
@@ -24791,6 +24805,7 @@ const DealerManager = {
       reliability: offer.reliability,
       equipment: offer.equipment,
       purchasePrice: offer.askingPrice,
+      yearBuilt: new Date(State.date).getFullYear() - (offer.age || 0),
     });
     if (isNew) {
       truck.warrantyUntil = State.day + 720;
@@ -26030,6 +26045,7 @@ const UI = {
     ({ van: "Kleintransporter", rigid: "Starr-LKW (Koffer/Pritsche)", tractor: "Sattelzugmaschine" })[tp] || tp,
   _truckDesc(type, modelId) {
     const model = DATA.truckModels.find((m) => m.id === modelId);
+    type = model?.type || type;
     if ("van" === type)
       return {
         icon: "📦",
@@ -26079,6 +26095,19 @@ const UI = {
       tractor:
         '<span style="background:#3a1e1e; color:#e07070; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700;">🚛 SATTELZUG</span>',
     })[type] || "",
+  _maintLine(truck) {
+    if (void 0 === MaintenancePlan) return "";
+    const ms = MaintenancePlan.getStatus(truck);
+    const od = ms.filter((s) => "overdue" === s.urgency).length;
+    const wn = ms.filter((s) => "warn" === s.urgency).length;
+    const inner =
+      od > 0
+        ? `<b style="color:var(--danger)">⚠ ${od} überfällig${wn > 0 ? " · " + wn + " bald" : ""}</b>`
+        : wn > 0
+          ? `<b style="color:var(--warn)">${wn} bald fällig</b>`
+          : `<b style="color:var(--accent2)">✓ aktuell</b>`;
+    return `<div><span style="color:var(--muted)">Wartung:</span> ${inner}</div>`;
+  },
   showNextDecision() {
     if (0 === State.pendingDecisions.length) return;
     const d = State.pendingDecisions[0];
@@ -29536,7 +29565,7 @@ const UI = {
     const profit = t.lifetimeRevenue - t.lifetimeCost;
     const profitColor = profit >= 0 ? "#4ade80" : "#f87171";
     const condColor = t.condition > 70 ? "#4ade80" : t.condition > 35 ? "#fbbf24" : "#f87171";
-    const resaleValue = Math.round((t.purchasePrice || 0) * (t.condition / 100) * 0.65);
+    const resaleValue = FleetManager.resaleValue(t);
     const upgrades = (t.upgrades || []).map((uid) => {
       const u = void 0 !== VehicleTuning ? VehicleTuning.UPGRADES.find((x) => x.id === uid) : null;
       return u ? `${u.icon} ${u.name}` : uid;
@@ -29600,15 +29629,16 @@ const UI = {
         const assistCount = (t.assistance || []).length;
         const equipCount = (t.equipment || []).length;
         const accidentRed = Math.round(100 * FleetManager.totalAccidentReduction(t));
-        return `<div class="card truck-card" style="margin-bottom:0;"\n        onmouseenter="HoverTooltip.show(UI._truckTooltipHTML((State.trucks||[]).find(x=>x.id==='${t.id}')),event)"\n        onmouseleave="HoverTooltip.hide()">\n        <div style="display:flex; gap:12px; margin-bottom:10px; align-items:center;">\n          <div style="flex-shrink:0;">${Visuals.truck(t.modelId, 180, 90)}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="display:flex; justify-content:space-between; align-items:start;">\n              <div>\n                <div style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; color:var(--accent);">${t.plate}</div>\n                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${t.model}</div>\n                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">\n                  ${UI._truckBadge(t.type)}\n                  <span style="font-size:10px; color:var(--muted);">${t.capacity}t Nutzlast</span>\n                </div>\n              </div>\n              <span class="badge-status b-${t.status}">${t.status.toUpperCase()}</span>\n            </div>\n            ${(() => {
+        const ptype = FleetManager.modelType(t);
+        return `<div class="card truck-card" style="margin-bottom:0;"\n        onmouseenter="HoverTooltip.show(UI._truckTooltipHTML((State.trucks||[]).find(x=>x.id==='${t.id}')),event)"\n        onmouseleave="HoverTooltip.hide()">\n        <div style="display:flex; gap:12px; margin-bottom:10px; align-items:center;">\n          <div style="flex-shrink:0;">${Visuals.truck(t.modelId, 180, 90)}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="display:flex; justify-content:space-between; align-items:start;">\n              <div>\n                <div style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; color:var(--accent);">${t.plate}</div>\n                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${t.model}</div>\n                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">\n                  ${UI._truckBadge(ptype)}\n                  <span style="font-size:10px; color:var(--muted);">${t.capacity}t Nutzlast</span>\n                </div>\n              </div>\n              <span class="badge-status b-${t.status}">${t.status.toUpperCase()}</span>\n            </div>\n            ${(() => {
           const desc = UI._truckDesc(t.type, t.modelId);
-          return `<div style="margin-top:6px; background:var(--bg2); border-radius:5px; padding:6px 8px; font-size:10px; line-height:1.7; border-left:3px solid ${"tractor" === t.type ? "#e07070" : "rigid" === t.type ? "#9ecf6b" : "#7ec8e3"};">\n                <div style="color:var(--fg); margin-bottom:2px;">${desc.detail}</div>\n                <div style="color:var(--accent2); font-weight:700;">🔗 ${desc.trailerHint}</div>\n              </div>`;
+          return `<div style="margin-top:6px; background:var(--bg2); border-radius:5px; padding:6px 8px; font-size:10px; line-height:1.7; border-left:3px solid ${"tractor" === ptype ? "#e07070" : "rigid" === ptype ? "#9ecf6b" : "#7ec8e3"};">\n                <div style="color:var(--fg); margin-bottom:2px;">${desc.detail}</div>\n                <div style="color:var(--accent2); font-weight:700;">🔗 ${desc.trailerHint}</div>\n              </div>`;
         })()}\n            <div style="margin-top:6px; font-size:10px; line-height:1.7;">\n              <div><span style="color:var(--muted)">km:</span> ${t.km.toLocaleString("de-DE")}\n                ${(() => {
           if (void 0 === GameDepth) return "";
           const tier = GameDepth.getAgingTier(t);
           if (t.km < 3e5) return "";
           return ` · <span style="color:${t.km >= 6e5 ? "var(--danger)" : t.km >= 45e4 ? "var(--warn)" : "var(--muted)"}; font-weight:700;">${tier.label}</span>`;
-        })()}\n              </div>\n              <div style="display:flex; align-items:center; gap:4px;">\n                <span style="color:var(--muted)">Zustand:</span>\n                <span class="health-bar" style="width:80px;"><span class="health-fill ${condClass}" style="width:${t.condition}%"></span></span>\n                <span>${Math.round(t.condition)}%</span>\n              </div>\n              <div><span style="color:var(--muted)">Versicherung:</span> <b>${ins.name}</b></div>\n              ${(() => {
+        })()}\n              </div>\n              <div style="display:flex; align-items:center; gap:4px;">\n                <span style="color:var(--muted)">Zustand:</span>\n                <span class="health-bar" style="width:80px;"><span class="health-fill ${condClass}" style="width:${t.condition}%"></span></span>\n                <span>${Math.round(t.condition)}%</span>\n              </div>\n              <div><span style="color:var(--muted)">Versicherung:</span> <b>${ins.name}</b></div>\n              ${UI._maintLine(t)}\n              ${(() => {
           if (void 0 === GameDepth || !t.registeredAt) return "";
           const city = MAP_DATA.getCity(t.registeredAt);
           const homeCityId = State.locations?.[0]?.cityId || State.locationId;
@@ -29633,7 +29663,7 @@ const UI = {
                 const trData = DATA.trailers.find((x) => x.id === trailer.typeId);
                 return `<div style="display:flex; gap:8px; align-items:center;">\n              ${Visuals.trailer(trailer.typeId, 100, 50)}\n              <div style="font-size:10px; line-height:1.7;">\n                <div><b>${trailer.name}</b></div>\n                <div style="color:var(--muted2);">${trData?.desc || ""}</div>\n                <div style="color:var(--accent2); font-size:9px;">${trailer.capacity}t · Geeignet für: ${trailer.enables?.join(" · ") || "Standardfrachten"}</div>\n              </div>\n            </div>`;
               })()
-            : `<div style="color:var(--muted); font-size:10px; font-style:italic;">${"tractor" === t.type ? "⚠ Sattelzug braucht zwingend einen Auflieger — ohne Auftrag nicht möglich!" : "Fährt ohne Anhänger (eigener Aufbau)."}</div>`
+            : `<div style="color:var(--muted); font-size:10px; font-style:italic;">${"tractor" === ptype ? "⚠ Sattelzug braucht zwingend einen Auflieger — ohne Auftrag nicht möglich!" : "Fährt ohne Anhänger (eigener Aufbau)."}</div>`
         }\n        </div>\n\n        \x3c!-- Aktiver Auftrag + Warteschlange --\x3e\n        ${(() => {
           const activeJob = State.activeJobs?.find((j) => j.truckId === t.id);
           const queued = (State.scheduledJobs || []).filter((s) => s.truckId === t.id);
@@ -29647,7 +29677,7 @@ const UI = {
           if (queued.length > 0)
             html += `<div style="font-size:10px; background:var(--bg2); border-radius:5px; padding:6px 8px; margin-bottom:4px;">\n              <div style="color:var(--warn); font-weight:700; margin-bottom:4px;">📋 WARTESCHLANGE (${queued.length})</div>\n              ${queued.map((sq, i) => `<div style="display:flex; justify-content:space-between; padding:2px 0; border-top:${i > 0 ? "1px solid var(--border)" : "none"};">\n                <span style="color:var(--muted);">${i + 1}. ${sq.job.fromName || sq.job.from} → ${sq.job.toName || sq.job.to}</span>\n                <span style="color:var(--muted2);">ab ~Tag ${sq.estimatedStartDay}</span>\n              </div>`).join("")}\n              ${queued.length > 0 ? `<button class="btn small" onclick="UI.openQueueModal('${t.id}')" style="width:100%; margin-top:4px; font-size:9px;">Warteschlange verwalten</button>` : ""}\n            </div>`;
           return html;
-        })()}\n\n        \x3c!-- Driver --\x3e\n        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n          <div style="font-size:10px;">\n            <span style="color:var(--muted)">Fahrer:</span>\n            ${driver ? `<b>${driver.name}</b> · \n              ${"krank" === driver.status ? `<span style="color:var(--danger);">🤒 krank (${driver.sickDaysRemaining}d)</span>` : "urlaub" === driver.status ? `<span style="color:var(--warn);">🏖️ Urlaub bis Tag ${driver.vacationEnd}</span>` : (driver.daysAway || 0) > (driver.wantsHomeAfter || 18) ? '<span style="color:var(--warn);">🏠 will nach Hause</span>' : `<span style="color:var(--muted2);">Stil: ${driver.drivingStyle} · ${driver.daysAway || 0}d unterwegs</span>`}` : '<span style="color:var(--warn)">Keiner</span>'}\n          </div>\n          <select onchange="UI.assignDriver('${t.id}', this.value)" ${"active" === t.status ? "disabled" : ""} style="font-size:10px;">\n            <option value="">— kein Fahrer —</option>\n            ${drivers.map((d) => `<option value="${d.id}" ${d.id === t.driverId ? "selected" : ""}>${d.name}${"aktiv" !== d.status ? " (" + d.status + ")" : ""}</option>`).join("")}\n          </select>\n        </div>\n\n        \x3c!-- Actions --\x3e\n        <div style="display:flex; gap:4px; flex-wrap:wrap;">\n          <button class="btn small" onclick="UI.openTruckDetail('${t.id}')" style="flex:1; min-width:80px;">📋 Details</button>\n          <button class="btn small" onclick="UI.openAssistanceModal('${t.id}')" style="flex:1; min-width:80px;">🛡 Assistenten</button>\n          <button class="btn small" onclick="UI.openEquipmentModal('${t.id}')" style="flex:1; min-width:80px;">🔧 Zubehör</button>\n          <button class="btn small danger" onclick="UI.sellTruckConfirm('${t.id}')" ${"idle" !== t.status ? "disabled" : ""} style="flex:1; min-width:80px;">Verkaufen</button>\n        </div>\n      </div>`;
+        })()}\n\n        \x3c!-- Driver --\x3e\n        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n          <div style="font-size:10px;">\n            <span style="color:var(--muted)">Fahrer:</span>\n            ${driver ? `<b>${driver.name}</b> · \n              ${"krank" === driver.status ? `<span style="color:var(--danger);">🤒 krank (${driver.sickDaysRemaining}d)</span>` : "urlaub" === driver.status ? `<span style="color:var(--warn);">🏖️ Urlaub bis Tag ${driver.vacationEnd}</span>` : (driver.daysAway || 0) > (driver.wantsHomeAfter || 18) ? '<span style="color:var(--warn);">🏠 will nach Hause</span>' : `<span style="color:var(--muted2);">Stil: ${driver.drivingStyle} · ${driver.daysAway || 0}d unterwegs</span>`}` : '<span style="color:var(--warn)">Keiner</span>'}\n          </div>\n          <select onchange="UI.assignDriver('${t.id}', this.value)" ${"active" === t.status ? "disabled" : ""} style="font-size:10px;">\n            <option value="">— kein Fahrer —</option>\n            ${drivers.map((d) => `<option value="${d.id}" ${d.id === t.driverId ? "selected" : ""}>${d.name}${"aktiv" !== d.status ? " (" + d.status + ")" : ""}</option>`).join("")}\n          </select>\n        </div>\n\n        \x3c!-- Actions --\x3e\n        <div style="display:flex; gap:4px; flex-wrap:wrap;">\n          <button class="btn small" onclick="UI.openTruckDetail('${t.id}')" style="flex:1; min-width:80px;">📋 Details</button>\n          <button class="btn small" onclick="UI.repairTruck('${t.id}')" ${"active" === t.status || "repair" === t.status ? "disabled" : ""} style="flex:1; min-width:80px;">🔧 Reparieren</button>\n          <button class="btn small" onclick="UI.openAssistanceModal('${t.id}')" style="flex:1; min-width:80px;">🛡 Assistenten</button>\n          <button class="btn small" onclick="UI.openEquipmentModal('${t.id}')" style="flex:1; min-width:80px;">🔧 Zubehör</button>\n          <button class="btn small danger" onclick="UI.sellTruckConfirm('${t.id}')" ${"idle" !== t.status ? "disabled" : ""} style="flex:1; min-width:80px;">Verkaufen</button>\n        </div>\n      </div>`;
       })
       .join("");
   },
@@ -29814,6 +29844,20 @@ const UI = {
       ],
     });
   },
+  repairTruck(truckId) {
+    const t = (State.trucks || []).find((x) => x.id === truckId);
+    if (!t) return;
+    if ("active" === t.status) {
+      this.toast("Fahrzeug ist auf Tour — Reparatur erst nach Rückkehr", "warn");
+      return;
+    }
+    const before = t.condition;
+    const cost = FleetManager.repair(truckId, true);
+    if (false === cost) this.toast("Reparatur nicht möglich — Kapital reicht nicht", "warn");
+    else if (before >= 100) this.toast("Fahrzeug ist bereits in Topzustand", "info");
+    else this.toast(cost > 0 ? `${t.plate} repariert auf 100 % — ${Utils.euro(cost)}` : `${t.plate} kostenlos repariert (Garantie)`, "good");
+    this.renderAll();
+  },
   openTruckDetail(truckId) {
     const t = (State.trucks || []).find((x) => x.id === truckId);
     if (!t) return;
@@ -29841,7 +29885,7 @@ const UI = {
         : '<div style="font-size:10px; color:var(--accent2);">✓ Keine Unfälle/Pannen aufgezeichnet</div>';
     this.showModal({
       title: `🚛 ${t.plate}`,
-      subtitle: `${t.model} · ${UI._truckType(t.type)}`,
+      subtitle: `${t.model} · ${UI._truckType(FleetManager.modelType(t))}`,
       maxWidth: "520px",
       content: `\n        <div style="font-size:12px; line-height:1.9;">\n          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">\n            <div style="background:var(--bg2); padding:8px; border-radius:6px;">\n              <div style="font-size:10px; color:var(--muted);">AUFTRÄGE</div>\n              <div style="font-size:20px; font-weight:700;">${t.lifetimeJobs}</div>\n            </div>\n            <div style="background:var(--bg2); padding:8px; border-radius:6px;">\n              <div style="font-size:10px; color:var(--muted);">UNFÄLLE / PANNEN</div>\n              <div style="font-size:20px; font-weight:700; color:${t.lifetimeAccidents > 0 ? "var(--danger)" : "var(--accent2)"};">${t.lifetimeAccidents}</div>\n            </div>\n            <div style="background:var(--bg2); padding:8px; border-radius:6px;">\n              <div style="font-size:10px; color:var(--muted);">LIFETIME-UMSATZ</div>\n              <div style="font-size:16px; font-weight:700; color:var(--accent2);">${Utils.euro(t.lifetimeRevenue)}</div>\n            </div>\n            <div style="background:var(--bg2); padding:8px; border-radius:6px;">\n              <div style="font-size:10px; color:var(--muted);">ROI</div>\n              <div style="font-size:16px; font-weight:700;">${Math.round(FinanceManager.truckROI(t))}%</div>\n            </div>\n          </div>\n          <div><b>Kapazität:</b> ${t.capacity}t · <b>Verbrauch:</b> ${t.mpg} L/100km</div>\n          <div><b>km-Stand:</b> ${t.km.toLocaleString("de-DE")} km (Lifetime: ${Math.round(t.lifetimeKm).toLocaleString("de-DE")} km)</div>\n          <div><b>Zustand:</b> ${Math.round(t.condition)}% · <b>Zuverlässigkeit:</b> ${Math.round(100 * (t.reliability || 0.9))}%</div>\n          <hr style="border-color:var(--border); margin:8px 0;">\n          <div><b>Versicherung:</b> ${ins.name} (${Utils.euro(insCost)}/Mon.)</div>\n          <div style="font-size:10px; color:var(--muted2);">Selbstbeteiligung: ${Utils.euro(ins.deductible)} · Schadensübernahme: ${Math.round(100 * ins.damageReduction)}%</div>\n          <div><b>Ausstattung:</b> ${equipNames}</div>\n          <div><b>Fahrassistenz:</b> ${assistNames}</div>\n          <hr style="border-color:var(--border); margin:8px 0;">\n          <div style="font-weight:700; margin-bottom:4px; font-size:11px; color:var(--muted);">UNFALL- UND PANNENVERLAUF</div>\n          ${accLogHtml}\n        </div>\n      `,
       actions: [
@@ -29853,12 +29897,10 @@ const UI = {
           },
         },
         {
-          label: "🔧 Vollwartung",
+          label: "🔧 Reparieren",
           onclick: () => {
-            const cost = FleetManager.repair(truckId, true);
-            if (cost) this.toast(`Wartung: ${Utils.euro(cost)}`, "good");
+            this.repairTruck(truckId);
             this.closeModal();
-            this.renderAll();
           },
         },
         { label: "OK", primary: true, onclick: () => this.closeModal() },
