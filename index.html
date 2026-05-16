@@ -13012,12 +13012,11 @@ const AnnualClose = {
     const revenue = yearReports.reduce((a, r) => a + (r.totalRevenue || 0), 0);
     const costs = yearReports.reduce((a, r) => a + (r.totalCosts || 0), 0);
     const profit = revenue - costs;
-    const hasTaxAdvisor = State.staff.some((s) => "tax_advisor" === s.roleId && "aktiv" === s.status);
-    const hasAccountant = State.staff.some((s) => "accountant" === s.roleId && "aktiv" === s.status);
-    const baseTaxRate = hasTaxAdvisor ? 0.22 : hasAccountant ? 0.26 : 0.3;
-    const taxableProfit = Math.max(0, profit - (hasTaxAdvisor ? 5e3 : 0));
-    const tax = Math.round(taxableProfit * baseTaxRate);
+    // Jahressteuer = Summe der bereits monatlich gezahlten Steuern (closeMonth),
+    // keine zweite, abweichende Jahresberechnung.
+    const tax = yearReports.reduce((a, r) => a + (r.taxes || 0), 0);
     const netProfit = profit - tax;
+    const effTaxRate = profit > 0 ? tax / profit : 0;
     let bonusTotal = 0;
     if (netProfit > 0)
       (State.staff || [])
@@ -13037,7 +13036,7 @@ const AnnualClose = {
       State.debt = (State.debt || 0) + shortfall;
       EventManager.addNews(
         "bad",
-        `⚠️ Steuerzahlung: ${Utils.euro(shortfall)} als Kredit aufgenommen — Liquidität kritisch!`,
+        `⚠️ Bonuszahlung: ${Utils.euro(shortfall)} als Kredit aufgenommen — Liquidität kritisch!`,
       );
     }
     if (!State.annualReports) State.annualReports = [];
@@ -13049,14 +13048,14 @@ const AnnualClose = {
       tax: tax,
       netProfit: netProfit,
       bonusTotal: bonusTotal,
-      taxRate: baseTaxRate,
+      taxRate: effTaxRate,
       day: State.day,
     });
     EventManager.queueDecision({
       tier: 2,
       title: `📅 JAHRESABSCHLUSS — Jahr ${year}`,
       subtitle: `Steuer: ${Utils.euro(tax)} · Nettogewinn: ${Utils.euro(netProfit)}`,
-      content: `\n        <div style="font-size:13px; line-height:1.9;">\n          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">JAHRESUMSATZ</div>\n              <div style="font-size:18px; font-weight:700; color:var(--accent2);">${Utils.euro(revenue)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">NETTOGEWINN</div>\n              <div style="font-size:18px; font-weight:700; color:${netProfit > 0 ? "var(--accent2)" : "var(--danger)"};">${Utils.euro(netProfit)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">STEUER (${Math.round(100 * baseTaxRate)}%)</div>\n              <div style="font-size:18px; font-weight:700; color:var(--warn);">${Utils.euro(tax)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">MITARBEITER-BONI</div>\n              <div style="font-size:18px; font-weight:700; color:var(--accent);">${Utils.euro(bonusTotal)}</div>\n            </div>\n          </div>\n          ${hasTaxAdvisor ? '<div style="font-size:11px; color:var(--accent2); margin-bottom:8px;">✓ Steuerberater hat 5.000€ Freibetrag optimiert</div>' : '<div style="font-size:11px; color:var(--warn);">⚠ Kein Steuerberater — 4-8% mehr Steuern als nötig</div>'}\n          <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Was passiert mit dem Nettogewinn?</div>\n        </div>`,
+      content: `\n        <div style="font-size:13px; line-height:1.9;">\n          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">JAHRESUMSATZ</div>\n              <div style="font-size:18px; font-weight:700; color:var(--accent2);">${Utils.euro(revenue)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">NETTOGEWINN</div>\n              <div style="font-size:18px; font-weight:700; color:${netProfit > 0 ? "var(--accent2)" : "var(--danger)"};">${Utils.euro(netProfit)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">STEUER (${Math.round(100 * effTaxRate)}%)</div>\n              <div style="font-size:18px; font-weight:700; color:var(--warn);">${Utils.euro(tax)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">MITARBEITER-BONI</div>\n              <div style="font-size:18px; font-weight:700; color:var(--accent);">${Utils.euro(bonusTotal)}</div>\n            </div>\n          </div>\n          <div style="font-size:11px; color:var(--muted2); margin-bottom:8px;">Die Jahressteuer ist die Summe der bereits monatlich gezahlten Ertragsteuern.</div>\n          <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Was passiert mit dem Nettogewinn?</div>\n        </div>`,
       choices: [
         {
           text: "💰 Reinvestieren — Flotte erweitern",
@@ -15966,18 +15965,6 @@ const LegalForms = {
             { text: "Noch nicht", action: () => {} },
           ],
         });
-    }
-    if (State.day % 90 == 0 && monthProfit > 0) {
-      const tax = this.calcTax(3 * monthProfit);
-      if (tax > 0 && State.cash >= tax) {
-        State.cash -= tax;
-        State.legal.taxesPaid = (State.legal.taxesPaid || 0) + tax;
-        if (State.subCosts) State.subCosts.other += tax;
-        EventManager.addNews(
-          "warn",
-          `📋 Steuervorauszahlung: ${Utils.euro(tax)} (${form.name} · ${Math.round(100 * form.taxRate)}% Steuerquote)`,
-        );
-      }
     }
   },
 };
@@ -22200,13 +22187,18 @@ const FinanceManager = {
     const totalCost = Object.values(departments).reduce((s, d) => s + d.fixedCosts + d.variableCosts, 0);
     const profitBeforeTax = totalRev - totalCost;
     const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
-    const taxRate = Math.max(0.1, Math.min(0.38, 0.28 + (fx.taxRate || 0)));
+    // Einzige Steuerbuchung des Spiels: Rechtsform-Quote (LegalForms) +
+    // Buchhaltungs-Effekt. Die alte LegalForms-Quartalssteuer wurde entfernt —
+    // sie besteuerte den Gewinn ein zweites Mal.
+    const baseTaxRate = void 0 !== LegalForms ? LegalForms.currentForm().taxRate : 0.28;
+    const taxRate = Math.max(0.1, Math.min(0.45, baseTaxRate + (fx.taxRate || 0)));
     const taxes = Math.max(0, profitBeforeTax * taxRate);
     if (taxes > 0) {
       State.cash -= taxes;
       // Steuer als echte Kontoauszug-Buchung — vorher als getarnte
       // admin-Variable-Kosten gebucht, was einen Tag-1-Kostenspike erzeugte.
       if (void 0 !== BankAccount) BankAccount.record("tax", taxes, "Ertragsteuer — Monatsabschluss");
+      if (State.legal) State.legal.taxesPaid = (State.legal.taxesPaid || 0) + taxes;
     }
     const report = {
       day: State.day,
