@@ -30317,7 +30317,9 @@ const UI = {
       { pos: "Kassenbestand", val: State.cash, cat: "UV" },
       {
         pos: "Offene Forderungen",
-        val: (State.invoices || []).filter((i) => "offen" === i.status).reduce((s, i) => s + i.amount, 0),
+        val: (State.cashflow?.receivables || [])
+          .filter((r) => !r.paid && !r.factored)
+          .reduce((s, r) => s + r.amount, 0),
         cat: "UV",
       },
       { pos: "Fuhrpark (Zeitwert)", val: fleetVal, cat: "AV" },
