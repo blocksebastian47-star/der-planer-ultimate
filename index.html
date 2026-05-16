@@ -22269,11 +22269,16 @@ const FinanceManager = {
       d.revenue = 0;
     });
   },
-  fleetValue: () =>
-    State.trucks.reduce(
-      (s, t) => s + t.purchasePrice * (t.condition / 100) * Math.pow(0.88, (State.day - t.purchaseDay) / 365),
-      0,
-    ),
+  fleetValue() {
+    const depreciated = (v) =>
+      (v.purchasePrice || 0) *
+      ((v.condition || 100) / 100) *
+      Math.pow(0.88, (State.day - (v.purchaseDay || State.day)) / 365);
+    const trucks = (State.trucks || []).reduce((s, t) => s + depreciated(t), 0);
+    // Eigene Anhänger zählen zum Anlagevermögen — Leasing-Anhänger nicht.
+    const trailers = (State.trailers || []).filter((t) => !t.leasing).reduce((s, t) => s + depreciated(t), 0);
+    return trucks + trailers;
+  },
   equity() {
     return State.cash + this.fleetValue() - State.debt;
   },
