@@ -20221,7 +20221,7 @@ const CashflowSystem = {
     FinanceManager.recordRevenue("fleet", paidAmount);
     if (void 0 !== BankAccount)
       BankAccount.record(
-        "revenue",
+        "revenue_job",
         paidAmount,
         `Zahlung: ${rec.customerName} (${rec.jobFrom}→${rec.jobTo})${skontoNote}`,
       );
@@ -20302,7 +20302,7 @@ const CashflowSystem = {
     FinanceManager.recordRevenue("fleet", payout);
     FinanceManager.recordCost("admin", fee, false);
     if (void 0 !== BankAccount)
-      BankAccount.record("revenue", payout, `Factoring: ${rec.customerName} (Gebühr: ${Utils.euro(fee)})`);
+      BankAccount.record("revenue_other", payout, `Factoring: ${rec.customerName} (Gebühr: ${Utils.euro(fee)})`);
     EventManager.addNews(
       "info",
       `🏦 Factoring: ${Utils.euro(payout)} sofort erhalten (Gebühr: ${Utils.euro(fee)}, ${(100 * factor.fee).toFixed(1)}%)`,
@@ -23727,18 +23727,19 @@ const JobManager = {
         if (State.staff.some((s) => "lawyer" === s.roleId)) finalPrice = Math.round(1.05 * finalPrice);
         if (fx.jobQualityMul && 1 !== fx.jobQualityMul) finalPrice = Math.round(finalPrice * fx.jobQualityMul);
         if (void 0 !== CashflowSystem) {
+          // Forderung: das Geld geht erst später ein — _processPayment bucht
+          // dann den Kontoauszug-Eintrag. Hier nur die periodengerechte
+          // Erfassung (subRevenue), noch keine Cash-Buchung.
           CashflowSystem.createReceivable(j, finalPrice);
           if (State.subRevenue) State.subRevenue.jobs += finalPrice;
         } else {
           FinanceManager.recordRevenue("fleet", finalPrice);
           if (State.subRevenue) State.subRevenue.jobs += finalPrice;
+          if (void 0 !== BankAccount) BankAccount.hookJobRevenue(j, finalPrice);
         }
         truck.lifetimeRevenue += finalPrice;
         truck.lifetimeJobs++;
         driver.jobsCompleted++;
-        if ("undefined" != typeof BankLedger)
-          BankLedger.record("credit", finalPrice, `Auftrag: ${j.from}→${j.to} (${truck.plate})`, "umsatz");
-        if (void 0 !== BankAccount) BankAccount.hookJobRevenue(j, finalPrice);
         if (void 0 !== CustomerPortal) CustomerPortal.rateDelivery(j, truck, driver);
         if (void 0 !== CustomerStories) {
           const onTime = 0 === (j._daysLate || 0);
