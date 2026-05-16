@@ -18929,6 +18929,7 @@ const CrisisSystem = {
                 const val = Math.round(0.6 * (t.purchasePrice || 8e4) * ((t.condition || 100) / 100));
                 FinanceManager.recordRevenue("fleet", val);
                 if (State.subRevenue) State.subRevenue.truckSales += val;
+                if (t.trailerId && void 0 !== TrailerManager) TrailerManager.detach(t.trailerId);
                 State.trucks = (State.trucks || []).filter((tr) => tr.id !== t.id);
                 if (void 0 !== BankAccount && BankAccount.hookSale) BankAccount.hookSale(val, t.plate);
                 EventManager.addNews("info", `${t.plate} unter Druck verkauft: +${Utils.euro(val)}`);
@@ -22992,6 +22993,7 @@ const FleetManager = {
   sell(truckId) {
     const t = (State.trucks || []).find((x) => x.id === truckId);
     if (!t || "idle" !== t.status) return false;
+    if (t.trailerId && void 0 !== TrailerManager) TrailerManager.detach(t.trailerId);
     const value = Math.round(t.purchasePrice * (t.condition / 100) * 0.65);
     FinanceManager.recordRevenue("fleet", value);
     if (State.subRevenue) State.subRevenue.truckSales += value;
@@ -23782,9 +23784,9 @@ const TrailerManager = {
     const tr = (State.trailers || []).find((x) => x.id === trailerId);
     if (!tr) return false;
     if ("in_use" === tr.status) return false;
+    this.detach(trailerId);
     const value = Math.round(tr.purchasePrice * (tr.condition / 100) * 0.7);
-    State.cash += value;
-    State.departments.fleet.revenue += value;
+    FinanceManager.recordRevenue("fleet", value);
     if (State.subRevenue) State.subRevenue.truckSales += value;
     State.trailers = (State.trailers || []).filter((x) => x.id !== trailerId);
     EventManager.addNews("info", `🚚 ${tr.name} verkauft für ${Utils.euro(value)}`);
