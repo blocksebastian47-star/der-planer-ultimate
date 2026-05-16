@@ -23683,6 +23683,8 @@ const JobManager = {
       driver.stress = Utils.clamp(driver.stress + 1.5, 0, 100);
       if (j.daysRemaining <= 0 && "broken" !== truck.status) {
         const onTime = State.day <= j.deadline;
+        j._late = !onTime;
+        j._daysLate = onTime ? 0 : Math.max(0, State.day - (j.deadline || State.day));
         let finalPrice = onTime ? j.price : Math.round(0.6 * j.price);
         if (!onTime && j.cargoInsurance && void 0 !== CargoInsurance) {
           const delayDamage = Math.round(0.4 * j.price);
@@ -23706,10 +23708,6 @@ const JobManager = {
         driver.jobsCompleted++;
         if ("undefined" != typeof BankLedger)
           BankLedger.record("credit", finalPrice, `Auftrag: ${j.from}→${j.to} (${truck.plate})`, "umsatz");
-        if (void 0 !== CustomerPortal) {
-          const wasOnTime = !j._late;
-          CustomerPortal.rateDelivery(j, truck, driver, wasOnTime);
-        }
         if (void 0 !== BankAccount) BankAccount.hookJobRevenue(j, finalPrice);
         if (void 0 !== CustomerPortal) CustomerPortal.rateDelivery(j, truck, driver);
         if (void 0 !== CustomerStories) {
@@ -23731,7 +23729,6 @@ const JobManager = {
           DriverSkills.awardXp(driver.id, xpBase + xpBonus, "job");
         }
         if (void 0 !== GameDepth) GameDepth.applyJobFitEffect(driver, j);
-        truck.km = (truck.km || 0) + (j.km || 0);
         if (void 0 !== GameDepth && truck.km >= 3e5) GameDepth.applyAgingEffects(truck);
         truck.status = "idle";
         truck.location = j.to;
