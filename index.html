@@ -10497,7 +10497,7 @@ const StaffInteraction = {
             text: "✓ 2 Tage Pause genehmigen",
             action: () => {
               driver.status = "urlaub";
-              driver.sickDaysRemaining = 2;
+              driver.vacationEnd = State.day + 2;
               driver.stress = Math.max(20, driver.stress - 25);
               driver.motivation = Math.min(100, driver.motivation + 15);
               if ("loyal" === driver.personality)
@@ -10508,7 +10508,8 @@ const StaffInteraction = {
           {
             text: "⏸ 1 Tag, dann weiter — Betrieb braucht Sie",
             action: () => {
-              driver.sickDaysRemaining = 1;
+              driver.status = "urlaub";
+              driver.vacationEnd = State.day + 1;
               driver.stress = Math.max(30, driver.stress - 10);
               driver.motivation = Math.max(0, driver.motivation - 5);
               if ("ambitious" === driver.personality)
@@ -12950,7 +12951,8 @@ const CareerSystem = {
               s.roleId === step.fromRole &&
               "aktiv" === s.status &&
               (s.experience || 0) >= step.expRequired &&
-              !s._promotionOffered,
+              !s._promotionOffered &&
+              State.day >= (s._promoCooldownDay || 0),
           )
           .forEach((s) => results.push({ staff: s, step: step }));
       });
@@ -12971,6 +12973,7 @@ const CareerSystem = {
     s.role = roleData.name;
     s.salary = Math.round(Math.max(1.15 * s.salary, roleData.baseSalary));
     s._promotionOffered = false;
+    s._promoCooldownDay = State.day + 90;
     s.motivation = Math.min(100, (s.motivation || 70) + 20);
     State.cash -= 2e3;
     EventManager.addNews("good", `🎖️ ${s.name}: ${oldRole} → ${s.role} (Beförderung!)`);
@@ -13000,6 +13003,7 @@ const CareerSystem = {
             text: "⏳ Noch nicht — später",
             action: () => {
               s._promotionOffered = false;
+              s._promoCooldownDay = State.day + 60;
               s.motivation = Math.max(0, s.motivation - 8);
               Notifier.add(`${s.name.split(" ")[0]} ist enttäuscht — Motivation -8`, "warn");
             },
@@ -18068,7 +18072,7 @@ const StaffDepth = {
             }
             break;
           case "veteran":
-            const azubi = (State.staff || []).find((a) => a.roleId?.startsWith("azubi_") && a.mentorId === s.id);
+            const azubi = (State.staff || []).find((a) => a.roleId?.startsWith("azubi_") && a._mentorId === s.id);
             if (azubi) azubi.experience = Math.min(100, (azubi.experience || 0) + 0.1);
             break;
         }
