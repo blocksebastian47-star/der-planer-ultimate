@@ -17802,7 +17802,6 @@ const MorningRoutine = {
               text: `🏠 Du bleibst bei ${child.name} (ganzer Tag)`,
               stress: 8,
               family: 20,
-              timeStart: 0,
               missWork: true,
               news: `🏠 Bei krankem ${child.name} geblieben — Arbeitstag ausgefallen`,
             },
@@ -24387,7 +24386,10 @@ const PlayerManager = {
     const m = (State.familyMessages || []).find((x) => x.id === msgId);
     if (!m || m.responded) return;
     if (accept) {
-      if (State.privateWealth < m.cost) return;
+      if (State.privateWealth < m.cost) {
+        if (void 0 !== Notifier) Notifier.add(`Nicht genug Privatvermögen (${Utils.euro(m.cost)})`, "warn");
+        return;
+      }
       State.privateWealth -= m.cost;
       State.familyHappiness = Utils.clamp(State.familyHappiness + m.happiness, 0, 100);
       State.stress = Utils.clamp(State.stress - 3, 0, 100);
@@ -30799,8 +30801,9 @@ const UI = {
     return `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:700;">🌆 FEIERABEND <span style="color:${done ? "var(--accent2)" : "var(--muted2)"};">· ${done ? "✓ erledigt" : "1× abends"}</span></div>\n              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">${rows}</div>`;
   },
   _applyFamilyEffect(amount) {
-    if (!amount || !State.family?.partner) return;
-    State.family.partner.mood = Math.min(100, Math.max(0, (State.family.partner.mood || 75) + amount));
+    if (!amount) return;
+    if (State.family?.partner)
+      State.family.partner.mood = Math.min(100, Math.max(0, (State.family.partner.mood || 75) + amount));
     State.familyHappiness = Math.min(100, Math.max(0, (State.familyHappiness || 80) + 0.5 * amount));
   },
   _doMorningAction(idx) {
