@@ -23429,6 +23429,8 @@ const JobManager = {
   _startJob(job, truck, driver, route, totalDays) {
     truck.status = "active";
     truck.jobId = job.id;
+    const _jobTrailer = truck.trailerId && (State.trailers || []).find((x) => x.id === truck.trailerId);
+    if (_jobTrailer) _jobTrailer.status = "in_use";
     const truckLocId = truck.location || State.locationId;
     const loc = DATA.locations?.[truckLocId];
     const truckCityId = truck.location || loc?.mapCityId || truckLocId;
@@ -23661,6 +23663,11 @@ const JobManager = {
               : 1) * (void 0 !== DriverTraits ? DriverTraits.getWearMul(driver) : 1);
       truck.condition -= 0.0025 * dailyKm * wearMul + (j.hazard ? 0.5 : 0);
       truck.condition = Math.max(0, truck.condition);
+      const _wearTrailer = truck.trailerId && (State.trailers || []).find((tr) => tr.id === truck.trailerId);
+      if (_wearTrailer) {
+        _wearTrailer.km = (_wearTrailer.km || 0) + Math.round(dailyKm);
+        _wearTrailer.condition = Math.max(0, (_wearTrailer.condition || 100) - 0.0012 * dailyKm * wearMul);
+      }
       let dailyFuel;
       if (void 0 !== FuelHedging) {
         const fuelEff = FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1;
@@ -23738,6 +23745,8 @@ const JobManager = {
         truck.status = "idle";
         truck.location = j.to;
         truck.jobId = null;
+        const _doneTrailer = truck.trailerId && (State.trailers || []).find((x) => x.id === truck.trailerId);
+        if (_doneTrailer) _doneTrailer.status = "idle";
         if (driver) driver.daysAway = (driver.daysAway || 0) + j.daysTotal;
         JobManager.processJobQueue();
         const cust = (State.customers || []).find((c) => c.id === j.customerId);
