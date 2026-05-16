@@ -24290,6 +24290,18 @@ const MarketingManager = {
 };
 const PlayerManager = {
   dailyTick() {
+    // GF vacation entitlement refreshes each game year (365 days), mirroring
+    // the staff vacation model. Without this the 14-day pool drained for good
+    // and the Urlaubstag / Wochenend-Ausflug actions became permanently dead.
+    const gfYear = Math.floor((State.day || 0) / 365);
+    if (State._gfVacationYear !== gfYear) {
+      const isFirstYear = void 0 === State._gfVacationYear;
+      State._gfVacationYear = gfYear;
+      State.vacationDaysAvailable = 14;
+      State.vacationDaysUsed = 0;
+      if (!isFirstYear)
+        EventManager.addNews("good", "🏖️ Neues Jahr — 14 Urlaubstage stehen wieder zur Verfügung.");
+    }
     const stressGain =
       0.15 * State.trucks.length +
       0.08 * State.staff.length +
