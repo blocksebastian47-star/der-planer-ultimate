@@ -8522,7 +8522,7 @@ const FuelStations = {
   },
   checkAutoRefuel(route) {
     if (!route || "driving" !== route.status) return;
-    if ((route.fuelLevel || 100) > 20) return;
+    if ((route.fuelLevel ?? 100) > 20) return;
     if (route.refueledThisLeg) return;
     const targetCity = route.toCity;
     const fillLiters = 400;
@@ -14243,6 +14243,8 @@ const VehicleTuning = {
       const u = this.UPGRADES.find((x) => x.id === upgradeId);
       if (!u) {
         truck.upgradeInProgress = null;
+        truck.upgradeReady = null;
+        truck.status = "idle";
         return;
       }
       if (!truck.upgrades) truck.upgrades = [];
@@ -17088,16 +17090,20 @@ const MaintenancePlan = {
                 text: `🔧 Sofort reparieren + Prüfung (${Utils.euro(Math.round(2.5 * type.cost(truck)))})`,
                 action: () => {
                   const cost = Math.round(2.5 * type.cost(truck));
-                  if (State.cash >= cost) {
-                    State.cash -= cost;
-                    truck.status = "idle";
-                    entry.nextDue = State.day + (type.intervalDays || 730);
-                    entry.lastDone = State.day;
-                    entry._overdue = false;
-                    entry._warned = false;
-                    if (State.subCosts) State.subCosts.repairs += cost;
-                    EventManager.addNews("good", `✓ ${truck.plate} ${type.shortName} bestanden`);
-                  } else Notifier.add("Nicht genug Kapital", "error");
+                  if (State.cash < cost) {
+                    const loan = cost - Math.max(0, State.cash);
+                    State.debt = (State.debt || 0) + loan;
+                    State.cash += loan;
+                    EventManager.addNews("warn", `${truck.plate}: Reparatur per Kredit finanziert (${Utils.euro(loan)})`);
+                  }
+                  State.cash -= cost;
+                  truck.status = "idle";
+                  entry.nextDue = State.day + (type.intervalDays || 730);
+                  entry.lastDone = State.day;
+                  entry._overdue = false;
+                  entry._warned = false;
+                  if (State.subCosts) State.subCosts.repairs += cost;
+                  EventManager.addNews("good", `✓ ${truck.plate} ${type.shortName} bestanden`);
                 },
               },
             ],
