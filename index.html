@@ -21583,6 +21583,19 @@ const Onboarding = {
     State.onboarding.active = false;
     this._removeSpotlight();
     UI.closeModal();
+    // Das übersprungene Onboarding landet als Nachricht im Büro-Posteingang,
+    // damit der versprochene Hinweis auch wirklich auffindbar ist.
+    if (void 0 !== GFOffice)
+      GFOffice.addMessage({
+        from: "Klaus Weber",
+        fromRole: "Disponent · Onboarding-Coach",
+        subject: "🚛 Erste Schritte — die wichtigsten Hinweise",
+        body:
+          "Du hast das Onboarding übersprungen — hier die wichtigsten Hinweise zum Nachlesen:\n\n" +
+          this.SLIDES.map((s) => `${s.icon} ${s.title}\n${s.text}\n💡 ${s.hint}`).join("\n\n"),
+        type: "info",
+        urgent: false,
+      });
     UI.toast("Onboarding übersprungen — du findest alle Hinweise im Büro Posteingang.", "info");
   },
   showIntroModal(slideIndex = 0) {
