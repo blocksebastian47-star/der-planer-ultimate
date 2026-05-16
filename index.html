@@ -4643,7 +4643,6 @@ function _planerDefaultState() {
     gameOver: false,
     victory: false,
     activeRoutes: [],
-    queuedRoutes: [],
     availableJobs: [],
     traffic: [],
     weather: [],
@@ -8343,55 +8342,6 @@ const TrafficSystem = {
     }
   },
 };
-const FollowUpJobs = {
-  checkOffers(route) {
-    if (!State.availableJobs) return;
-    if ("driving" !== route.status) return;
-    if (route.followUpOffered) return;
-    if ((route.progress || 0) < 0.7) return;
-    const targetCity = MAP_DATA.getCity(route.toCity);
-    if (!targetCity) return;
-    const offers = State.availableJobs.filter((j) => {
-      const jobFrom = MAP_DATA.getCity(j.fromCity);
-      if (!jobFrom) return false;
-      return MAP_DATA.distanceKm(targetCity, jobFrom) < 50;
-    });
-    if (offers.length > 0) {
-      const offer = offers[0];
-      route.followUpOffered = true;
-      route.followUpJobId = offer.id;
-      Notifier.add(
-        `📞 ${Utils.truckLabel(route.truckId, route)}: Folgeauftrag von ${MAP_DATA.getCity(offer.fromCity)?.name} → ${MAP_DATA.getCity(offer.toCity)?.name} (${Utils.euro(offer.payment)})`,
-        "success",
-      );
-    }
-  },
-  acceptFollowUp(routeId) {
-    const route = (State.activeRoutes || []).find((r) => r.id === routeId);
-    if (!route || !route.followUpJobId) return false;
-    const job = State.availableJobs.find((j) => j.id === route.followUpJobId);
-    if (!job) return false;
-    State.availableJobs = State.availableJobs.filter((j) => j.id !== job.id);
-    if (!State.queuedRoutes) State.queuedRoutes = [];
-    State.queuedRoutes.push({
-      truckId: route.truckId,
-      jobId: job.id,
-      fromCity: job.fromCity,
-      toCity: job.toCity,
-      cargoType: job.cargoType,
-      payment: job.payment,
-    });
-    Notifier.add(`✅ Folgeauftrag angenommen: ${Utils.truckLabel(route.truckId, route)}`, "success");
-    return true;
-  },
-  declineFollowUp(routeId) {
-    const route = (State.activeRoutes || []).find((r) => r.id === routeId);
-    if (!route) return;
-    delete route.followUpJobId;
-    delete route.followUpOffered;
-    Notifier.add("❌ Folgeauftrag abgelehnt", "info");
-  },
-};
 const TRUCK_CABINS = {
   city: {
     id: "city",
@@ -9022,108 +8972,6 @@ const RoadClosures = {
   cleanup() {
     if (!State.closures) return;
     State.closures = State.closures.filter((c) => State.day <= c.endDay);
-  },
-};
-const MultiStopJobs = {
-  generate(homeCityId) {
-    const cities = MAP_DATA.cities.filter((c) => c.id !== homeCityId && c.hub);
-    const numStops = 2 + Math.floor(2 * Math.random());
-    const stops = [{ cityId: homeCityId, action: "load", loadKg: 18e3, label: "Vollbeladen" }];
-    let remainingLoad = 18e3;
-    for (let i = 0; i < numStops; i++) {
-      const c = cities[Math.floor(Math.random() * cities.length)];
-      let action, loadKg;
-      if (i === numStops - 1) {
-        action = "unload";
-        loadKg = remainingLoad;
-      } else if (Math.random() < 0.6) {
-        action = "unload";
-        loadKg = Math.round(remainingLoad * (0.3 + 0.4 * Math.random()));
-        remainingLoad -= loadKg;
-      } else {
-        action = "load";
-        loadKg = Math.round(2e3 + 4e3 * Math.random());
-        remainingLoad += loadKg;
-      }
-      stops.push({
-        cityId: c.id,
-        action: action,
-        loadKg: loadKg,
-        label: "load" === action ? `Zuladen ${loadKg}kg` : `Entladen ${loadKg}kg`,
-      });
-    }
-    const totalDistance = this._calcDistance(stops);
-    const payment = Math.round(1.55 * totalDistance);
-    return {
-      id: "ms_" + Date.now() + Math.random().toString(36).slice(2, 5),
-      type: "multi_stop",
-      stops: stops,
-      totalDistance: totalDistance,
-      payment: payment,
-      cargoType: "Stückgut (Multi-Stop)",
-      tollCost: this._calcTotalToll(stops),
-      customer: "EuroLogistik AG",
-    };
-  },
-  _calcDistance(stops) {
-    let total = 0;
-    for (let i = 0; i < stops.length - 1; i++) {
-      const a = MAP_DATA.getCity(stops[i].cityId);
-      const b = MAP_DATA.getCity(stops[i + 1].cityId);
-      if (a && b) total += MAP_DATA.distanceKm(a, b);
-    }
-    return Math.round(total);
-  },
-  _calcTotalToll(stops) {
-    let total = 0;
-    for (let i = 0; i < stops.length - 1; i++) {
-      const km = MAP_DATA.distanceKm(MAP_DATA.getCity(stops[i].cityId), MAP_DATA.getCity(stops[i + 1].cityId));
-      total += MAP_DATA.tollCost(stops[i].cityId, stops[i + 1].cityId, km);
-    }
-    return Math.round(total);
-  },
-  acceptMultiStop(jobId, truckId) {
-    const job = (State.availableJobs || []).find((j) => j.id === jobId);
-    if (!job || "multi_stop" !== job.type) return false;
-    State.availableJobs = State.availableJobs.filter((j) => j.id !== jobId);
-    let cumLoad = 0;
-    for (let i = 0; i < job.stops.length - 1; i++) {
-      const from = job.stops[i],
-        to = job.stops[i + 1];
-      cumLoad = "load" === to.action ? cumLoad + to.loadKg : cumLoad - to.loadKg;
-      const km = MAP_DATA.distanceKm(MAP_DATA.getCity(from.cityId), MAP_DATA.getCity(to.cityId));
-      const route = {
-        id: Math.floor(1e5 * Math.random()),
-        truckId: truckId,
-        jobId: job.id + "-leg" + i,
-        fromCity: from.cityId,
-        toCity: to.cityId,
-        cargoType: job.cargoType,
-        cargoValue: 12e3,
-        payment: i === job.stops.length - 2 ? job.payment : 0,
-        tollCost: MAP_DATA.tollCost(from.cityId, to.cityId, km),
-        distanceKm: km,
-        progress: 0,
-        status: 0 === i ? "driving" : "queued",
-        drivingHoursDay: 0,
-        drivingHoursSinceBreak: 0,
-        fuelLevel: 90,
-        customer: job.customer,
-        truckTons: 12,
-        loadKg: cumLoad,
-        multiStopAction: to.action,
-      };
-      if (0 === i) State.activeRoutes.push(route);
-      else {
-        State.queuedRoutes = State.queuedRoutes || [];
-        State.queuedRoutes.push(route);
-      }
-    }
-    Notifier.add(
-      `📦 Multi-Stop-Auftrag angenommen: ${job.stops.length - 1} Etappen, ${job.totalDistance}km`,
-      "success",
-    );
-    return true;
   },
 };
 const Competition = {
@@ -31162,8 +31010,6 @@ const UI = {
     const pct = Math.round(100 * (r.progress || 0));
     const remainingKm = Math.round((r.distanceKm || 0) * (1 - (r.progress || 0)));
     const eta = Math.round((remainingKm / 75) * 10) / 10;
-    const followUpJob =
-      r.followUpJobId && State.availableJobs && State.availableJobs.find((j) => j.id === r.followUpJobId);
     let statusBadge = "";
     if ("driving" === r.status) statusBadge = '<span style="color:var(--accent2);">🚛 Unterwegs</span>';
     else if ("paused" === r.status) statusBadge = '<span style="color:var(--warn);">⏸ Pause (Lenkzeit)</span>';
@@ -31172,11 +31018,6 @@ const UI = {
     const drivingTimeLeft = void 0 !== DrivingTime ? DrivingTime.remainingDailyHours(r) : 0;
     const breakTimeLeft = void 0 !== DrivingTime ? DrivingTime.hoursUntilBreak(r) : 0;
     let html = `\n      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">\n        <div>\n          <h3 style="margin:0 0 8px; color:var(--accent);">📍 Route</h3>\n          <div style="font-size:13px; line-height:1.7;">\n            <div><b>${from?.name || "?"}</b> → <b>${to?.name || "?"}</b></div>\n            <div>Status: ${statusBadge}</div>\n            <div>Fortschritt: <b>${pct}%</b></div>\n            <div>Distanz gesamt: <b>${r.distanceKm || "?"} km</b></div>\n            <div>Verbleibend: <b>${remainingKm} km (${eta}h)</b></div>\n          </div>\n        </div>\n        <div>\n          <h3 style="margin:0 0 8px; color:var(--accent);">🚛 Fahrzeug</h3>\n          <div style="font-size:13px; line-height:1.7;">\n            <div>Truck: <b>#${r.truckId}</b> ${truck?.modelName || ""}</div>\n            <div>Fracht: <b>${r.cargoType || "Allgemein"}</b></div>\n            <div>Wert: <b>${(r.cargoValue || 0).toLocaleString("de-DE")} €</b></div>\n            <div>Sprit: <b>${r.fuelLevel || 78}%</b></div>\n            <div>Zustand: <b>${truck?.condition || 95}%</b></div>\n          </div>\n        </div>\n        <div>\n          <h3 style="margin:0 0 8px; color:var(--accent);">👤 Fahrer</h3>\n          <div style="font-size:13px; line-height:1.7;">\n            <div>Name: <b>${driver?.name || "Nicht zugewiesen"}</b></div>\n            <div>Erfahrung: <b>${driver?.experience || "?"}%</b></div>\n            <div>Heute gefahren: <b>${(r.drivingHoursDay || 0).toFixed(1)}h / 9h</b></div>\n            <div>Bis nächste Pause: <b>${breakTimeLeft.toFixed(1)}h</b></div>\n            <div>Heute noch: <b>${drivingTimeLeft.toFixed(1)}h</b></div>\n          </div>\n        </div>\n        <div>\n          <h3 style="margin:0 0 8px; color:var(--accent);">💰 Auftrag</h3>\n          <div style="font-size:13px; line-height:1.7;">\n            <div>Auftrag-Nr.: <b>#${r.jobId || r.id}</b></div>\n            <div>Auftraggeber: <b>${r.customer || "Spotmarkt"}</b></div>\n            <div>Vergütung: <b>${(r.payment || 0).toLocaleString("de-DE")} €</b></div>\n            <div>Mautkosten: <b>${(r.tollCost || 0).toLocaleString("de-DE")} €</b></div>\n          </div>\n        </div>\n      </div>\n    `;
-    if (followUpJob) {
-      const fj_from = MAP_DATA.getCity(followUpJob.fromCity);
-      const fj_to = MAP_DATA.getCity(followUpJob.toCity);
-      html += `\n        <div style="margin-top:14px; padding:12px; background:rgba(74,222,128,0.1); border:2px solid var(--accent); border-radius:8px;">\n          <h3 style="margin:0 0 8px; color:var(--accent);">📞 FOLGEAUFTRAG ANGEBOT</h3>\n          <div style="font-size:12px; line-height:1.6;">\n            <b>${fj_from?.name} → ${fj_to?.name}</b><br>\n            Fracht: ${followUpJob.cargoType || "Allgemein"} · Vergütung: <b>${followUpJob.payment} €</b>\n          </div>\n          <div style="display:flex; gap:8px; margin-top:10px;">\n            <button class="btn primary" onclick="FollowUpJobs.acceptFollowUp(${r.id}); UI.closeModal(); UI.renderActiveRoutesList();">✅ Annehmen</button>\n            <button class="btn" onclick="FollowUpJobs.declineFollowUp(${r.id}); UI.closeModal(); UI.renderActiveRoutesList();">❌ Ablehnen</button>\n          </div>\n        </div>\n      `;
-    }
     this.showModal({
       title: `Truck #${r.truckId} — ${from?.name} → ${to?.name}`,
       content: html,
