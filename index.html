@@ -16388,10 +16388,12 @@ const GFOffice = {
         {
           label: `✓ Annehmen (${Utils.euro(amount)})`,
           action: () => {
-            LoanManager.take("std");
-            State.cash += amount - 25e3;
-            State.debt += amount - 25e3;
-            EventManager.addNews("info", `🏦 Bankkredit ${Utils.euro(amount)} zu ${rate}% angenommen`);
+            State.cash += amount;
+            State.debt = (State.debt || 0) + amount;
+            EventManager.addNews(
+              "info",
+              `🏦 Bankkredit ${Utils.euro(amount)} zu ${rate}% angenommen (Schulden: ${Utils.euro(State.debt)})`,
+            );
           },
         },
         { label: "✗ Ablehnen", action: () => {} },
