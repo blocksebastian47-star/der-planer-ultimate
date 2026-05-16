@@ -13078,7 +13078,7 @@ const SubcontractorSystem = {
     (State.activeJobs || []).forEach((j) => {
       if (!j.outsourced) return;
       j.daysRemaining--;
-      j.progress = Math.round(100 * (1 - j.daysRemaining / j.daysTotal));
+      j.progress = Utils.clamp(Math.round(100 * (1 - j.daysRemaining / j.daysTotal)), 0, 100);
       if (j.daysRemaining <= 0) {
         const sub = this.POOL.find((s) => s.id === j.subcontractorId);
         if (Math.random() < (sub?.reliability || 0.88)) {
@@ -23630,7 +23630,7 @@ const JobManager = {
         }
       }
       j.daysRemaining--;
-      j.progress = Math.round(100 * (1 - j.daysRemaining / j.daysTotal));
+      j.progress = Utils.clamp(Math.round(100 * (1 - j.daysRemaining / j.daysTotal)), 0, 100);
       const liveRoute = State.activeRoutes?.find((r) => r.truckId === j.truckId);
       if (liveRoute) {
         liveRoute.progress = Math.max(0, Math.min(1, 1 - j.daysRemaining / j.daysTotal));
@@ -29571,7 +29571,7 @@ const UI = {
             return '<div style="font-size:10px; color:var(--muted2); margin-bottom:8px; padding:6px 8px; background:var(--bg2); border-radius:4px;">⏹ Bereit — kein aktiver Auftrag</div>';
           let html = "";
           if (activeJob) {
-            const pct = Math.round(100 * (1 - activeJob.daysRemaining / activeJob.daysTotal));
+            const pct = Utils.clamp(Math.round(100 * (1 - activeJob.daysRemaining / activeJob.daysTotal)), 0, 100);
             html += `<div style="font-size:10px; background:rgba(74,222,128,0.07); border:1px solid rgba(74,222,128,0.2); border-radius:5px; padding:6px 8px; margin-bottom:4px;">\n              <div style="display:flex; justify-content:space-between; margin-bottom:3px;">\n                <span style="color:var(--accent2); font-weight:700;">🚛 AKTIVER AUFTRAG</span>\n                <span style="color:var(--muted2);">${activeJob.daysRemaining}d verbleibend</span>\n              </div>\n              <div style="font-weight:700;">${activeJob.fromName || activeJob.from} → ${activeJob.toName || activeJob.to}</div>\n              <div style="color:var(--muted2);">${activeJob.cargo || "Fracht"} · ${Utils.euro(activeJob.price)}</div>\n              <div style="height:3px; background:var(--bg2); border-radius:2px; margin-top:4px; overflow:hidden;">\n                <div style="height:100%; width:${pct}%; background:var(--accent2); transition:width .3s;"></div>\n              </div>\n            </div>`;
           }
           if (queued.length > 0)
