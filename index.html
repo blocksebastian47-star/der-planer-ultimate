@@ -4668,6 +4668,7 @@ function _planerDefaultState() {
     burnoutWarnings: 0,
     morningActionDay: 0,
     eveningActionDay: 0,
+    socialActionDay: 0,
     trucks: [],
     trailers: [],
     staff: [],
@@ -25937,9 +25938,14 @@ const UI = {
         EventManager.addNews("good", `👶 ${name} ist da! Geschwisterchen für ${existing[0] || "das erste Kind"}.`);
       },
       talk: () => {
+        if (State.socialActionDay === State.day) {
+          this.toast("Heute schon Zeit für die Familie genommen — morgen wieder", "warn");
+          return;
+        }
         if (partner) partner.mood = Math.max(0, (partner.mood || 75) - 3);
         State.familyHappiness = Math.min(100, (State.familyHappiness || 80) + 10);
         State.stress = Math.max(0, (State.stress || 30) - 8);
+        State.socialActionDay = State.day;
         EventManager.addNews("info", `💬 Ernstes Gespräch mit ${partner?.name} — mehr Verständnis füreinander`);
       },
       verloben: () => {
@@ -30724,6 +30730,10 @@ const UI = {
   _callPartner(type) {
     const partner = State.family?.partner;
     if (!partner) return;
+    if (State.socialActionDay === State.day) {
+      this.toast("Heute schon Zeit für die Familie genommen — morgen wieder", "warn");
+      return;
+    }
     const s = {
       lunch: {
         text: `"${partner.name}? Ich bin's. Alles okay bei dir?" — Ein kurzes Gespräch. Du hörst zu.`,
@@ -30748,6 +30758,7 @@ const UI = {
     partner.mood = Math.min(100, partner.mood + s.mood);
     State.stress = Math.max(0, State.stress + s.stress);
     State.familyHappiness = Math.min(100, (State.familyHappiness || 80) + 0.3 * s.mood);
+    State.socialActionDay = State.day;
     EventManager.addNews("good", s.toast);
     this.toast(s.toast, "good");
     this.renderPrivate();
