@@ -30784,22 +30784,22 @@ const UI = {
     { icon: "🏖️", label: "Urlaubs-Tag nehmen", stress: -28, cost: 0, family: 0, vacation: true },
   ],
   _renderDayPhase() {
-    const isMorning = (State.hour || 8) < 12;
+    // Both routine slots are always shown (no fragile State.hour < 12 split):
+    // the morning slot used to be unreachable if the player only opened
+    // Privatleben after noon, and the evening slot was grabbable from 12:01.
+    // Each slot stays limited to 1x per day via its own day flag.
     const partner = State.family?.partner;
     const kids = State.family?.children || [];
     const btn = (a, i, blocked, handler) =>
       `<button class="btn" ${blocked ? "disabled" : ""} style="padding:7px;text-align:left;border-radius:6px;font-size:10px;border:1px solid var(--border);background:var(--bg);${blocked ? "opacity:0.4;cursor:not-allowed;" : ""}" onclick="UI.${handler}(${i})">${a.icon} ${a.label}<div style="font-size:9px;color:var(--accent2);">Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.cost ? " · " + a.cost + "€" : ""}${a.family ? " · Familie +" + a.family : ""}${a.vacation ? " · 1 Urlaubstag" : ""}</div></button>`;
-    if (isMorning) {
-      const done = State.morningActionDay === State.day;
-      const rows = this.MORNING_ACTIONS.map((a, i) => btn(a, i, done, "_doMorningAction")).join("");
-      return `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:700;">🌅 MORGENROUTINE <span style="color:${done ? "var(--accent2)" : "var(--muted2)"};">· ${done ? "✓ erledigt" : "1× morgens"}</span></div>\n              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">${rows}</div>`;
-    }
-    const done = State.eveningActionDay === State.day;
-    const rows = this.EVENING_ACTIONS.map((a, i) => ({ a, i }))
+    const mDone = State.morningActionDay === State.day;
+    const mRows = this.MORNING_ACTIONS.map((a, i) => btn(a, i, mDone, "_doMorningAction")).join("");
+    const eDone = State.eveningActionDay === State.day;
+    const eRows = this.EVENING_ACTIONS.map((a, i) => ({ a, i }))
       .filter(({ a }) => (!a.needsPartner || partner) && (!a.needsKids || kids.length > 0))
-      .map(({ a, i }) => btn(a, i, done, "_doEveningAction"))
+      .map(({ a, i }) => btn(a, i, eDone, "_doEveningAction"))
       .join("");
-    return `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:700;">🌆 FEIERABEND <span style="color:${done ? "var(--accent2)" : "var(--muted2)"};">· ${done ? "✓ erledigt" : "1× abends"}</span></div>\n              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">${rows}</div>`;
+    return `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:700;">🌅 MORGENROUTINE <span style="color:${mDone ? "var(--accent2)" : "var(--muted2)"};">· ${mDone ? "✓ erledigt" : "1× pro Tag"}</span></div>\n              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">${mRows}</div>\n              <div style="font-size:10px;color:var(--muted);margin:12px 0 6px;font-weight:700;">🌆 FEIERABEND <span style="color:${eDone ? "var(--accent2)" : "var(--muted2)"};">· ${eDone ? "✓ erledigt" : "1× pro Tag"}</span></div>\n              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">${eRows}</div>`;
   },
   _applyFamilyEffect(amount) {
     if (!amount) return;
