@@ -13376,7 +13376,7 @@ const SpotMarket = {
         l.price = Math.round(0.985 * l.price);
         l.perKm = Math.round((l.price / l.km) * 100) / 100;
       }
-      if (l.expiresHour - hour <= 2 && 0 === l.bids) {
+      if (l.expiresHour - hour <= 2 && 0 === l.bids && !l._express) {
         l.price = Math.round(1.08 * l.price);
         l.perKm = Math.round((l.price / l.km) * 100) / 100;
         l._express = true;
@@ -24660,7 +24660,7 @@ const DispoManager = {
       const job = (State.jobs || []).find((j) => j.id === c.jobId);
       if (success && job) {
         job.price = Math.round(1.18 * job.price);
-        EventManager.addNews("good", `💼 Verhandlung erfolgreich: +18% auf ${Utils.euro(job.price)}`);
+        EventManager.addNews("good", `💼 Verhandlung erfolgreich: +18% — neuer Preis ${Utils.euro(job.price)}`);
       } else {
         State.jobs = (State.jobs || []).filter((j) => j.id !== c.jobId);
         EventManager.addNews("warn", "💼 Verhandlung gescheitert. Auftrag verloren.");
