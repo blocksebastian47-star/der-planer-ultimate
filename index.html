@@ -19428,7 +19428,7 @@ const HomerunSystem = {
           if (!truck._homeReturnDay) truck._homeReturnDay = State.day + daysNeeded;
           const fuelCost = Math.round(0.32 * km * (State.fuelPriceCurrent || 1.65));
           State.cash -= fuelCost;
-          if (void 0 !== BankAccount) BankAccount.record("fuel_out", -fuelCost, `Leerfahrt Heimkehr: ${truck.plate}`);
+          if (void 0 !== BankAccount) BankAccount.record("fuel", -fuelCost, `Leerfahrt Heimkehr: ${truck.plate}`);
           if (State.day >= truck._homeReturnDay) {
             truck.location = homeCity;
             truck._homeReturnDay = null;
@@ -19783,7 +19783,7 @@ const WeatherRoads = {
       if (extraFuel > 0 && Math.random() < 0.4) {
         State.cash -= extraFuel;
         if (void 0 !== BankAccount)
-          BankAccount.record("fuel_out", -extraFuel, `Wetter-Mehrverbrauch: ${job.fromName}→${job.toName}`);
+          BankAccount.record("fuel", -extraFuel, `Wetter-Mehrverbrauch: ${job.fromName}→${job.toName}`);
       }
     }
   },
@@ -23478,7 +23478,7 @@ const JobManager = {
           else State.cash -= deadheadCost;
           if (void 0 !== BankAccount)
             BankAccount.record(
-              "fuel_out",
+              "fuel",
               -deadheadCost,
               `Leerfahrt ${truckCity.name}→${jobFromCity.name} (${truck.plate})`,
             );
@@ -23501,7 +23501,7 @@ const JobManager = {
         if (void 0 !== FinanceManager) FinanceManager.recordCost("fuelToll", ferryCost, true);
         else State.cash -= ferryCost;
         if (void 0 !== BankAccount)
-          BankAccount.record("fuel_out", -ferryCost, `Fähre ${job.fromName}→${job.toName} (${truck.plate})`);
+          BankAccount.record("other_out", -ferryCost, `Fähre ${job.fromName}→${job.toName} (${truck.plate})`);
         EventManager.addNews(
           "info",
           `⛴️ Fähre gebucht: ${jobFerries.map((l) => l.ferry.name).join(", ")} — ${Utils.euro(ferryCost)}`,
@@ -23625,7 +23625,7 @@ const JobManager = {
           if (border.cost > 0) {
             State.cash -= border.cost;
             if (void 0 !== BankAccount)
-              BankAccount.record("fuel_out", -border.cost, `Grenzabfertigung: ${j.fromName}→${j.toName}`);
+              BankAccount.record("other_out", -border.cost, `Grenzabfertigung: ${j.fromName}→${j.toName}`);
           }
           if (border.hours > 1)
             EventManager.addNews(
