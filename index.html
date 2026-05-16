@@ -328,9 +328,6 @@ tbody tr:hover { background: rgba(255, 182, 39, 0.04); }
   font-weight: 700;
 }
 .btn.primary:hover:not(:disabled) { background: #ffc547; }
-.fin-tab { border-bottom: 2px solid transparent; margin-bottom: -2px; }
-.fin-tab.active { border-bottom-color: var(--accent); color: var(--accent); font-weight: 700; }
-.fin-tab-content { display: none; }
 .tm-tab { border-bottom: 2px solid transparent; margin-bottom: -2px; }
 .tm-tab.active { border-bottom-color: var(--accent); color: var(--accent); font-weight: 700; }
 .btn.success {
@@ -1323,109 +1320,6 @@ footer {
   <div id="customer-ratings-box" style="margin-top:12px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px;"></div>
 </div>
 
-<!-- FINANCE -->
-<div class="view" id="view-finance">
-  <div class="view-header">
-    <div>
-      <div class="view-title">FINANZEN</div>
-      <div class="view-subtitle">GuV · Cashflow · Bilanz · Kostenanalyse</div>
-    </div>
-    <div class="btn-bar">
-      <button class="btn" onclick="UI.openLoanModal()">💵 Kredit</button>
-      <button class="btn" onclick="LoanManager.repay(10000); UI.renderAll();">↩ Tilgen 10k</button>
-    </div>
-  </div>
-
-  <!-- KPI-Leiste -->
-  <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">Kassenbestand</div><div class="kpi-value" id="fin-cash">€ 0</div></div>
-    <div class="kpi"><div class="kpi-label">Eigenkapital</div><div class="kpi-value" id="fin-equity">€ 0</div></div>
-    <div class="kpi"><div class="kpi-label">Verbindlichkeiten</div><div class="kpi-value" id="fin-liab">€ 0</div></div>
-    <div class="kpi"><div class="kpi-label">Anlagevermögen</div><div class="kpi-value" id="fin-assets">€ 0</div></div>
-    <div class="kpi"><div class="kpi-label">Monatsumsatz</div><div class="kpi-value" id="fin-month-rev">€ 0</div></div>
-    <div class="kpi"><div class="kpi-label">Monatsergebnis</div><div class="kpi-value" id="fin-month-profit">€ 0</div></div>
-  </div>
-
-  <!-- Finance Tabs -->
-  <div style="display:flex; gap:4px; margin-bottom:12px; border-bottom:2px solid var(--border); padding-bottom:0;">
-    <button class="btn fin-tab active" data-tab="guv" onclick="UI.switchFinTab('guv')" style="border-radius:6px 6px 0 0; border-bottom:none;">📊 GuV</button>
-    <button class="btn fin-tab" data-tab="cashflow" onclick="UI.switchFinTab('cashflow')" style="border-radius:6px 6px 0 0; border-bottom:none;">💧 Cashflow</button>
-    <button class="btn fin-tab" data-tab="costs" onclick="UI.switchFinTab('costs')" style="border-radius:6px 6px 0 0; border-bottom:none;">🔍 Kostenanalyse</button>
-    <button class="btn fin-tab" data-tab="dept" onclick="UI.switchFinTab('dept')" style="border-radius:6px 6px 0 0; border-bottom:none;">🏢 Abteilungen</button>
-  </div>
-
-  <!-- TAB: GuV -->
-  <div id="fin-tab-guv" class="fin-tab-content" style="display:block;">
-    <div class="dashboard-grid">
-      <div class="card" style="grid-column:1/-1;">
-        <div class="card-title">Gewinn- und Verlustrechnung — laufender Monat</div>
-        <div id="finance-guv"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Letzter Monatsabschluss</div>
-        <div id="last-month-report"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Jahresabschlüsse</div>
-        <div id="annual-reports"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: Cashflow -->
-  <div id="fin-tab-cashflow" class="fin-tab-content" style="display:none;">
-    <div class="dashboard-grid">
-      <div class="card" style="grid-column:1/-1;">
-        <div class="card-title">Cashflow-Analyse</div>
-        <div id="finance-cashflow-analysis"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Kassenbestand (60 Tage)</div>
-        <svg id="cashflow-chart" style="width:100%; height:120px;"></svg>
-      </div>
-      <div class="card">
-        <div class="card-title">Umsatz / Kosten / Gewinn (60 Tage)</div>
-        <svg id="finance-multi-chart" style="width:100%; height:160px;"></svg>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: Kostenanalyse -->
-  <div id="fin-tab-costs" class="fin-tab-content" style="display:none;">
-    <div class="dashboard-grid">
-      <div class="card">
-        <div class="card-title">Kostenstruktur (laufender Monat)</div>
-        <div id="finance-subcosts"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Erlösstruktur (laufender Monat)</div>
-        <div id="finance-subrevenue"></div>
-      </div>
-      <div class="card" style="grid-column:1/-1;">
-        <div class="card-title">Disponent-Aktivität</div>
-        <div id="dispo-activity"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: Abteilungen -->
-  <div id="fin-tab-dept" class="fin-tab-content" style="display:none;">
-    <div class="card">
-      <div class="card-title">Kosten/Einnahmen pro Abteilung (laufender Monat)</div>
-      <table>
-        <thead><tr>
-          <th>Abteilung</th>
-          <th class="num">Fix</th>
-          <th class="num">Variabel</th>
-          <th class="num">Umsatz</th>
-          <th class="num">Saldo</th>
-          <th class="num">ROI</th>
-        </tr></thead>
-        <tbody id="dept-table-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
 <!-- INSURANCE -->
 <div class="view" id="view-insurance">
@@ -30264,14 +30158,6 @@ const UI = {
           ? '<div style="color:var(--muted); font-size:11px;">Noch keine Bewertungen</div>'
           : `\n        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n          <div style="font-family:'Bebas Neue'; font-size:16px; letter-spacing:1px;">⭐ KUNDENBEWERTUNGEN</div>\n          <div style="font-size:18px; font-weight:700; color:var(--accent2);">⌀ ${avg} / 5</div>\n        </div>\n        ${recent.map((r) => `\n          <div style="display:flex; gap:8px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05); font-size:11px;">\n            <div style="flex-shrink:0; font-size:16px;">${"★".repeat(r.stars)}${"☆".repeat(5 - r.stars)}</div>\n            <div>\n              <div style="color:var(--muted2);">${r.comment}</div>\n              <div style="font-size:9px; color:var(--muted);">${r.customerName} · Tag ${r.day} · ${r.wasOnTime ? "✓ Pünktlich" : "⚠ Verspätet"}</div>\n            </div>\n          </div>`).join("")}`;
     }
-  },
-  switchFinTab(tab) {
-    document.querySelectorAll(".fin-tab-content").forEach((el) => (el.style.display = "none"));
-    document.querySelectorAll(".fin-tab").forEach((btn) => btn.classList.remove("active"));
-    const el = document.getElementById("fin-tab-" + tab);
-    if (el) el.style.display = "block";
-    const btn = document.querySelector(`.fin-tab[data-tab="${tab}"]`);
-    if (btn) btn.classList.add("active");
   },
   renderFinance() {
     const el = UI._getContentEl("finanzen-content");
