@@ -13112,8 +13112,11 @@ const AnnualClose = {
   },
   runAnnualClose() {
     const year = Math.floor(State.day / 365);
-    const revenue = State.history.revenue.slice(-365).reduce((a, b) => a + b, 0);
-    const costs = State.history.costs.slice(-365).reduce((a, b) => a + b, 0);
+    // Jahreszahlen aus den Monatsabschlüssen dieses Jahres — State.history
+    // behält nur ~60 Tage, ein slice(-365) erfasste also nur ~2 Monate.
+    const yearReports = (State.monthlyReports || []).filter((r) => r.day > State.day - 365);
+    const revenue = yearReports.reduce((a, r) => a + (r.totalRevenue || 0), 0);
+    const costs = yearReports.reduce((a, r) => a + (r.totalCosts || 0), 0);
     const profit = revenue - costs;
     const hasTaxAdvisor = State.staff.some((s) => "tax_advisor" === s.roleId && "aktiv" === s.status);
     const hasAccountant = State.staff.some((s) => "accountant" === s.roleId && "aktiv" === s.status);
