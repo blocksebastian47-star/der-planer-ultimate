@@ -24293,17 +24293,18 @@ const PlayerManager = {
       0.1 * State.activeJobs.length;
     State.stress = Utils.clamp(State.stress + stressGain - 0.5, 0, 100);
     if (State.stress > 70) State.familyHappiness = Utils.clamp(State.familyHappiness - 0.3, 0, 100);
-    if (State.stress >= 85 && State.burnoutWarnings < 1) {
-      State.burnoutWarnings++;
+    if (State.stress >= 85 && State.day - (State._lastBurnoutWarn || -999) >= 20) {
+      State._lastBurnoutWarn = State.day;
+      State.burnoutWarnings = (State.burnoutWarnings || 0) + 1;
       EventManager.queueDecision({
         type: "burnout_warning",
         title: "⚠ BURNOUT-WARNUNG",
         subtitle: "Ihr Arzt rät dringend zu einer Pause",
         content:
-          "Ihr Stresslevel ist kritisch. Wenn Sie nicht reagieren, werden Sie schlechte Geschäftsentscheidungen treffen. Ihr Arzt empfiehlt eine Auszeit.",
+          "Ihr Stresslevel ist kritisch. Hoher Stress zehrt an der Familienbindung und Ihrer Gesundheit. Ihr Arzt empfiehlt dringend eine Auszeit.",
         choices: [
-          { text: "🏖 2 Wochen Urlaub nehmen (kostet €5.000, Stress -50)", action: () => this.takeVacation(14, 5e3) },
-          { text: "🛌 Wochenende auszeichnen (kostet €500, Stress -15)", action: () => this.takeVacation(2, 500) },
+          { text: "🏖 Längere Auszeit (€5.000 — Stress -50, Familie +20)", action: () => this.takeVacation(14, 5e3) },
+          { text: "🛌 Kurze Erholungspause (€500 — Stress -15, Familie +5)", action: () => this.takeVacation(2, 500) },
           {
             text: '💼 Ignorieren - "Geht schon"',
             action: () => {
@@ -24316,17 +24317,13 @@ const PlayerManager = {
     State.cognitiveImpairment = State.stress > 80 ? "severe" : State.stress > 60 ? "mild" : "none";
   },
   takeVacation(days, cost) {
-    if (State.privateWealth < cost) {
-      EventManager.addNews("warn", "Nicht genug Privatvermögen für Urlaub");
-      return false;
-    }
-    State.privateWealth -= cost;
+    // Recovery action — the calendar is NOT skipped (skipping days froze the
+    // company: no salaries, jobs or events ran). Always succeeds; pays what is
+    // available so a broke player is never stuck at burnout.
+    State.privateWealth = Math.max(0, (State.privateWealth || 0) - cost);
     State.stress = Utils.clamp(State.stress - (days >= 14 ? 50 : 15), 0, 100);
     State.familyHappiness = Utils.clamp(State.familyHappiness + (days >= 14 ? 20 : 5), 0, 100);
-    State.vacationDaysUsed += days;
-    State.day += days;
-    State.date += 864e5 * days;
-    EventManager.addNews("good", `🏖 ${days} Tage Auszeit genommen. Sie fühlen sich erholt.`);
+    EventManager.addNews("good", `🏖 ${days >= 14 ? "Längere" : "Kurze"} Auszeit genommen — Sie fühlen sich erholt.`);
     return true;
   },
   buyLuxury(itemId) {
