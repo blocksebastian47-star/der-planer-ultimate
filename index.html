@@ -30656,12 +30656,12 @@ const UI = {
     const sleepHours = sleepLast ? sleepLast.hours : 7;
     const form =
       sleepHours >= 8 && stress < 40
-        ? { label: "💪 Topform", color: "var(--accent2)", bonus: "+10% Verhandlungsgeschick" }
+        ? { label: "💪 Topform", color: "var(--accent2)", bonus: "Erholt & ausgeglichen" }
         : sleepHours >= 6 && stress < 60
-          ? { label: "🙂 Gut drauf", color: "var(--accent2)", bonus: "Normal" }
+          ? { label: "🙂 Gut drauf", color: "var(--accent2)", bonus: "Stabil — alles im grünen Bereich" }
           : sleepHours >= 5 && stress < 75
-            ? { label: "😐 Müde", color: "var(--warn)", bonus: "−5% Entscheidungsqualität" }
-            : { label: "😩 Ausgelaugt", color: "var(--danger)", bonus: "−15% · Fehler möglich" };
+            ? { label: "😐 Müde", color: "var(--warn)", bonus: "Mehr Ruhe einplanen" }
+            : { label: "😩 Ausgelaugt", color: "var(--danger)", bonus: "Hoher Stress zehrt an der Familienbindung" };
     const burnoutRisk = Math.min(
       100,
       0.6 * stress + (overtime >= 5 ? 30 : overtime >= 3 ? 15 : 0) + (sleepHours < 6 ? 20 : 0),
