@@ -830,9 +830,11 @@ footer {
           State.overtimeLog.lastWeekDays++,
           (State.overtimeLog.lastCountedDay = State.day)),
         this.stop(),
-        "undefined" != typeof EveningScreen
-          ? EveningScreen.open(e)
-          : ((this._dayMs = 0), "undefined" != typeof Game && Game.nextDay()));
+        "undefined" != typeof WeekendScreen && WeekendScreen.shouldIntercept()
+          ? WeekendScreen.open()
+          : "undefined" != typeof EveningScreen
+            ? EveningScreen.open(e)
+            : ((this._dayMs = 0), "undefined" != typeof Game && Game.nextDay()));
     },
     manualAdvance() {
       "undefined" == typeof State ||
@@ -953,6 +955,135 @@ footer {
               "undefined" != typeof Game && Game.nextDay();
             }, 500));
         }, 800));
+    },
+  }),
+  (window.WeekendScreen = {
+    shouldIntercept() {
+      if ("undefined" == typeof State || State.gameOver || !State.date) return false;
+      const d = new Date(State.date).getDay();
+      return 0 === d || 5 === d || 6 === d;
+    },
+    _options() {
+      const all = ("undefined" != typeof UI && UI.WEEKEND_OPTIONS) || [];
+      const partner = !!(State.family && State.family.partner);
+      return all
+        .map((o, i) => ({ o: o, i: i }))
+        .filter((x) => (!x.o.needsPartner || partner) && (!x.o.single || !partner));
+    },
+    _view(o) {
+      const kids = ((State.family && State.family.children) || []).length;
+      const noKids = o.needsPartner && 0 === kids;
+      return {
+        icon: noKids && o.iconNoKids ? o.iconNoKids : o.icon,
+        label: noKids && o.labelNoKids ? o.labelNoKids : o.label,
+        desc: noKids && o.descNoKids ? o.descNoKids : o.desc,
+      };
+    },
+    _effectSummary(o) {
+      const partner = State.family && State.family.partner;
+      const parts = ["Stress " + (o.stress > 0 ? "+" + o.stress : o.stress)];
+      if (o.cost) parts.push("-" + o.cost + " € privat");
+      if (o.cashBonus) parts.push("+" + o.cashBonus.toLocaleString("de-DE") + " € Kasse");
+      if (o.fame) parts.push("Bekanntheit +" + o.fame);
+      if (partner && o.family) parts.push("Familie " + (o.family > 0 ? "+" + o.family : o.family));
+      if (o.party && !partner) parts.push("evtl. neue Bekanntschaft");
+      return parts.join("  ·  ");
+    },
+    open() {
+      if (!this.shouldIntercept()) return;
+      if ("undefined" != typeof GameClock) GameClock.stop();
+      const old = document.getElementById("weekend-overlay");
+      if (old) old.remove();
+      const c = document.createElement("div");
+      c.id = "weekend-overlay";
+      c.style.cssText =
+        "position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#1a1206 0%,#2a1d0c 42%,#0c0a18 100%);display:flex;padding:20px;overflow:auto;";
+      c.innerHTML = this._render();
+      document.body.appendChild(c);
+    },
+    _render() {
+      const dateStr = new Date(State.date).toLocaleDateString("de-DE", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+      const wealth = State.privateWealth || 0;
+      const buttons = this._options()
+        .map((x) => {
+          const v = this._view(x.o);
+          const aff = !x.o.cost || wealth >= x.o.cost;
+          return `
+        <button ${aff ? 'onclick="WeekendScreen.choose(' + x.i + ')"' : "disabled"}
+          style="display:flex;flex-direction:column;gap:4px;text-align:left;padding:13px 15px;border-radius:10px;border:1px solid rgba(255,255,255,${aff ? "0.14" : "0.06"});background:rgba(255,255,255,${aff ? "0.05" : "0.02"});color:${aff ? "#e2e8f0" : "#475569"};cursor:${aff ? "pointer" : "not-allowed"};transition:background .15s;"
+          ${aff ? "onmouseover=\"this.style.background='rgba(255,255,255,0.1)'\" onmouseout=\"this.style.background='rgba(255,255,255,0.05)'\"" : ""}>
+          <div style="font-size:15px;font-weight:700;">${v.icon} ${v.label}</div>
+          <div style="font-size:11px;color:#94a3b8;line-height:1.45;">${v.desc}</div>
+          <div style="font-size:10px;color:#fbbf24;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;">${this._effectSummary(x.o)}${aff ? "" : "  ·  zu teuer"}</div>
+        </button>`;
+        })
+        .join("");
+      return `
+      <div style="position:relative;width:min(520px,94vw);margin:auto;display:flex;flex-direction:column;gap:15px;">
+        <div style="text-align:center;">
+          <div style="font-size:12px;color:#fbbf24;letter-spacing:3px;font-family:'JetBrains Mono',monospace;">🌟 WOCHENENDE</div>
+          <div style="font-size:26px;font-weight:900;color:#f1f5f9;margin-top:7px;line-height:1.22;">Wie verbringst du dein Wochenende?</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:7px;">Feierabend am ${dateStr}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px;">${buttons}</div>
+        <div style="font-size:10px;color:#64748b;text-align:center;font-family:'JetBrains Mono',monospace;line-height:1.55;">
+          Samstag &amp; Sonntag laufen im Hintergrund weiter — Aufträge, Gehälter<br>und Ereignisse ganz normal. Weiter geht es am Montagmorgen.
+        </div>
+      </div>`;
+    },
+    choose(idx) {
+      const entry = this._options().find((x) => x.i === idx);
+      if (!entry) return;
+      const opt = entry.o;
+      if (opt.cost && (State.privateWealth || 0) < opt.cost)
+        return void ("undefined" != typeof UI && UI.toast("Nicht genug Privatvermögen", "warn"));
+      const lines = ("undefined" != typeof UI && UI._applyWeekendChoice(opt)) || [];
+      if ("undefined" != typeof Game) Game.skipWeekend();
+      this._showResult(opt, lines);
+    },
+    _showResult(opt, lines) {
+      const overlay = document.getElementById("weekend-overlay");
+      if (!overlay) return void this._finish();
+      const v = this._view(opt);
+      const dateStr = new Date(State.date).toLocaleDateString("de-DE", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+      });
+      const events = (State.pendingDecisions || []).filter((d) => !d.isMorningRoutine && !d.isMorningEvent).length;
+      const effHtml = lines.map((l) => `<div style="font-size:12px;color:#cbd5e1;">• ${l}</div>`).join("");
+      overlay.innerHTML = `
+      <div style="position:relative;width:min(440px,92vw);margin:auto;display:flex;flex-direction:column;gap:14px;text-align:center;">
+        <div style="font-size:46px;">${v.icon}</div>
+        <div style="font-size:22px;font-weight:900;color:#f1f5f9;">${v.label} — erledigt</div>
+        <div style="font-size:12px;color:#fbbf24;font-family:'JetBrains Mono',monospace;letter-spacing:1px;">☀️ ${dateStr} — neue Woche</div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px;text-align:left;">
+          ${effHtml}
+          ${events > 0 ? `<div style="font-size:12px;color:#f59e0b;margin-top:5px;">📋 ${events} Ereignis${1 === events ? "" : "se"} aus dem Wochenende warte${1 === events ? "t" : "n"} auf dich.</div>` : ""}
+        </div>
+        <button onclick="WeekendScreen._finish()"
+          style="padding:14px;border-radius:10px;border:1px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.15);color:#818cf8;cursor:pointer;font-size:18px;font-family:'Bebas Neue',sans-serif;letter-spacing:2px;transition:background .2s;"
+          onmouseover="this.style.background='rgba(99,102,241,0.3)'" onmouseout="this.style.background='rgba(99,102,241,0.15)'">
+          ☀️ WEITER IN DIE WOCHE
+        </button>
+      </div>`;
+    },
+    _finish() {
+      const e = document.getElementById("weekend-overlay");
+      if (e) {
+        e.style.transition = "opacity 0.6s";
+        e.style.opacity = "0";
+        setTimeout(() => e.remove(), 600);
+      }
+      "undefined" != typeof UI && UI.showView("private");
+      setTimeout(() => {
+        "undefined" != typeof UI && UI.showNextDecision();
+      }, 350);
     },
   }));
 </script>
@@ -25308,6 +25439,7 @@ const Game = {
   nextDay() {
     try {
       if (State.gameOver) return;
+      if (document.getElementById("weekend-overlay")) return;
       if (!Number.isFinite(State.cash)) {
         console.warn("[nextDay] State.cash was non-finite — reset to 0", State.cash);
         State.cash = 0;
@@ -25316,6 +25448,10 @@ const Game = {
       if (State.pendingDecisions.length > 0) {
         UI.toast("Erst offene Entscheidungen treffen!", "warn");
         UI.showNextDecision();
+        return;
+      }
+      if ("undefined" != typeof WeekendScreen && WeekendScreen.shouldIntercept()) {
+        WeekendScreen.open();
         return;
       }
       State.hour = 8 + 0.5 * Math.random();
@@ -25330,6 +25466,28 @@ const Game = {
       UI.showNextDecision();
     } catch (e) {
       console.error("[nextDay]", e);
+    }
+    Game.autoSave();
+    if (void 0 !== MapRender) MapRender.refreshAfterDayTick();
+  },
+  skipWeekend() {
+    try {
+      if (State.gameOver) return;
+      if (!Number.isFinite(State.cash)) State.cash = 0;
+      State.hour = 8 + 0.5 * Math.random();
+      let guard = 0;
+      while (new Date(State.date).getDay() !== 1 && !State.gameOver && guard++ < 8) {
+        DayCycle.start();
+      }
+      if ("undefined" != typeof GameClock) {
+        GameClock._dayMs = 0;
+        GameClock._lastReal = performance.now();
+        GameClock._updateClock(State.hour);
+        if (!GameClock._frame) GameClock._startLoop();
+      }
+      UI.renderAll();
+    } catch (e) {
+      console.error("[skipWeekend]", e);
     }
     Game.autoSave();
     if (void 0 !== MapRender) MapRender.refreshAfterDayTick();
@@ -30766,6 +30924,99 @@ const UI = {
     { icon: "🏥", label: "Arzt / Therapie", stress: -22, cost: 80, family: 0 },
     { icon: "🏖️", label: "Urlaubstag einlösen", stress: -28, cost: 0, family: 0, vacation: true },
   ],
+  WEEKEND_OPTIONS: [
+    {
+      id: "erholung",
+      icon: "🛌",
+      label: "Erholung",
+      desc: "Ausschlafen, Hobbys, einfach mal abschalten — Akkus voll aufladen.",
+      stress: -22,
+      cost: 0,
+    },
+    {
+      id: "familie",
+      icon: "👨‍👩‍👧",
+      label: "Familienzeit",
+      iconNoKids: "❤️",
+      labelNoKids: "Zeit zu zweit",
+      desc: "Ausflüge, gemeinsam kochen, Zeit mit Partnerin und Kindern.",
+      descNoKids: "Ein Wochenende ganz zu zweit — Ausflug, Restaurant, Zeit füreinander.",
+      stress: -16,
+      cost: 70,
+      family: 18,
+      partnerMood: 16,
+      needsPartner: true,
+    },
+    {
+      id: "ausgehen",
+      icon: "🎉",
+      label: "Ausgehen & Feiern",
+      desc: "Bar, Party, Freunde treffen — und vielleicht jemanden kennenlernen.",
+      stress: -16,
+      cost: 50,
+      fame: 3,
+      party: true,
+      single: true,
+    },
+    {
+      id: "kurztrip",
+      icon: "🧳",
+      label: "Kurztrip",
+      desc: "Spontane Städtereise übers Wochenende — kostet, bringt aber echten Abstand.",
+      stress: -30,
+      cost: 200,
+      fame: 1,
+      single: true,
+    },
+    {
+      id: "durcharbeiten",
+      icon: "💼",
+      label: "Durcharbeiten",
+      desc: "Sonderschichten und Eilaufträge am Wochenende — Stress rauf, dafür klingelt die Kasse.",
+      stress: 14,
+      cost: 0,
+      cashBonus: 1500,
+      family: -5,
+      partnerMood: -6,
+    },
+  ],
+  _applyWeekendChoice(opt) {
+    const lines = [];
+    const partner = State.family && State.family.partner;
+    State.stress = Math.max(0, Math.min(100, (State.stress || 30) + opt.stress));
+    lines.push(`Stress ${opt.stress > 0 ? "+" + opt.stress : opt.stress}`);
+    if (opt.cost) {
+      State.privateWealth = (State.privateWealth || 0) - opt.cost;
+      lines.push(`Privatvermögen -${opt.cost} €`);
+    }
+    if (opt.cashBonus) {
+      State.cash = (State.cash || 0) + opt.cashBonus;
+      lines.push(`Firmenkasse +${opt.cashBonus.toLocaleString("de-DE")} €`);
+    }
+    if (opt.fame) {
+      State.fame = Math.min(100, (State.fame || 0) + opt.fame);
+      lines.push(`Bekanntheit +${opt.fame}`);
+    }
+    if (partner) {
+      if (opt.family) {
+        State.familyHappiness = Math.max(0, Math.min(100, (State.familyHappiness || 80) + opt.family));
+        lines.push(`Familienbindung ${opt.family > 0 ? "+" + opt.family : opt.family}`);
+      }
+      if (opt.partnerMood) {
+        partner.mood = Math.max(0, Math.min(100, (partner.mood || 75) + opt.partnerMood));
+        lines.push(`${partner.name}: Stimmung ${opt.partnerMood > 0 ? "+" + opt.partnerMood : opt.partnerMood}`);
+      }
+    }
+    let met = false;
+    if (opt.party && !partner && Math.random() < 0.55) {
+      this._partyMeetSomeone();
+      met = true;
+    }
+    const view = "undefined" != typeof WeekendScreen ? WeekendScreen._view(opt) : { icon: opt.icon, label: opt.label };
+    EventManager.addNews(opt.id === "durcharbeiten" ? "info" : "good", `${view.icon} Wochenende: ${view.label}`);
+    if (met) lines.push("❤️ Neue Bekanntschaft auf der Party!");
+    return lines;
+  },
   _applyFamilyEffect(amount) {
     if (!amount) return;
     if (State.family?.partner)
