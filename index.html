@@ -4518,6 +4518,8 @@ function _planerDefaultState() {
       accidents: 0,
       leasing: 0,
       truckPurchase: 0,
+      rent: 0,
+      marketing: 0,
       other: 0,
     },
     subRevenue: { jobs: 0, contracts: 0, truckSales: 0, other: 0 },
@@ -23981,6 +23983,7 @@ const MarketingManager = {
     if (!channel) return false;
     if (State.cash < channel.cost) return false;
     FinanceManager.recordCost("marketing", channel.cost, false);
+    if (State.subCosts) State.subCosts.marketing += channel.cost;
     State.activeMarketing.push({ ...channel, startDay: State.day, endDay: State.day + channel.durationDays });
     EventManager.addNews("good", `📢 Kampagne "${channel.name}" gestartet (${channel.durationDays} Tage)`);
     return true;
@@ -24231,6 +24234,7 @@ const DayCycle = {
     State.cash -= dailyRent;
     State.departments.admin.fixedCosts += dailyRent;
     State.departments.admin.monthFixed += dailyRent;
+    if (State.subCosts) State.subCosts.rent += dailyRent;
     if (Math.random() < 0.12) PlayerManager.generateFamilyEvent();
     if (1 === new Date(State.date).getDate()) {
       EmployeeManager.payMonthlySalaries();
@@ -24429,6 +24433,7 @@ const CustomerManager = {
     State.cash -= 200;
     State.departments.marketing.variableCosts += 200;
     State.departments.marketing.monthVariable += 200;
+    if (State.subCosts) State.subCosts.marketing += 200;
     if (Math.random() < 0.6 + 0.005 * (State.reputation - 50)) {
       const c = this.create();
       if (!c) {
@@ -30172,26 +30177,38 @@ const UI = {
     const sr = State.subRevenue || {};
     const sc = State.subCosts || {};
     const monthLabel = new Date(State.date).toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+    const deptM = (d) => (d ? (d.monthFixed || 0) + (d.monthVariable || 0) : 0);
     const ertraege = [
       ["Transporterlöse (Aufträge)", sr.jobs || 0],
       ["Rahmenverträge", sr.contracts || 0],
+      ["Fahrzeugverkäufe", sr.truckSales || 0],
       ["Sonstige Erträge", sr.other || 0],
     ];
-    const aufwand = [
+    // Einzelposten aus subCosts; die Aufwand-Gesamtsumme stammt aus der
+    // departments-Buchhaltung. Die Ausgleichszeile faengt alles ab, was nicht
+    // einzeln erfasst ist — so kann die GuV nicht unvollstaendig sein.
+    const itemized = [
       ["Personalkosten", sc.salaries || 0, false],
       ["Kraftstoff", sc.fuelActual || 0, false],
       ["Maut", sc.toll || 0, false],
       ["Reparaturen & Wartung", sc.repairs || 0, false],
       ["Versicherungen", sc.insurance || 0, false],
       ["Leasing-Raten", sc.leasing || 0, false],
-      ["Weiterbildung & Sonstiges", sc.other || 0, false],
+      ["Miete (Standort)", sc.rent || 0, false],
+      ["Marketing", sc.marketing || 0, false],
       ["Bußgelder & Strafen", sc.fines || 0, true],
       ["Unfallkosten (Selbstbeteiligung)", sc.accidents || 0, true],
     ];
+    const deps = State.departments || {};
+    const deptCost = Object.keys(deps).reduce((s, k) => (k === "loans" ? s : s + deptM(deps[k])), 0);
+    const itemizedSum = itemized.reduce((s, r) => s + r[1], 0);
+    const aufwand = itemized.concat([
+      ["Sonstige betriebliche Aufwendungen", Math.max(0, Math.round(deptCost - itemizedSum)), false],
+    ]);
     const sumErtrag = ertraege.reduce((s, r) => s + r[1], 0);
     const sumAufwand = aufwand.reduce((s, r) => s + r[1], 0);
     const ebit = sumErtrag - sumAufwand;
-    const interest = Math.round(State.departments?.loans?.monthFixed || 0);
+    const interest = Math.round(deptM(deps.loans));
     const ebt = ebit - interest;
     const taxRate = void 0 !== FinanceManager ? FinanceManager.currentTaxRate() : 0.28;
     const tax = ebt > 0 ? Math.round(taxRate * ebt) : 0;
