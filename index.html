@@ -17555,17 +17555,23 @@ const MorningRoutine = {
     const newsItems = [
       {
         headline: '"Mauterhöhung für LKW ab nächstem Quartal geplant" — +12%.',
-        watchEffect: () => {
-          State._mautWarning = State.day + 90;
-          EventManager.addNews("warn", "📺 Mauterhöhung +12% in ~90 Tagen — jetzt Kosten einplanen");
+        watchBonus: () => {
+          if (void 0 !== GFOffice)
+            GFOffice.addMessage({
+              from: "Marktanalyst",
+              fromRole: "Kosten-Desk",
+              subject: "🛣️ Mauterhöhung +12% angekündigt",
+              body: "Branchenmeldung: LKW-Maut steigt ab nächstem Quartal um 12%.\nEmpfehlung: Kalkulation und Angebotspreise rechtzeitig anpassen.",
+              type: "info",
+              urgent: false,
+            });
         },
         watchNews: "📺 Informiert: Mauterhöhung kommt — Zeit für Gegenmaßnahmen",
         phoneNews: "📱 Mauterhöhung-Meldung verpasst",
       },
       {
         headline: '"Dieselpreis steigt weiter" — Experten rechnen mit 1,85 €/L bis Jahresende.',
-        watchEffect: () => {
-          State._dieselWarning = true;
+        watchBonus: () => {
           if (!State.fuelHedge?.contracts?.length && void 0 !== GFOffice)
             GFOffice.addMessage({
               from: "Marktanalyst",
@@ -17575,42 +17581,51 @@ const MorningRoutine = {
               type: "info",
               urgent: false,
             });
-          EventManager.addNews("warn", "📺 Diesel-Prognose 1,85 €/L — Hedging-Kontrakt prüfen");
         },
         watchNews: "📺 Diesel-Warnung rechtzeitig gesehen",
         phoneNews: "📱 Diesel-Bericht verpasst",
       },
       {
         headline: '"Streikwarnung im Speditionsgewerbe" — Ver.di kündigt mögliche Arbeitsniederlegungen an.',
-        watchEffect: () => {
-          const strikeDay = State.day + Utils.randInt(7, 14);
-          State._strikeWarning = strikeDay;
+        eventEffect: () => {
+          State._strikeWarning = State.day + Utils.randInt(7, 14);
+        },
+        watchBonus: () => {
           if (void 0 !== GFOffice)
             GFOffice.addMessage({
               from: "Ver.di Pressestelle",
               fromRole: "Gewerkschaft",
-              subject: "⚠️ Streikwarnung — möglicher Arbeitsausfall ab Tag " + strikeDay,
+              subject: "⚠️ Streikwarnung — möglicher Arbeitsausfall ab Tag " + State._strikeWarning,
               body: "Ver.di kündigt Streikmaßnahmen an.\n\nEmpfehlung:\n• Zeitkritische Aufträge jetzt vergeben\n• Puffer einplanen",
               type: "info",
               urgent: true,
             });
-          EventManager.addNews("warn", "⚠️ Streikwarnung: mögliche Arbeitsniederlegungen ab Tag " + strikeDay);
         },
         watchNews: "📺 Streikwarnung rechtzeitig mitbekommen — Vorbereitungen möglich",
         phoneNews: "📱 Streikwarnung verpasst — kein Vorsprung",
       },
       {
         headline: '"Konjunktur erholt sich" — Auftragseingänge im Transportgewerbe steigen.',
-        watchEffect: () => {
+        eventEffect: () => {
           State._boomBonus = State.day + 14;
-          EventManager.addNews("good", "📈 Konjunktur-Boom erkannt — mehr Aufträge für 14 Tage");
+        },
+        watchBonus: () => {
+          if (void 0 !== GFOffice)
+            GFOffice.addMessage({
+              from: "Marktanalyst",
+              fromRole: "Vertrieb",
+              subject: "📈 Konjunktur-Boom — Kapazität hochfahren",
+              body: "Aktuelle Lage: spürbar mehr Aufträge für rund 14 Tage.\nEmpfehlung: freie Trucks disponieren, ggf. Aushilfen einplanen.",
+              type: "info",
+              urgent: false,
+            });
         },
         watchNews: "📈 Boom erkannt — rechtzeitig Kapazität vorbereiten",
         phoneNews: "📱 Konjunktur-Meldung verpasst",
       },
       {
         headline: '"Fahrermangel verschärft sich" — 80.000 LKW-Fahrer fehlen bundesweit.',
-        watchEffect: () => {
+        watchBonus: () => {
           const atRisk = (State.staff || []).filter((s) => "driver" === s.roleId && s.salary < 2800);
           if (atRisk.length > 0 && void 0 !== GFOffice)
             GFOffice.addMessage({
@@ -17624,17 +17639,13 @@ const MorningRoutine = {
               type: "info",
               urgent: atRisk.length >= 2,
             });
-          EventManager.addNews(
-            "warn",
-            "👨‍✈️ Fahrermangel: " + (atRisk.length > 0 ? atRisk.length + " eigene Fahrer gefährdet" : "Markt angespannt"),
-          );
         },
         watchNews: "👨‍✈️ Fahrermangel-Bericht gesehen — Personal-Check sinnvoll",
         phoneNews: "📱 Fahrermangel-Warnung verpasst",
       },
       {
         headline: '"Grenzkontrollen an deutsch-österreichischer Grenze verstärkt" — Wartezeiten bis 3h.',
-        watchEffect: () => {
+        eventEffect: () => {
           if (void 0 !== WeatherRoads) {
             WeatherRoads.init();
             State.weatherRoads.activeRoadIssues.push({
@@ -17649,7 +17660,17 @@ const MorningRoutine = {
               icon: "🛃",
             });
           }
-          EventManager.addNews("warn", "🛃 Grenzkontrollen DE/AT verschärft — Österreich-Routen +3h");
+        },
+        watchBonus: () => {
+          if (void 0 !== GFOffice)
+            GFOffice.addMessage({
+              from: "Disposition",
+              fromRole: "Routenplanung",
+              subject: "🛃 Grenzkontrollen DE/AT verschärft",
+              body: "Verschärfte Kontrollen an der Grenze DE/AT, Wartezeiten bis 3h.\nEmpfehlung: Österreich-Routen meiden oder Puffer einplanen.",
+              type: "info",
+              urgent: false,
+            });
         },
         watchNews: "🛃 Grenzwarnung gesehen — Österreich-Routen meiden",
         phoneNews: "📱 Grenzwarnung verpasst",
@@ -17670,10 +17691,22 @@ const MorningRoutine = {
           stress: -2,
           family: 0,
           timeStart: 7.3,
-          extraAction: chosenNews.watchEffect,
+          extraAction: () => {
+            if (chosenNews.eventEffect) chosenNews.eventEffect();
+            if (chosenNews.watchBonus) chosenNews.watchBonus();
+          },
           news: chosenNews.watchNews,
         },
-        { text: "📱 Handy statt TV", stress: 0, family: 0, timeStart: 7, news: chosenNews.phoneNews },
+        {
+          text: "📱 Handy statt TV",
+          stress: 0,
+          family: 0,
+          timeStart: 7,
+          extraAction: () => {
+            if (chosenNews.eventEffect) chosenNews.eventEffect();
+          },
+          news: chosenNews.phoneNews,
+        },
       ],
     });
     const total = scenarios.reduce((s, sc) => s + sc.weight, 0);
