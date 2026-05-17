@@ -8986,24 +8986,6 @@ const DriverSkills = {
         { level: 3, name: "Vorbild-Fahrer", cost: 3e3, accidentReduction: 0.3, xpRequired: 900 },
       ],
     },
-    night_driving: {
-      id: "night_driving",
-      name: "Nachtfahrer",
-      tiers: [
-        { level: 1, name: "Nachtfahrt I", cost: 800, nightBonus: 0.1, xpRequired: 200 },
-        { level: 2, name: "Nachtfahrt II", cost: 1800, nightBonus: 0.18, xpRequired: 500 },
-        { level: 3, name: "Eulenmeister", cost: 3200, nightBonus: 0.3, xpRequired: 1100 },
-      ],
-    },
-    mountain: {
-      id: "mountain",
-      name: "Gebirgserfahrung",
-      tiers: [
-        { level: 1, name: "Bergfahrt I", cost: 700, mountainBonus: 0.08, xpRequired: 200 },
-        { level: 2, name: "Bergfahrt II", cost: 1700, mountainBonus: 0.15, xpRequired: 500 },
-        { level: 3, name: "Alpen-Profi", cost: 3500, mountainBonus: 0.25, xpRequired: 1200 },
-      ],
-    },
     customer: {
       id: "customer",
       name: "Kundenfreundlichkeit",
@@ -9021,7 +9003,7 @@ const DriverSkills = {
       if ("number" != typeof staff.skills[id]) staff.skills[id] = 0;
     });
   },
-  awardXp(staffId, amount, type) {
+  awardXp(staffId, amount) {
     const s = State.staff && (State.staff || []).find((x) => x.id === staffId);
     if (!s) return;
     this.initFor(s);
@@ -9062,15 +9044,10 @@ const DriverSkills = {
     const lvl = staff.skills.safe_driving || 0;
     return this.TREES.safe_driving.tiers[lvl - 1]?.accidentReduction || 0;
   },
-  getNightBonus(staff) {
+  getCustomerBonus(staff) {
     if (!staff || !staff.skills) return 0;
-    const lvl = staff.skills.night_driving || 0;
-    return this.TREES.night_driving.tiers[lvl - 1]?.nightBonus || 0;
-  },
-  getMountainBonus(staff) {
-    if (!staff || !staff.skills) return 0;
-    const lvl = staff.skills.mountain || 0;
-    return this.TREES.mountain.tiers[lvl - 1]?.mountainBonus || 0;
+    const lvl = staff.skills.customer || 0;
+    return this.TREES.customer.tiers[lvl - 1]?.repBonus || 0;
   },
 };
 const TwoManCrew = {
@@ -22355,8 +22332,7 @@ const EmployeeManager = {
   fire(staffId) {
     const s = (State.staff || []).find((x) => x.id === staffId);
     if (!s) return false;
-    State.cash -= 2 * s.salary;
-    State.departments.personnel.variableCosts += 2 * s.salary;
+    FinanceManager.recordCost("personnel", 2 * s.salary, false);
     State.staff = (State.staff || []).filter((x) => x.id !== staffId);
     (State.trucks || []).forEach((t) => {
       if (t.driverId === staffId) t.driverId = null;
@@ -22539,7 +22515,6 @@ const EmployeeManager = {
           s.status = "aktiv";
           s.stress = Utils.clamp(s.stress - 20, 0, 100);
           EventManager.addNews("info", `💪 ${s.name} ist wieder arbeitsfähig`);
-          const ownTruck = (State.trucks || []).find((t) => t.driverId !== s.id && !t.driverId && "idle" === t.status);
           if (!State.trucks.some((t) => t.driverId === s.id)) {
             const freeTruck = (State.trucks || []).find((t) => !t.driverId && "idle" === t.status);
             if (freeTruck) {
@@ -23472,10 +23447,11 @@ const JobManager = {
       }
       let dailyFuel;
       const courseFuelMul = 1 - Math.min(0.3, driver._courseFuelSaving || 0);
+      const skillFuelMul = 1 - (void 0 !== DriverSkills ? DriverSkills.getFuelReduction(driver) : 0);
       if (void 0 !== FuelHedging) {
         const fuelEff = FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1;
         const driverFuelMul = void 0 !== DriverTraits ? DriverTraits.getFuelMul(driver) : 1;
-        const liters = (dailyKm / 100) * truck.mpg * fuelEff * driverFuelMul * courseFuelMul;
+        const liters = (dailyKm / 100) * truck.mpg * fuelEff * driverFuelMul * courseFuelMul * skillFuelMul;
         dailyFuel = FuelHedging.consumeFuel(liters).cost;
       } else
         dailyFuel =
@@ -23483,7 +23459,8 @@ const JobManager = {
           truck.mpg *
           LocationManager.fuelPrice() *
           (FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1) *
-          courseFuelMul;
+          courseFuelMul *
+          skillFuelMul;
       const lobbyFx = void 0 !== LobbySystem ? LobbySystem.getEffects() : {};
       const mautBaseMul = truck.mautMul || 1;
       const globalMautMul = lobbyFx.globalMautMul || 1;
@@ -23544,7 +23521,7 @@ const JobManager = {
         if (void 0 !== DriverSkills) {
           const xpBase = Math.round(5 + (j.km || 0) / 100);
           const xpBonus = onTime ? Math.round(0.3 * xpBase) : 0;
-          DriverSkills.awardXp(driver.id, xpBase + xpBonus, "job");
+          DriverSkills.awardXp(driver.id, xpBase + xpBonus);
         }
         if (void 0 !== GameDepth) GameDepth.applyJobFitEffect(driver, j);
         if (void 0 !== GameDepth && truck.km >= 3e5) GameDepth.applyAgingEffects(truck);
@@ -23561,7 +23538,10 @@ const JobManager = {
           cust.jobsCompleted = (cust.jobsCompleted || 0) + 1;
         }
         State.reputation = Utils.clamp(
-          State.reputation + (onTime ? 0.5 : -2) + (FleetManager.hasEquipment(truck, "paint") ? 0.5 : 0),
+          State.reputation +
+            (onTime ? 0.5 : -2) +
+            (FleetManager.hasEquipment(truck, "paint") ? 0.5 : 0) +
+            (onTime && void 0 !== DriverSkills ? DriverSkills.getCustomerBonus(driver) : 0),
           0,
           100,
         );
@@ -23720,7 +23700,7 @@ const EventManager = {
       (0.02 + 0.05 * reliFactor + conditionFactor + driverFactor + styleFactor) *
       (FleetManager.hasEquipment(truck, "safety") ? 0.7 : 1) *
       assistanceReduction *
-      (1 - Math.min(0.6, driver._accidentBonus || 0));
+      (1 - Math.min(0.6, (driver._accidentBonus || 0) + (void 0 !== DriverSkills ? DriverSkills.getAccidentReduction(driver) : 0)));
     if (Math.random() < totalRisk) {
       const reverseCam = FleetManager.hasAssistance(truck, "reverse_cam");
       const eventTypes = [
