@@ -999,110 +999,6 @@ footer {
   <div id="zentrale-content" style="padding:0 4px;"></div>
 </div>
 
-<!-- JOBS -->
-<div class="view" id="view-jobs">
-  <div class="view-header">
-    <div>
-      <div class="view-title">AUFTRÄGE</div>
-      <div class="view-subtitle">Verfügbare Frachten und laufende Touren</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>Verfügbare Aufträge</span>
-      <span style="display:flex; gap:8px; text-transform:none; letter-spacing:0; font-family: 'JetBrains Mono'; font-size:10px;">
-        <select id="job-sort" onchange="UI.renderJobs()">
-          <option value="price-desc">Preis hoch→niedrig</option>
-          <option value="price-asc">Preis niedrig→hoch</option>
-          <option value="perkm-desc">€/km (Marge)</option>
-          <option value="km-asc">Strecke kurz→lang</option>
-          <option value="duration-asc">Dauer kurz→lang</option>
-          <option value="deadline-asc">Frist knapp→entspannt</option>
-          <option value="urgency-desc">Dringlichkeit</option>
-        </select>
-        <select id="job-filter" onchange="UI.renderJobs()">
-          <option value="all">Alle</option>
-          <option value="feasible">Nur machbar</option>
-          <option value="hazard">Gefahrgut</option>
-          <option value="nohazard">Kein Gefahrgut</option>
-        </select>
-      </span>
-    </div>
-    <table>
-      <thead><tr>
-        <th>Kunde</th><th>Von</th><th>Nach</th><th>Ware</th><th>Hänger</th>
-        <th class="num">km</th><th class="num">Gewicht</th><th class="num">Dauer</th>
-        <th class="num">Preis</th><th class="num">€/km</th><th>Frist</th><th></th>
-      </tr></thead>
-      <tbody id="jobs-tbody"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Laufende Aufträge</div>
-    <table>
-      <thead><tr><th>Kunde</th><th>Strecke</th><th>LKW / Fahrer</th><th>Route</th><th class="num">Fortschritt</th><th class="num">Wert</th></tr></thead>
-      <tbody id="active-jobs-tbody"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- FLEET -->
-<div class="view" id="view-fleet">
-  <div class="view-header">
-    <div>
-      <div class="view-title">FUHRPARK</div>
-      <div class="view-subtitle">Fahrzeuge, Hänger, Assistenten und Zubehör</div>
-    </div>
-    <div class="btn-bar">
-      <button class="btn primary" onclick="UI.showView('market')">+ LKW kaufen</button>
-      <button class="btn" onclick="UI.showView('trailer-market')">+ Hänger kaufen</button>
-    </div>
-  </div>
-  <div id="fleet-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap:14px;"></div>
-</div>
-
-<!-- TRAILERS -->
-<div class="view" id="view-trailers">
-  <div class="view-header">
-    <div>
-      <div class="view-title">HÄNGER &amp; AUFLIEGER</div>
-      <div class="view-subtitle">Spezialaufbauten für unterschiedliche Ladungstypen</div>
-    </div>
-    <button class="btn primary" onclick="UI.showView('trailer-market')">+ Hänger kaufen</button>
-  </div>
-  <div id="trailers-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:14px;"></div>
-</div>
-
-<!-- TRAILER MARKET -->
-<div class="view" id="view-trailer-market">
-  <div class="view-header">
-    <div>
-      <div class="view-title">HÄNGER-MARKT</div>
-      <div class="view-subtitle">Neu- und Gebrauchtmarkt · 15 Anhänger-Typen</div>
-    </div>
-    <div class="btn-bar">
-      <button class="btn" onclick="UI.showView('trailers')">↩ Bestand</button>
-    </div>
-  </div>
-  <div style="display:flex; gap:4px; margin-bottom:12px; border-bottom:2px solid var(--border);">
-    <button class="btn tm-tab active" data-tmt="new"  onclick="UI.switchTrailerMarketTab('new')"  style="border-radius:6px 6px 0 0; border-bottom:none;">🆕 Neuhänger</button>
-    <button class="btn tm-tab"        data-tmt="used" onclick="UI.switchTrailerMarketTab('used')" style="border-radius:6px 6px 0 0; border-bottom:none;">🔧 Gebrauchthänger</button>
-  </div>
-  <div id="tm-tab-new"  style="display:block;">
-    <div id="trailer-market-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:14px;"></div>
-  </div>
-  <div id="tm-tab-used" style="display:none;">
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-      <span style="font-size:11px; color:var(--muted);">Angebote aktualisieren:</span>
-      <button class="btn small" onclick="TrailerDealerManager.refresh(true); UI.renderTrailerMarket(); UI.toast('Angebote aktualisiert', 'good');">↻ Neuladen (100€)</button>
-      <span id="tm-used-count" style="font-size:11px; color:var(--muted2);"></span>
-    </div>
-    <div id="trailer-market-used-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:14px;"></div>
-  </div>
-</div>
-
 <!-- FRACHTENBÖRSE -->
 <div class="view" id="view-spot-market">
   <div class="view-header">
@@ -28926,13 +28822,6 @@ const UI = {
       this.renderAll();
     } else this.toast(result.reason, "error");
   },
-  switchTrailerMarketTab(tab) {
-    document.getElementById("tm-tab-new").style.display = "new" === tab ? "block" : "none";
-    document.getElementById("tm-tab-used").style.display = "used" === tab ? "block" : "none";
-    document.querySelectorAll(".tm-tab").forEach((b) => b.classList.toggle("active", b.dataset.tmt === tab));
-    if (!State.trailerDealer) State.trailerDealer = { mode: "new", usedStock: [], lastRefresh: 0 };
-    State.trailerDealer.mode = tab;
-  },
   renderTrailerMarket() {
     const el = UI._getContentEl("fuhrpark-content");
     if (!el) return;
@@ -29305,10 +29194,6 @@ const UI = {
         ? `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:rgba(74,222,128,0.07);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;"><span style="font-family:'Bebas Neue';letter-spacing:1px;color:var(--accent2);">🗺️ DISPOSITION</span><span style="color:var(--muted2);">${dispoCount} Disponent${1 !== dispoCount ? "en" : ""} aktiv</span><span style="color:var(--muted2);">Auto-Annahme bis <b style="color:var(--fg);">${Utils.euro(dispoLimit)}</b></span><span style="color:var(--accent2);">heute ${dispoToday} autom. angenommen</span>${dispoOpen > 0 ? `<span style="color:var(--warn);">⚠ ${dispoOpen} Rücksprache${1 !== dispoOpen ? "n" : ""} offen</span>` : ""}<span style="margin-left:auto;color:var(--muted);font-size:10px;">Limit ändern: Büro → Schwellwerte</span></div>`
         : `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:rgba(251,191,36,0.08);border:1px solid var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;"><span style="font-family:'Bebas Neue';letter-spacing:1px;color:var(--warn);">🗺️ DISPOSITION</span><span style="color:var(--muted2);">Kein Disponent — Aufträge manuell annehmen. Ein Disponent übernimmt Auto-Disposition und Rücksprachen.</span></div>`;
     container.innerHTML = `${dispoBar}\n      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">\n        <select id="job-sort" onchange="UI._jobSort=this.value;UI.renderJobs()" style="padding:6px 10px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:11px;">\n          <option value="price-desc" ${"price-desc" === sortVal ? "selected" : ""}>💰 Preis absteigend</option>\n          <option value="price-asc"  ${"price-asc" === sortVal ? "selected" : ""}>💰 Preis aufsteigend</option>\n          <option value="perkm-desc" ${"perkm-desc" === sortVal ? "selected" : ""}>📊 €/km absteigend</option>\n          <option value="km-asc"     ${"km-asc" === sortVal ? "selected" : ""}>📏 Entfernung aufsteigend</option>\n          <option value="deadline-asc" ${"deadline-asc" === sortVal ? "selected" : ""}>⏰ Frist bald</option>\n          <option value="urgency-desc" ${"urgency-desc" === sortVal ? "selected" : ""}>⚡ Dringlichkeit</option>\n        </select>\n        <select id="job-filter" onchange="UI._jobFilter=this.value;UI.renderJobs()" style="padding:6px 10px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:11px;">\n          <option value="all"      ${"all" === filterVal ? "selected" : ""}>Alle Aufträge</option>\n          <option value="feasible" ${"feasible" === filterVal ? "selected" : ""}>Nur machbare</option>\n          <option value="hazard"   ${"hazard" === filterVal ? "selected" : ""}>Nur Gefahrgut</option>\n          <option value="nohazard" ${"nohazard" === filterVal ? "selected" : ""}>Kein Gefahrgut</option>\n        </select>\n        <span style="font-size:11px;color:var(--muted2);">${list.length} verfügbar · ${(State.activeJobs || []).length} laufend${queuedJobs.length > 0 ? " · " + queuedJobs.length + " in Warteschlange" : ""}</span>\n      </div>\n\n      <div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">\n        🚛 LAUFENDE AUFTRÄGE (${(State.activeJobs || []).length})\n      </div>\n      <div style="overflow-x:auto;margin-bottom:16px;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Strecke</th><th>Truck / Fahrer</th><th>Route</th><th>Fortschritt</th><th>Preis</th>\n          </tr></thead>\n          <tbody>${activeRows}</tbody>\n        </table>\n      </div>\n\n      ${queuedJobs.length > 0 ? `<div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--warn);margin-bottom:6px;">\n        ⏳ WARTESCHLANGE (${queuedJobs.length}) — LKW noch nicht frei\n      </div>\n      <div style="overflow-x:auto;margin-bottom:16px;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Strecke</th><th>Truck / Fahrer</th><th>Pos.</th><th>Start</th><th>Preis</th><th></th>\n          </tr></thead>\n          <tbody>${queuedRows}</tbody>\n        </table>\n      </div>` : ""}\n\n      <div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">\n        📦 VERFÜGBARE AUFTRÄGE (${list.length})\n      </div>\n      <div style="overflow-x:auto;">\n        <table class="data-table" style="width:100%;font-size:11px;">\n          <thead><tr>\n            <th>Kunde</th><th>Von</th><th>Nach</th><th>Fracht</th><th>Anhänger</th>\n            <th>km</th><th>Gew.</th><th title="Reine Fahrdauer in Tagen">🕐 Fahrt</th><th>Preis</th><th>€/km</th><th title="Spieltag bis zur Deadline">📅 Frist</th><th>Aktion</th>\n          </tr></thead>\n          <tbody>${availableRows}</tbody>\n        </table>\n      </div>`;
-    const tb = document.getElementById("jobs-tbody");
-    const ab = document.getElementById("active-jobs-tbody");
-    if (tb) tb.innerHTML = availableRows;
-    if (ab) ab.innerHTML = activeRows;
   },
   cancelScheduledJob(scheduledId) {
     const sq = (State.scheduledJobs || []).find((x) => x.id === scheduledId);
