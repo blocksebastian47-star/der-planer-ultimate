@@ -969,6 +969,7 @@ footer {
 <div class="container">
 <!-- ═══ NAV ═══════════════════════════════════════ -->
 <nav>
+  <button class="nav-btn" data-view="zentrale"><span><span class="icon">🏢</span>GF-Zentrale</span><span class="badge" id="badge-zentrale"></span></button>
   <button class="nav-btn" data-view="office"><span><span class="icon">🖥️</span>Büro</span><span class="badge" id="badge-office"></span></button>
   <button class="nav-btn" data-view="dashboard"><span><span class="icon">📊</span>Dashboard</span></button>
   <div class="nav-divider"></div>
@@ -989,7 +990,18 @@ footer {
 <!-- TUTORIAL HINT (global oben, immer sichtbar wenn aktiv) -->
 <div id="tutorial-hint" style="padding:0 4px;"></div>
 
-<!-- DASHBOARD -->
+<!-- GF-ZENTRALE -->
+<div class="view" id="view-zentrale">
+  <div class="view-header">
+    <div>
+      <div class="view-title">🏢 GF-ZENTRALE</div>
+      <div class="view-subtitle">Ihre Kommandozentrale — das ganze Unternehmen auf einen Blick</div>
+    </div>
+  </div>
+  <div id="zentrale-content" style="padding:0 4px;"></div>
+</div>
+
+<!-- BÜRO -->
 <div class="view" id="view-office">
   <div class="view-header">
     <div>
@@ -26406,6 +26418,7 @@ const UI = {
     const el = document.getElementById("view-" + name);
     if (el) el.classList.add("active");
     const renders = {
+      zentrale: () => this.renderZentrale(),
       office: () => this.renderOffice(),
       dashboard: () => this.renderDashboard(),
       private: () => this.renderPrivate(),
@@ -26536,6 +26549,7 @@ const UI = {
       return;
     }
     const directRenders = {
+      zentrale: () => this.renderZentrale(),
       office: () => this.renderOffice(),
       dashboard: () => this.renderDashboard(),
       private: () => this.renderPrivate(),
@@ -27341,6 +27355,201 @@ const UI = {
     } else this.toast(r.reason, "error");
   },
   _officeTab: "overview",
+  renderZentrale() {
+    const el = document.getElementById("zentrale-content");
+    if (!el) return;
+    const tab = this._zentraleTab || "uebersicht";
+    const trucks = State.trucks || [];
+    const staff = State.staff || [];
+    const activeTrucks = trucks.filter((t) => "active" === t.status).length;
+    const util = trucks.length ? Math.round((activeTrucks / trucks.length) * 100) : 0;
+    const sick = staff.filter((s) => "krank" === s.status).length;
+    const staffActive = staff.filter((s) => "aktiv" === s.status).length;
+    const hist = State.history || {};
+    const rev = hist.revenue || [];
+    const prof = hist.profit || [];
+    const todayRev = rev[rev.length - 1] || 0;
+    const todayProfit = prof[prof.length - 1] || 0;
+    const avg7 = rev.slice(-7).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(7, rev.length));
+    const rep = Math.round(State.reputation || 0);
+    const compliance = void 0 !== BAGCompliance ? BAGCompliance.complianceScore() : null;
+    const rating = void 0 !== CustomerPortal ? CustomerPortal.avgRating() : null;
+    const contracts = (State.contracts || []).filter((c) => c.endDay > State.day).length;
+    const kpi = (icon, label, val, color, sub) =>
+      `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;min-width:0;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">${icon} ${label}</div>
+        <div style="font-size:18px;font-weight:800;color:${color};line-height:1.2;">${val}</div>
+        ${sub ? `<div style="font-size:9px;color:var(--muted2);">${sub}</div>` : ""}
+      </div>`;
+    const tabBtn = (id, icon, label) => {
+      const active = tab === id;
+      return `<button onclick="UI._zentraleTab='${id}';UI.renderZentrale();" style="padding:8px 16px;border-radius:6px;border:1px solid ${active ? "var(--accent)" : "var(--border)"};background:${active ? "rgba(99,102,241,0.15)" : "var(--bg2)"};color:${active ? "var(--accent)" : "var(--muted)"};cursor:pointer;font-size:12px;font-weight:${active ? 700 : 400};white-space:nowrap;">${icon} ${label}</button>`;
+    };
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:14px;">
+        ${kpi("💰", "Kasse", Utils.euro(State.cash), State.cash >= 0 ? "var(--accent2)" : "var(--danger)")}
+        ${kpi("📦", "Umsatz heute", Utils.euro(todayRev), "var(--accent2)", "7T-Ø " + Utils.euro(avg7))}
+        ${kpi("📈", "Gewinn heute", Utils.euro(todayProfit), todayProfit >= 0 ? "var(--accent2)" : "var(--danger)")}
+        ${kpi("🚛", "Auslastung", util + "%", "var(--accent)", activeTrucks + "/" + trucks.length + " aktiv")}
+        ${kpi("👷", "Personal", staffActive, "var(--fg)", sick > 0 ? sick + " krank" : "alle fit")}
+        ${kpi("🏆", "Reputation", rep + "%", rep > 60 ? "var(--accent2)" : rep > 30 ? "var(--warn)" : "var(--danger)")}
+        ${compliance != null ? kpi("🛡", "Compliance", compliance + "%", compliance >= 80 ? "var(--accent2)" : compliance >= 60 ? "var(--warn)" : "var(--danger)") : ""}
+        ${rating != null ? kpi("⭐", "Bewertung", rating.toFixed(1) + "/5", rating >= 4 ? "var(--accent2)" : rating >= 3 ? "var(--warn)" : "var(--danger)") : ""}
+        ${kpi("📄", "Verträge", contracts, "var(--fg)", "aktiv")}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        ${tabBtn("uebersicht", "📊", "Übersicht")}
+        ${tabBtn("posteingang", "📥", "Posteingang")}
+        ${tabBtn("abteilungen", "🏢", "Abteilungen")}
+        ${tabBtn("automatik", "⚙️", "Automatik")}
+        ${tabBtn("karte", "🗺️", "Live-Karte")}
+      </div>
+      <div id="zentrale-tab-content">${this._renderZentraleTab(tab)}</div>
+    `;
+    if ("uebersicht" === tab) {
+      this.drawChart("z-revenue-chart", rev, "#ffb627");
+      this.drawChart("z-profit-chart", prof, "#4ade80");
+    }
+  },
+  _renderZentraleTab(tab) {
+    if ("uebersicht" === tab) return this._renderZentraleUebersicht();
+    const ph = {
+      posteingang: "📥 Posteingang & Anrufe",
+      abteilungen: "🏢 Abteilungen",
+      automatik: "⚙️ Automatik & Schwellwerte",
+      karte: "🗺️ Live-Karte",
+    };
+    return `<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px;">${ph[tab] || ""}</div>
+      <div style="font-size:12px;">Wird in Schritt 2 hierher übernommen — bis dahin über „Büro" erreichbar.</div>
+    </div>`;
+  },
+  _renderZentraleUebersicht() {
+    const trucks = State.trucks || [];
+    const warnings = void 0 !== FinanceManager ? FinanceManager.warnings() : [];
+    const noDriver = trucks.filter((t) => !t.driverId).length;
+    if (noDriver) warnings.push(noDriver + " LKW ohne Fahrer");
+    const sick = (State.staff || []).filter((s) => "krank" === s.status).length;
+    if (sick) warnings.push(sick + " Mitarbeiter krank gemeldet");
+    let overdue = 0;
+    if (void 0 !== MaintenancePlan)
+      trucks.forEach((t) => {
+        MaintenancePlan.initTruck(t);
+        if (MaintenancePlan.getStatus(t).some((s) => "overdue" === s.urgency)) overdue++;
+      });
+    if (overdue) warnings.push(overdue + " Fahrzeug" + (overdue > 1 ? "e" : "") + " mit überfälliger Wartung");
+    const warnHtml = warnings.length
+      ? warnings
+          .map(
+            (w) =>
+              `<div style="background:rgba(255,182,39,0.1);border:1px solid var(--warn);border-radius:6px;padding:7px 10px;font-size:11px;margin-bottom:4px;">⚠ ${w}</div>`,
+          )
+          .join("")
+      : `<div style="color:var(--muted);font-size:11px;padding:6px 2px;">✓ Kein akuter Handlungsbedarf</div>`;
+    const cons = State.consultations || [];
+    const consHtml = cons
+      .map(
+        (c) =>
+          `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:700;margin-bottom:2px;">📞 ${c.dispoName.split(" ")[0]}: ${c.job.fromName} → ${c.job.toName}</div>
+          <div style="font-size:10px;color:var(--muted2);margin-bottom:6px;">${c.job.cargo} · ${c.job.km}km · ${Utils.euro(c.job.price)} · ${c.reason}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn small success" style="font-size:10px;" onclick="DispoManager.decide('${c.id}','accept');UI.renderAll();">✓ Annehmen</button>
+            <button class="btn small" style="font-size:10px;" onclick="DispoManager.decide('${c.id}','negotiate');UI.renderAll();">💼 Verhandeln</button>
+            <button class="btn small danger" style="font-size:10px;" onclick="DispoManager.decide('${c.id}','reject');UI.renderAll();">✗ Ablehnen</button>
+          </div>
+        </div>`,
+      )
+      .join("");
+    let inboxLine = "";
+    if (void 0 !== GFOffice) {
+      GFOffice.init();
+      const unread = GFOffice.unreadCount();
+      const calls = (State.gfOffice && State.gfOffice.callQueue ? State.gfOffice.callQueue : []).length;
+      if (unread + calls > 0)
+        inboxLine = `<div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:6px;padding:7px 10px;font-size:11px;cursor:pointer;" onclick="UI._zentraleTab='posteingang';UI.renderZentrale();">📥 ${unread} ungelesene Nachricht${1 === unread ? "" : "en"}${calls > 0 ? " · " + calls + " Anruf" + (1 === calls ? "" : "e") : ""} im Posteingang</div>`;
+    }
+    const decisionsHtml =
+      consHtml + inboxLine ||
+      `<div style="color:var(--muted);font-size:11px;padding:6px 2px;">Keine offenen Entscheidungen</div>`;
+    if (void 0 !== JobManager) JobManager.ensureMinJobs();
+    const jobs = (State.jobs || [])
+      .slice()
+      .sort((a, b) => b.price - a.price)
+      .slice(0, 5);
+    const jobsHtml = jobs.length
+      ? jobs
+          .map(
+            (j) =>
+              `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;margin-bottom:4px;">
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.fromName} → ${j.toName}</div>
+            <div style="font-size:9px;color:var(--muted2);">${j.cargo} · ${j.km}km · <span style="color:var(--accent2);">${Utils.euro(j.price)}</span></div>
+          </div>
+          <button class="btn small primary" style="font-size:10px;flex-shrink:0;" onclick="(function(){var r=JobManager.acceptJob('${j.id}');UI.toast(r.ok?'✓ Auftrag angenommen':(r.reason||'Annahme nicht möglich'),r.ok?'good':'warn');UI.renderAll();})()">Annehmen</button>
+        </div>`,
+          )
+          .join("")
+      : `<div style="color:var(--muted);font-size:11px;padding:6px 2px;">Aktuell keine Aufträge verfügbar</div>`;
+    const todayNews = (State.news || []).filter((n) => n.day === State.day).slice(0, 8);
+    const newsHtml = todayNews.length
+      ? todayNews
+          .map(
+            (n) =>
+              `<div style="font-size:11px;padding:2px 0;color:var(--${"good" === n.type ? "accent2" : "bad" === n.type ? "danger" : "warn" === n.type ? "warn" : "muted2"});">• ${n.text}</div>`,
+          )
+          .join("")
+      : `<div style="color:var(--muted);font-size:11px;">Klicke „Nächster Tag", um den Tag zu starten.</div>`;
+    let rivalsHtml = `<div style="color:var(--muted);font-size:10px;">—</div>`;
+    if (void 0 !== Competition)
+      rivalsHtml = Competition.getLeaderboard()
+        .slice(0, 6)
+        .map(
+          (r, i) =>
+            `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px;">
+          <span><span style="color:var(--muted);">${i + 1}.</span> <span style="${r.isPlayer ? "color:var(--accent2);font-weight:700;" : ""}">${r.isPlayer ? "★ " : ""}${r.name}</span></span>
+          <span style="color:${r.reputation >= 70 ? "var(--accent2)" : r.reputation >= 40 ? "var(--warn)" : "var(--danger)"};">🚛 ${r.trucks} · ${Math.round(r.reputation)}%</span>
+        </div>`,
+        )
+        .join("");
+    let deptHtml = `<div style="color:var(--muted);font-size:10px;">—</div>`;
+    if (void 0 !== DepartmentSystem)
+      deptHtml =
+        `<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">` +
+        Object.values(DepartmentSystem.DEPTS)
+          .map((dept) => {
+            const st = DepartmentSystem.getDeptStatus(dept.id);
+            const col =
+              "kritisch" === st.status
+                ? "var(--danger)"
+                : "unterbesetzt" === st.status
+                  ? "var(--warn)"
+                  : "ok" === st.status
+                    ? "var(--accent2)"
+                    : "var(--muted)";
+            return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:10px;">
+            <div style="font-weight:700;">${dept.icon} ${dept.name}</div>
+            <div style="color:${col};">${"ok" === st.status ? "✓ ok" : st.status} · ${st.count} MA</div>
+          </div>`;
+          })
+          .join("") +
+        `</div>`;
+    const card = (title, body) =>
+      `<div class="card" style="margin-bottom:12px;"><div class="card-title">${title}</div>${body}</div>`;
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start;">
+      <div>
+        ${card("⚠ Handlungsbedarf", warnHtml)}
+        ${card("📋 Entscheidungen", decisionsHtml)}
+        ${card("📦 Offene Aufträge", jobsHtml + `<div style="text-align:right;margin-top:6px;"><button class="btn small" style="font-size:10px;" onclick="UI.showView('markt')">Alle Aufträge ansehen →</button></div>`)}
+      </div>
+      <div>
+        ${card("📊 Heute", newsHtml)}
+        ${card("📈 Umsatz / Gewinn (60 Tage)", `<svg id="z-revenue-chart" style="width:100%;height:100px;"></svg><svg id="z-profit-chart" style="width:100%;height:100px;"></svg>`)}
+        ${card("⚔️ Markt-Leaderboard", rivalsHtml)}
+        ${card("🏢 Abteilungs-Status", deptHtml)}
+      </div>
+    </div>`;
+  },
   renderOffice() {
     const el = document.getElementById("office-content");
     if (!el || void 0 === GFOffice) return;
