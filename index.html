@@ -970,8 +970,6 @@ footer {
 <!-- ═══ NAV ═══════════════════════════════════════ -->
 <nav>
   <button class="nav-btn" data-view="zentrale"><span><span class="icon">🏢</span>GF-Zentrale</span><span class="badge" id="badge-zentrale"></span></button>
-  <button class="nav-btn" data-view="office"><span><span class="icon">🖥️</span>Büro</span><span class="badge" id="badge-office"></span></button>
-  <button class="nav-btn" data-view="dashboard"><span><span class="icon">📊</span>Dashboard</span></button>
   <div class="nav-divider"></div>
   <button class="nav-btn" data-view="finanzen"><span><span class="icon">💼</span>Finanzen</span></button>
   <button class="nav-btn" data-view="fuhrpark"><span><span class="icon">🚛</span>Fuhrpark</span><span class="badge" id="badge-fuhrpark"></span></button>
@@ -991,7 +989,7 @@ footer {
 <div id="tutorial-hint" style="padding:0 4px;"></div>
 
 <!-- GF-ZENTRALE -->
-<div class="view" id="view-zentrale">
+<div class="view active" id="view-zentrale">
   <div class="view-header">
     <div>
       <div class="view-title">🏢 GF-ZENTRALE</div>
@@ -1012,7 +1010,7 @@ footer {
   <div id="office-content" style="padding:0 4px;"></div>
 </div>
 
-<div class="view active" id="view-dashboard">
+<div class="view" id="view-dashboard">
   <div class="view-header">
     <div>
       <div class="view-title">DASHBOARD</div>
@@ -25672,7 +25670,7 @@ const UI = {
     const truck = State.trucks?.[0];
     const box = document.getElementById("modal-box");
     if (box)
-      box.innerHTML = `\n      <h2>${State.companyLogo} Auf dem Weg ins Büro</h2>\n      <p class="subtitle">Erster Tag — ${city}</p>\n      <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">\n        <div style="background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;line-height:1.8;font-style:italic;">\n          "${quote}"\n        </div>\n        <div style="display:flex;gap:10px;align-items:flex-start;">\n          <span style="font-size:36px;">🚗</span>\n          <div style="font-size:12px;line-height:1.7;">\n            Du fährst zum Betrieb in ${city}. 45 Minuten Fahrt — im Radio: Staumeldungen, Dieselpreise, Konjunkturnachrichten. Kurz vor 08:00 Uhr erreichst du das Büro.\n          </div>\n        </div>\n\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">STARTBILANZ — TAG 1</div>\n          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Kassenbestand</span><b style="color:var(--accent2);">${cash}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Startkredit</span><b style="color:var(--danger);">−${debt}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Fahrzeuge</span><b>${State.trucks?.length || 0} LKW</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Personal</span><b>${State.staff?.length || 0} Mitarbeiter</b></div>\n            ${truck ? `<div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Erster LKW</span><b>${truck.plate} · ${truck.model}</b></div>` : ""}\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Miete/Monat</span><b style="color:var(--warn);">−${Utils.euro(loc?.monthlyRent || 0)}</b></div>\n          </div>\n        </div>\n\n        <button class="btn primary" style="padding:14px;font-size:14px;font-family:'Bebas Neue';letter-spacing:2px;"\n          onclick="UI.closeModal();UI.showView('office');UI.renderAll();setTimeout(()=>{if(typeof Onboarding!=='undefined')Onboarding.init();},500);">\n          🖥️ INS BÜRO — TAG BEGINNEN\n        </button>\n      </div>`;
+      box.innerHTML = `\n      <h2>${State.companyLogo} Auf dem Weg ins Büro</h2>\n      <p class="subtitle">Erster Tag — ${city}</p>\n      <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">\n        <div style="background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;line-height:1.8;font-style:italic;">\n          "${quote}"\n        </div>\n        <div style="display:flex;gap:10px;align-items:flex-start;">\n          <span style="font-size:36px;">🚗</span>\n          <div style="font-size:12px;line-height:1.7;">\n            Du fährst zum Betrieb in ${city}. 45 Minuten Fahrt — im Radio: Staumeldungen, Dieselpreise, Konjunkturnachrichten. Kurz vor 08:00 Uhr erreichst du das Büro.\n          </div>\n        </div>\n\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">STARTBILANZ — TAG 1</div>\n          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Kassenbestand</span><b style="color:var(--accent2);">${cash}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Startkredit</span><b style="color:var(--danger);">−${debt}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Fahrzeuge</span><b>${State.trucks?.length || 0} LKW</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Personal</span><b>${State.staff?.length || 0} Mitarbeiter</b></div>\n            ${truck ? `<div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Erster LKW</span><b>${truck.plate} · ${truck.model}</b></div>` : ""}\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Miete/Monat</span><b style="color:var(--warn);">−${Utils.euro(loc?.monthlyRent || 0)}</b></div>\n          </div>\n        </div>\n\n        <button class="btn primary" style="padding:14px;font-size:14px;font-family:'Bebas Neue';letter-spacing:2px;"\n          onclick="UI.closeModal();UI.showView('zentrale');UI.renderAll();setTimeout(()=>{if(typeof Onboarding!=='undefined')Onboarding.init();},500);">\n          🏢 GF-ZENTRALE — TAG BEGINNEN\n        </button>\n      </div>`;
   },
   _showFamilyOptions() {
     const fam = State.family || {};
@@ -26419,8 +26417,6 @@ const UI = {
     if (el) el.classList.add("active");
     const renders = {
       zentrale: () => this.renderZentrale(),
-      office: () => this.renderOffice(),
-      dashboard: () => this.renderDashboard(),
       private: () => this.renderPrivate(),
       events: () => this.renderEvents(),
       help: () => {
@@ -26534,7 +26530,6 @@ const UI = {
   renderAll() {
     if (!State.locationId) return;
     this.renderHeader();
-    this.renderDashboard();
     this.renderNewsPanel();
     this.updateBadges();
     if (void 0 !== Tutorial) {
@@ -26550,8 +26545,6 @@ const UI = {
     }
     const directRenders = {
       zentrale: () => this.renderZentrale(),
-      office: () => this.renderOffice(),
-      dashboard: () => this.renderDashboard(),
       private: () => this.renderPrivate(),
       events: () => this.renderEvents(),
       help: () => this.renderHelp(),
@@ -31014,7 +31007,7 @@ const UI = {
       100,
       0.6 * stress + (overtime >= 5 ? 30 : overtime >= 3 ? 15 : 0) + (sleepHours < 6 ? 20 : 0),
     );
-    const inner = `\n      \x3c!-- Header-Bereich --\x3e\n      <div class="view-header">\n        <div>\n          <div class="view-title">🏠 PRIVATLEBEN</div>\n          <div class="view-subtitle">Familie · Gesundheit · Privates — Tag ${State.day}</div>\n        </div>\n        <div style="display:flex;gap:8px;">\n          <button class="btn" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="UI.showView('office');">\n            🖥️ INS BÜRO\n          </button>\n          <button class="btn primary" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="GameClock.skipOneDay();">\n            🌙 SCHLAFEN GEHEN\n          </button>\n        </div>\n      </div>\n\n      <div style="padding:12px;display:flex;flex-direction:column;gap:14px;">\n\n        \x3c!-- KPI-Leiste --\x3e\n        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">\n          ${[
+    const inner = `\n      \x3c!-- Header-Bereich --\x3e\n      <div class="view-header">\n        <div>\n          <div class="view-title">🏠 PRIVATLEBEN</div>\n          <div class="view-subtitle">Familie · Gesundheit · Privates — Tag ${State.day}</div>\n        </div>\n        <div style="display:flex;gap:8px;">\n          <button class="btn" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="UI.showView('zentrale');">\n            🏢 GF-ZENTRALE\n          </button>\n          <button class="btn primary" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="GameClock.skipOneDay();">\n            🌙 SCHLAFEN GEHEN\n          </button>\n        </div>\n      </div>\n\n      <div style="padding:12px;display:flex;flex-direction:column;gap:14px;">\n\n        \x3c!-- KPI-Leiste --\x3e\n        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">\n          ${[
       { label: "Tagesform", val: form.label, color: form.color },
       { label: "Stress-Level", val: stressLabel(stress), color: stressColor(stress) },
       { label: "Familienbindung", val: Math.round(famHappy) + "%", color: moodColor(famHappy) },
