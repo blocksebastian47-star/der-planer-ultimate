@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.0516 · Build 16.05.2026">
+<meta name="build" content="v2.0517 · Build 17.05.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.0516</title>
+<title>Der Planer Ultimate · v2.0517</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -937,7 +937,7 @@ footer {
 
 <header>
   <div class="header-left">
-    <div class="logo">DER PLANER ULTIMATE<span id="app-version" style="font-size:9px;color:var(--muted2);margin-left:6px;font-family:'JetBrains Mono',monospace;letter-spacing:0;vertical-align:middle;">v2.0516</span><span class="sub"><span id="company-logo" style="margin-right:4px;"></span><span id="company-name">Spedition GmbH</span></span></div>
+    <div class="logo">DER PLANER ULTIMATE<span class="sub"><span id="company-logo" style="margin-right:4px;"></span><span id="company-name">Spedition GmbH</span></span></div>
   </div>
   <div class="stats-row">
     <!-- Uhrzeit + Datum (prominent) -->
@@ -1481,7 +1481,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.0516</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.0517</div>
       <div style="font-size:10px; color:var(--muted);">Mai 2026</div>
     </div>
   </div>
@@ -1633,8 +1633,8 @@ footer {
 <div id="toast-container"></div>
 
 <script>
-const APP_VERSION = "v2.0516";
-const BUILD_DATE = "16.05.2026";
+const APP_VERSION = "v2.0517";
+const BUILD_DATE = "17.05.2026";
 const DATA = {
   locations: {
     hamburg: {
@@ -26055,7 +26055,7 @@ const UI = {
           : "";
     this.showModal({
       title: "🚛 DER PLANER ULTIMATE",
-      subtitle: `${APP_VERSION} — Speditions-Simulation`,
+      subtitle: "Speditions-Simulation",
       maxWidth: "560px",
       dismissible: hasGameRunning,
       content: `${continueBlock}
@@ -26083,6 +26083,11 @@ const UI = {
           <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Esc</kbd> Modal schließen &nbsp;
           <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Leertaste</kbd> Nächster Tag &nbsp;
           <kbd style="background:var(--bg2);padding:1px 5px;border-radius:3px;">Strg+S</kbd> Speichern
+        </div>
+        ${sec("ℹ️ SPIELINFO")}
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--muted);line-height:1.9;">
+          <div><b style="color:var(--accent2);">Der Planer Ultimate</b> — Speditions-Simulation</div>
+          <div>Version ${APP_VERSION} · Build ${BUILD_DATE}</div>
         </div>`,
       actions: hasGameRunning ? [{ label: "← Zurück zum Spiel", onclick: () => this.closeModal() }] : [],
     });
@@ -31332,10 +31337,8 @@ window.addEventListener("DOMContentLoaded", () => {
   document.title = `Der Planer Ultimate · ${APP_VERSION}`;
   const _buildMeta = document.querySelector('meta[name="build"]');
   if (_buildMeta) _buildMeta.content = `${APP_VERSION} · Build ${BUILD_DATE}`;
-  ["app-version", "menu-version"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = APP_VERSION;
-  });
+  const _mv = document.getElementById("menu-version");
+  if (_mv) _mv.textContent = APP_VERSION;
   UI.init();
   Game.init();
 });
