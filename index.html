@@ -1295,11 +1295,6 @@ footer {
   <div id="development-content" style="padding:0 4px;"></div>
 </div>
 
-<div class="view" id="view-bank">
-  <div class="view-header"><div class="view-title">🏦 KONTOAUSZUG</div><div class="view-subtitle">Alle Buchungen im Detail</div></div>
-  <div id="bank-content" style="padding:0 4px;"></div>
-</div>
-
 <!-- INSURANCE -->
 <div class="view" id="view-insurance">
   <div class="view-header">
@@ -1458,11 +1453,6 @@ footer {
 <div class="view" id="view-staff-dev">
   <div class="view-header"><div class="view-title">🎓 WEITERBILDUNG</div><div class="view-subtitle">Schulungen, Zertifikate, Meisterprüfung, Karrierepfade</div></div>
   <div id="staff-dev-content" style="padding:0 4px;"></div>
-</div>
-
-<div class="view" id="view-bank">
-  <div class="view-header"><div class="view-title">🏦 KONTOAUSZUG</div><div class="view-subtitle">Alle Transaktionen, Buchungshistorie, Monatszusammenfassung</div></div>
-  <div id="bank-content" style="padding:0 4px;"></div>
 </div>
 
 <div class="view" id="view-help">
@@ -4488,6 +4478,7 @@ function _planerDefaultState() {
     locationId: null,
     cash: 5e4,
     debt: 45e3,
+    loans: [],
     reputation: 50,
     fame: 5,
     privateWealth: 8e3,
@@ -13018,7 +13009,7 @@ const AnnualClose = {
     if (State.cash < 0) {
       const shortfall = -State.cash;
       State.cash = 0;
-      State.debt = (State.debt || 0) + shortfall;
+      if (void 0 !== LoanManager) LoanManager.addLoan("Bonus-Finanzierung", shortfall, 0.09);
       EventManager.addNews(
         "bad",
         `⚠️ Bonuszahlung: ${Utils.euro(shortfall)} als Kredit aufgenommen — Liquidität kritisch!`,
@@ -16262,7 +16253,7 @@ const GFOffice = {
           label: `✓ Annehmen (${Utils.euro(amount)})`,
           action: () => {
             State.cash += amount;
-            State.debt = (State.debt || 0) + amount;
+            if (void 0 !== LoanManager) LoanManager.addLoan("Sparkassen-Kredit", amount, parseFloat(rate) / 100);
             EventManager.addNews(
               "info",
               `🏦 Bankkredit ${Utils.euro(amount)} zu ${rate}% angenommen (Schulden: ${Utils.euro(State.debt)})`,
@@ -16955,8 +16946,8 @@ const MaintenancePlan = {
                   const cost = Math.round(2.5 * type.cost(truck));
                   if (State.cash < cost) {
                     const loan = cost - Math.max(0, State.cash);
-                    State.debt = (State.debt || 0) + loan;
                     State.cash += loan;
+                    if (void 0 !== LoanManager) LoanManager.addLoan("Reparatur-Finanzierung", loan, 0.09);
                     EventManager.addNews("warn", `${truck.plate}: Reparatur per Kredit finanziert (${Utils.euro(loan)})`);
                   }
                   FinanceManager.recordCost("repairs", cost, false);
@@ -24235,12 +24226,7 @@ const DayCycle = {
       if ("broken" === t.status && State.cash > 1500) FleetManager.repair(t.id, false);
     });
     State.fuelPriceCurrent = Utils.clamp(State.fuelPriceCurrent + 0.04 * (Math.random() - 0.5), 1.2, 2.8);
-    if (State.debt > 0) {
-      const dailyInterest = (0.06 * State.debt) / 365;
-      State.cash -= dailyInterest;
-      State.departments.loans.fixedCosts += dailyInterest;
-      State.departments.loans.monthFixed += dailyInterest;
-    }
+    if (void 0 !== LoanManager) LoanManager.accrueDailyInterest();
     const dailyRent = LocationManager.monthlyRent() / 30;
     State.cash -= dailyRent;
     State.departments.admin.fixedCosts += dailyRent;
@@ -24459,61 +24445,117 @@ const CustomerManager = {
 };
 const LoanManager = {
   available: [
-    { id: "mikro", name: "Mikro-Kredit", amount: 1e4, minRep: 0, maxTimes: 2 },
-    { id: "std", name: "Standard-Kredit", amount: 25e3, minRep: 0, maxTimes: 2 },
-    { id: "gross", name: "Großkredit", amount: 75e3, minRep: 60, maxTimes: 1 },
-    { id: "invest", name: "Investitionskredit", amount: 2e5, minRep: 75, maxTimes: 1 },
+    { id: "mikro", name: "Mikro-Kredit", amount: 1e4, rate: 0.09, minRep: 0, maxTimes: 2 },
+    { id: "std", name: "Standard-Kredit", amount: 25e3, rate: 0.07, minRep: 0, maxTimes: 2 },
+    { id: "gross", name: "Großkredit", amount: 75e3, rate: 0.055, minRep: 60, maxTimes: 1 },
+    { id: "invest", name: "Investitionskredit", amount: 2e5, rate: 0.045, minRep: 75, maxTimes: 1 },
   ],
+  init() {
+    if (!Array.isArray(State.loans)) State.loans = [];
+    // Migration: Alt-Spielstand bzw. Startschuld ohne Einzelkredit-Aufstellung.
+    if (0 === State.loans.length && (State.debt || 0) > 0)
+      State.loans.push({
+        id: Utils.uid("LN"),
+        name: "Bestehender Kredit",
+        principal: State.debt,
+        remaining: State.debt,
+        rate: 0.06,
+        takenDay: State.day || 0,
+      });
+    this._sync();
+  },
+  _sync() {
+    State.debt = (State.loans || []).reduce((s, l) => s + Math.max(0, l.remaining), 0);
+  },
   _takenCount(id) {
     if (!State.loanHistory) State.loanHistory = {};
     return State.loanHistory[id] || 0;
   },
   _debtCap() {
     const monthlyRev = Object.values(State.departments || {}).reduce((s, d) => s + (d.monthRevenue || 0), 0);
-    return Math.max(5e4, 3 * monthlyRev);
+    return Math.max(8e4, 3 * monthlyRev);
   },
   canTake(id) {
-    if (!State.loanHistory) State.loanHistory = {};
+    this.init();
     const l = this.available.find((x) => x.id === id);
     if (!l) return { ok: false, reason: "Unbekannter Kredit" };
     if (State.reputation < l.minRep)
-      return { ok: false, reason: `Reputation ${State.reputation}% — mindestens ${l.minRep}% erforderlich` };
+      return { ok: false, reason: `Reputation ${Math.round(State.reputation)} % — mindestens ${l.minRep} % nötig` };
     if (this._takenCount(id) >= l.maxTimes)
-      return { ok: false, reason: `Dieser Kredit wurde bereits ${l.maxTimes}× aufgenommen` };
-    const newDebt = (State.debt || 0) + l.amount;
-    const cap = this._debtCap();
-    if (newDebt > cap)
-      return {
-        ok: false,
-        reason: `Kreditlimit überschritten — max. ${Utils.euro(cap)} Gesamtverschuldung bei aktuellem Umsatz`,
-      };
+      return { ok: false, reason: `Bereits ${l.maxTimes}× aufgenommen` };
+    if ((State.debt || 0) + l.amount > this._debtCap())
+      return { ok: false, reason: `Kreditlimit ${Utils.euro(this._debtCap())} überschritten` };
     return { ok: true };
+  },
+  addLoan(name, amount, rate) {
+    this.init();
+    if (!(amount > 0)) return null;
+    const loan = {
+      id: Utils.uid("LN"),
+      name: name,
+      principal: Math.round(amount),
+      remaining: Math.round(amount),
+      rate: rate,
+      takenDay: State.day || 0,
+    };
+    State.loans.push(loan);
+    this._sync();
+    return loan;
   },
   take(id) {
     const l = this.available.find((x) => x.id === id);
     if (!l) return false;
     const check = this.canTake(id);
     if (!check.ok) {
-      Notifier.add(`❌ Kredit abgelehnt: ${check.reason}`, "error");
+      if (void 0 !== Notifier) Notifier.add(`❌ Kredit abgelehnt: ${check.reason}`, "error");
       return false;
     }
     if (!State.loanHistory) State.loanHistory = {};
     State.loanHistory[id] = (State.loanHistory[id] || 0) + 1;
     State.cash += l.amount;
-    State.debt += l.amount;
-    EventManager.addNews(
-      "info",
-      `💵 Kredit: ${Utils.euro(l.amount)} aufgenommen (Schulden: ${Utils.euro(State.debt)})`,
-    );
+    this.addLoan(l.name, l.amount, l.rate);
+    if (void 0 !== BankAccount) BankAccount.record("loan_in", l.amount, l.name);
+    EventManager.addNews("info", `💵 ${l.name}: ${Utils.euro(l.amount)} aufgenommen — ${(100 * l.rate).toFixed(1)} % p.a.`);
     return true;
   },
-  repay(amount) {
-    const a = Math.min(amount, State.debt, State.cash);
-    if (a <= 0) return 0;
+  repay(loanId) {
+    this.init();
+    const loan = (State.loans || []).find((l) => l.id === loanId);
+    if (!loan) return 0;
+    const a = Math.min(loan.remaining, Math.max(0, State.cash));
+    if (a <= 0) {
+      if (void 0 !== Notifier) Notifier.add("Nicht genug Kasse für eine Tilgung", "warn");
+      return 0;
+    }
     State.cash -= a;
-    State.debt -= a;
-    EventManager.addNews("good", `↩ Tilgung: ${Utils.euro(a)}`);
+    loan.remaining -= a;
+    if (void 0 !== BankAccount) BankAccount.record("loan_repay", -a, `Tilgung: ${loan.name}`);
+    if (loan.remaining <= 0) {
+      State.loans = State.loans.filter((l) => l.id !== loan.id);
+      EventManager.addNews("good", `✅ ${loan.name} vollständig getilgt`);
+    } else EventManager.addNews("good", `↩ Tilgung ${loan.name}: ${Utils.euro(a)} — Rest ${Utils.euro(loan.remaining)}`);
+    this._sync();
     return a;
+  },
+  accrueDailyInterest() {
+    this.init();
+    let total = 0;
+    (State.loans || []).forEach((l) => {
+      total += (l.remaining * l.rate) / 365;
+    });
+    if (total <= 0) return;
+    State.cash -= total;
+    if (State.departments && State.departments.loans) {
+      State.departments.loans.fixedCosts += total;
+      State.departments.loans.monthFixed += total;
+    }
+  },
+  effectiveRate() {
+    this.init();
+    if (!(State.debt > 0)) return 0;
+    let interest = 0;
+    (State.loans || []).forEach((l) => (interest += l.remaining * l.rate));
+    return interest / State.debt;
   },
 };
 const DealerManager = {
@@ -26203,6 +26245,7 @@ const UI = {
           render: () => void 0 !== CashflowSystem && CashflowSystem.renderReceivables(),
         },
         { id: "kontoauszug", icon: "🏦", label: "Kontoauszug", render: () => UI.renderBank() },
+        { id: "kredite", icon: "💳", label: "Kredite", render: () => UI.renderLoans() },
         { id: "versicherung", icon: "🛡", label: "Versicherungen", render: () => UI.renderInsurance() },
         { id: "leasing", icon: "📋", label: "Leasing", render: () => UI.renderLeasingOffers() },
         { id: "diesel", icon: "⛽", label: "Diesel-Hedging", render: () => UI.renderFuelHedge() },
@@ -27699,8 +27742,10 @@ const UI = {
               desc: "Bei gutem Ruf: Zinsvorteil möglich.",
               action: () => {
                 if (State.reputation > 70) {
-                  State.debt = Math.round(0.98 * State.debt);
-                  EventManager.addNews("good", "🏦 Hausbank: Zinsvorteil ausgehandelt — Schulden −2%");
+                  if ((State.loans || []).length) {
+                    State.loans.forEach((l) => (l.rate = Math.max(0.02, l.rate * 0.9)));
+                    EventManager.addNews("good", "🏦 Hausbank: Zinsvorteil ausgehandelt — Kreditzinsen −10%");
+                  } else this.toast("Keine laufenden Kredite zum Verhandeln", "info");
                 } else this.toast("Reputation zu gering für Zinsvorteil (mind. 70)", "warn");
               },
             },
@@ -28319,6 +28364,32 @@ const UI = {
       })
       .join("");
     el.innerHTML = `\n      <style>\n        ._etag{display:inline-block;border-radius:4px;padding:2px 7px;font-size:10px;border:1px solid rgba(255,255,255,0.1);}\n        ._epos{background:rgba(74,222,128,0.1);color:#4ade80;}\n        ._einfo{background:rgba(56,189,248,0.1);color:#38bdf8;}\n        ._eunlock{background:rgba(192,132,252,0.1);color:#c084fc;}\n        ._egold{background:rgba(251,191,36,0.1);color:#fbbf24;}\n      </style>\n      ${inTraining ? `<div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">📚 LAUFENDE SCHULUNGEN</div>\n        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-bottom:20px;">${inTraining}</div>` : ""}\n      <div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:10px;">👷 MITARBEITER & VERFÜGBARE KURSE</div>\n      <div style="display:flex;flex-direction:column;gap:12px;">${staffRows || '<div style="color:var(--muted);padding:20px;">Kein aktives Personal vorhanden</div>'}</div>`;
+  },
+  renderLoans() {
+    const el = UI._getContentEl("finanzen-content");
+    if (!el || void 0 === LoanManager) return;
+    LoanManager.init();
+    const loans = State.loans || [];
+    const totalDebt = State.debt || 0;
+    const effRate = LoanManager.effectiveRate();
+    const cap = LoanManager._debtCap();
+    const canRepay = State.cash > 0;
+    const activeHTML =
+      0 === loans.length
+        ? '<div style="color:var(--muted);font-size:11px;padding:12px;">Keine laufenden Kredite.</div>'
+        : loans
+            .map(
+              (l) =>
+                `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;"><div><div style="font-weight:700;">${l.name}</div><div style="font-size:10px;color:var(--muted2);margin-top:2px;">Restschuld ${Utils.euro(l.remaining)} · ${(100 * l.rate).toFixed(1)} % p.a. · ${Utils.euro((l.remaining * l.rate) / 365)}/Tag Zins</div></div><button class="btn small" onclick="LoanManager.repay('${l.id}');UI.renderAll();" ${canRepay ? "" : "disabled"}>Tilgen</button></div>`,
+            )
+            .join("");
+    const offerHTML = LoanManager.available
+      .map((l) => {
+        const check = LoanManager.canTake(l.id);
+        return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;"><div><div style="font-weight:700;">${l.name} — ${Utils.euro(l.amount)}</div><div style="font-size:10px;color:var(--muted2);margin-top:2px;">${(100 * l.rate).toFixed(1)} % p.a.${l.minRep > 0 ? ` · ab Reputation ${l.minRep}` : ""}${check.ok ? "" : ` · <span style="color:var(--danger);">${check.reason}</span>`}</div></div><button class="btn small primary" onclick="LoanManager.take('${l.id}');UI.renderAll();" ${check.ok ? "" : "disabled"}>Aufnehmen</button></div>`;
+      })
+      .join("");
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;"><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:${totalDebt > 0 ? "var(--warn)" : "var(--accent2)"};">${Utils.euro(totalDebt)}</div><div style="font-size:10px;color:var(--muted);">Gesamtschuld</div></div><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--accent);">${(100 * effRate).toFixed(1)} %</div><div style="font-size:10px;color:var(--muted);">Ø Zinssatz p.a.</div></div><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--muted2);">${Utils.euro(cap)}</div><div style="font-size:10px;color:var(--muted);">Kreditlimit</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);">LAUFENDE KREDITE</div><div style="font-size:10px;color:var(--muted);">Kasse: ${Utils.euro(State.cash)}</div></div>${activeHTML}<div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin:16px 0 8px;">NEUEN KREDIT AUFNEHMEN</div>${offerHTML}<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:8px;font-size:10px;color:var(--muted);line-height:1.7;">💡 Zinsen werden täglich von der Kasse abgebucht. „Tilgen" zahlt einen Kredit so weit zurück, wie die Kasse reicht. Das Kreditlimit richtet sich nach dem Monatsumsatz.</div>`;
   },
   renderBank() {
     const el = UI._getContentEl("finanzen-content");
