@@ -842,6 +842,29 @@ footer {
         State.pendingDecisions?.length > 0 ||
         (this._dayMs = this.MS_PER_HOUR[this._speed] * this.HOURS);
     },
+    setArrival(hour) {
+      if ("undefined" == typeof State) return;
+      const n = this.MS_PER_HOUR[this._speed] || 3e4;
+      this._dayMs = (hour - this.DAY_START) * n;
+      State.hour = hour;
+      this._lastReal = performance.now();
+      this._updateClock(hour);
+    },
+    delayArrival(mins) {
+      if ("undefined" == typeof State || !mins) return;
+      const n = this.MS_PER_HOUR[this._speed] || 3e4;
+      this._dayMs += (mins / 60) * n;
+      State.hour = Math.min(this.DAY_START + this._dayMs / n, this.DAY_END);
+      this._updateClock(State.hour);
+    },
+    skipTo(hour) {
+      if ("undefined" == typeof State) return;
+      const n = this.MS_PER_HOUR[this._speed] || 3e4;
+      const target = (hour - this.DAY_START) * n;
+      if (target > this._dayMs) this._dayMs = target;
+      State.hour = Math.min(this.DAY_START + this._dayMs / n, this.DAY_END);
+      this._updateClock(State.hour);
+    },
     stop() {
       this._frame && (cancelAnimationFrame(this._frame), (this._frame = null));
     },
@@ -1122,7 +1145,7 @@ footer {
 <div class="container">
 <!-- ═══ NAV ═══════════════════════════════════════ -->
 <nav>
-  <button class="nav-btn" data-view="zentrale"><span><span class="icon">🏢</span>GF-Zentrale</span><span class="badge" id="badge-zentrale"></span></button>
+  <button class="nav-btn" data-view="zentrale"><span><span class="icon">🏢</span>Büro</span><span class="badge" id="badge-zentrale"></span></button>
   <div class="nav-divider"></div>
   <button class="nav-btn" data-view="finanzen"><span><span class="icon">💼</span>Finanzen</span></button>
   <button class="nav-btn" data-view="fuhrpark"><span><span class="icon">🚛</span>Fuhrpark</span><span class="badge" id="badge-fuhrpark"></span></button>
@@ -1141,12 +1164,12 @@ footer {
 <!-- TUTORIAL HINT (global oben, immer sichtbar wenn aktiv) -->
 <div id="tutorial-hint" style="padding:0 4px;"></div>
 
-<!-- GF-ZENTRALE -->
+<!-- BÜRO -->
 <div class="view active" id="view-zentrale">
   <div class="view-header">
     <div>
-      <div class="view-title">🏢 GF-ZENTRALE</div>
-      <div class="view-subtitle">Ihre Kommandozentrale — das ganze Unternehmen auf einen Blick</div>
+      <div class="view-title">🏢 BÜRO</div>
+      <div class="view-subtitle">Ihr Büro — das ganze Unternehmen auf einen Blick</div>
     </div>
   </div>
   <div id="zentrale-content" style="padding:0 4px;"></div>
@@ -17503,6 +17526,24 @@ const MorningRoutine = {
     // Privatleben dating flow (UI._showFamilyOptions / _choosepartner).
     State.family = { status: "ledig", partner: null, children: [] };
   },
+  // Fahrzeit von zu Hause ins Buero (Intro nennt "45 Minuten Fahrt").
+  COMMUTE_H: 0.75,
+  wakeup() {
+    const w = "undefined" != typeof EveningScreen && EveningScreen._wakeup;
+    return w >= 6 && w <= 10 ? w : 7;
+  },
+  baselineArrival() {
+    return this.wakeup() + this.COMMUTE_H;
+  },
+  fmtHour(h) {
+    let hh = Math.floor(h);
+    let mm = Math.round((h - hh) * 60);
+    if (mm >= 60) {
+      hh += 1;
+      mm -= 60;
+    }
+    return String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+  },
   dailyTick() {
     this.init();
     if (!State.family) return;
@@ -17518,24 +17559,25 @@ const MorningRoutine = {
     if ((State.pendingDecisions || []).some((d) => d.isMorningRoutine)) return;
     const acts = (void 0 !== UI && UI.MORNING_ACTIONS) || [];
     if (!acts.length) return;
+    const base = this.baselineArrival();
     EventManager.queueDecision({
       isMorningRoutine: true,
       title: "🌅 Guten Morgen",
       subtitle: "Wie startest du in den Tag — bevor es ins Büro geht?",
-      content:
-        '<div style="font-size:12px;color:var(--muted2);padding:6px 0;line-height:1.6;">Ein guter Start in den Tag hilft gegen Stress.</div>',
+      content: `<div style="font-size:12px;color:var(--muted2);padding:6px 0;line-height:1.6;">Ein guter Start in den Tag hilft gegen Stress. Aufgestanden um <b>${this.fmtHour(this.wakeup())}</b>, dann <b>45 Min.</b> Fahrt ins Büro.</div>`,
       choices: acts
         .map((a, i) => ({
-          text: `${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.family ? ", Familie +" + a.family : ""}`,
+          text: `${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.family ? ", Familie +" + a.family : ""} · 🏢 ${this.fmtHour(base + (a.mins || 0) / 60)}`,
           action: () => {
             if (void 0 !== UI) UI._doMorningAction(i);
           },
         }))
         .concat([
           {
-            text: "➡️ Direkt los — ohne Morgenroutine",
+            text: `➡️ Direkt los — ohne Morgenroutine · 🏢 ${this.fmtHour(base)}`,
             action: () => {
               State.morningActionDay = State.day;
+              if ("undefined" != typeof UI) UI.showView("zentrale");
             },
           },
         ]),
@@ -17656,11 +17698,11 @@ const MorningRoutine = {
           body: `${child.name} hat Fieber (38,5°). Wer bleibt heute zuhause? ${partner ? `${partner.name} hat heute einen wichtigen Termin.` : "Du hast niemanden dem du es übergeben kannst."}`,
           choices: [
             {
-              text: `🏠 Du bleibst bei ${child.name} (ganzer Tag)`,
+              text: `🏠 Du bleibst bei ${child.name} (bis nachmittags)`,
               stress: 8,
               family: 20,
               missWork: true,
-              news: `🏠 Bei krankem ${child.name} geblieben — Arbeitstag ausgefallen`,
+              news: `🏠 Bei krankem ${child.name} geblieben — erst ab 16 Uhr im Büro`,
             },
             ...(partner
               ? [
@@ -17914,14 +17956,18 @@ const MorningRoutine = {
             State.family.partner.mood = Utils.clamp((State.family.partner.mood || 75) + c.family, 0, 100);
             State.familyHappiness = Utils.clamp((State.familyHappiness || 80) + 0.5 * c.family, 0, 100);
           }
-          if (c.timeStart) State.hour = c.timeStart;
+          if (c.timeStart && "undefined" != typeof GameClock)
+            GameClock.delayArrival(Utils.clamp((c.timeStart - 6.5) * 30, 0, 60));
           if (c.cashDelta) State.cash += c.cashDelta;
           if (c.news) EventManager.addNews("info", c.news);
           if ("function" == typeof c.extraAction)
             try {
               c.extraAction();
             } catch (e) {}
-          if (c.missWork) State.stress = Utils.clamp(State.stress + 5, 0, 100);
+          if (c.missWork) {
+            State.stress = Utils.clamp(State.stress + 5, 0, 100);
+            if ("undefined" != typeof GameClock) GameClock.setArrival(16);
+          }
           // A resolved morning event fills the morning-routine slot, so the
           // manual MORGENROUTINE buttons in Privatleben show "erledigt" and
           // cannot be used to double up on stress relief the same day.
@@ -19015,7 +19061,7 @@ const LifeEvents = {
               stress: -20,
               family: 5,
               action: () => {
-                State.hour = Math.max(State.hour, 13);
+                if ("undefined" != typeof GameClock) GameClock.skipTo(13);
                 EventManager.addNews("good", "🩺 Arzttermin — Vorsorge wichtig");
               },
             },
@@ -19162,7 +19208,7 @@ const LifeEvents = {
               State.family.partner.mood = Utils.clamp(State.family.partner.mood + c.family, 0, 100);
               State.familyHappiness = Utils.clamp(State.familyHappiness + 0.5 * c.family, 0, 100);
             }
-            if (c.timeStart) State.hour = Math.max(State.hour, c.timeStart);
+            if (c.timeStart && "undefined" != typeof GameClock) GameClock.skipTo(c.timeStart);
             if (c.action) c.action();
           },
         })),
@@ -25454,12 +25500,10 @@ const Game = {
         WeekendScreen.open();
         return;
       }
-      State.hour = 8 + 0.5 * Math.random();
+      State.hour = MorningRoutine.wakeup();
       DayCycle.start();
       if ("undefined" != typeof GameClock) {
-        GameClock._dayMs = 0;
-        GameClock._lastReal = performance.now();
-        GameClock._updateClock(State.hour);
+        GameClock.setArrival(MorningRoutine.baselineArrival());
         if (!GameClock._frame) GameClock._startLoop();
       }
       UI.renderAll();
@@ -25474,15 +25518,13 @@ const Game = {
     try {
       if (State.gameOver) return;
       if (!Number.isFinite(State.cash)) State.cash = 0;
-      State.hour = 8 + 0.5 * Math.random();
+      State.hour = MorningRoutine.wakeup();
       let guard = 0;
       while (new Date(State.date).getDay() !== 1 && !State.gameOver && guard++ < 8) {
         DayCycle.start();
       }
       if ("undefined" != typeof GameClock) {
-        GameClock._dayMs = 0;
-        GameClock._lastReal = performance.now();
-        GameClock._updateClock(State.hour);
+        GameClock.setArrival(MorningRoutine.baselineArrival());
         if (!GameClock._frame) GameClock._startLoop();
       }
       UI.renderAll();
@@ -25722,7 +25764,7 @@ const UI = {
     const truck = State.trucks?.[0];
     const box = document.getElementById("modal-box");
     if (box)
-      box.innerHTML = `\n      <h2>${State.companyLogo} Auf dem Weg ins Büro</h2>\n      <p class="subtitle">Erster Tag — ${city}</p>\n      <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">\n        <div style="background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;line-height:1.8;font-style:italic;">\n          "${quote}"\n        </div>\n        <div style="display:flex;gap:10px;align-items:flex-start;">\n          <span style="font-size:36px;">🚗</span>\n          <div style="font-size:12px;line-height:1.7;">\n            Du fährst zum Betrieb in ${city}. 45 Minuten Fahrt — im Radio: Staumeldungen, Dieselpreise, Konjunkturnachrichten. Kurz vor 08:00 Uhr erreichst du das Büro.\n          </div>\n        </div>\n\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">STARTBILANZ — TAG 1</div>\n          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Kassenbestand</span><b style="color:var(--accent2);">${cash}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Startkredit</span><b style="color:var(--danger);">−${debt}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Fahrzeuge</span><b>${State.trucks?.length || 0} LKW</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Personal</span><b>${State.staff?.length || 0} Mitarbeiter</b></div>\n            ${truck ? `<div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Erster LKW</span><b>${truck.plate} · ${truck.model}</b></div>` : ""}\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Miete/Monat</span><b style="color:var(--warn);">−${Utils.euro(loc?.monthlyRent || 0)}</b></div>\n          </div>\n        </div>\n\n        <button class="btn primary" style="padding:14px;font-size:14px;font-family:'Bebas Neue';letter-spacing:2px;"\n          onclick="UI.closeModal();UI.showView('zentrale');UI.renderAll();setTimeout(()=>{if(typeof Onboarding!=='undefined')Onboarding.init();},500);">\n          🏢 GF-ZENTRALE — TAG BEGINNEN\n        </button>\n      </div>`;
+      box.innerHTML = `\n      <h2>${State.companyLogo} Auf dem Weg ins Büro</h2>\n      <p class="subtitle">Erster Tag — ${city}</p>\n      <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">\n        <div style="background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;line-height:1.8;font-style:italic;">\n          "${quote}"\n        </div>\n        <div style="display:flex;gap:10px;align-items:flex-start;">\n          <span style="font-size:36px;">🚗</span>\n          <div style="font-size:12px;line-height:1.7;">\n            Du fährst zum Betrieb in ${city}. 45 Minuten Fahrt — im Radio: Staumeldungen, Dieselpreise, Konjunkturnachrichten. Kurz vor 08:00 Uhr erreichst du das Büro.\n          </div>\n        </div>\n\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">STARTBILANZ — TAG 1</div>\n          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Kassenbestand</span><b style="color:var(--accent2);">${cash}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Startkredit</span><b style="color:var(--danger);">−${debt}</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Fahrzeuge</span><b>${State.trucks?.length || 0} LKW</b></div>\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Personal</span><b>${State.staff?.length || 0} Mitarbeiter</b></div>\n            ${truck ? `<div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Erster LKW</span><b>${truck.plate} · ${truck.model}</b></div>` : ""}\n            <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Miete/Monat</span><b style="color:var(--warn);">−${Utils.euro(loc?.monthlyRent || 0)}</b></div>\n          </div>\n        </div>\n\n        <button class="btn primary" style="padding:14px;font-size:14px;font-family:'Bebas Neue';letter-spacing:2px;"\n          onclick="UI.closeModal();UI.showView('zentrale');UI.renderAll();setTimeout(()=>{if(typeof Onboarding!=='undefined')Onboarding.init();},500);">\n          🏢 BÜRO — TAG BEGINNEN\n        </button>\n      </div>`;
   },
   _showFamilyOptions() {
     const fam = State.family || {};
@@ -30817,7 +30859,7 @@ const UI = {
       100,
       0.6 * stress + (overtime >= 5 ? 30 : overtime >= 3 ? 15 : 0) + (sleepHours < 6 ? 20 : 0),
     );
-    const inner = `\n      \x3c!-- Header-Bereich --\x3e\n      <div class="view-header">\n        <div>\n          <div class="view-title">🏠 PRIVATLEBEN</div>\n          <div class="view-subtitle">Familie · Gesundheit · Privates — Tag ${State.day}</div>\n        </div>\n        <div style="display:flex;gap:8px;">\n          <button class="btn" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="UI.showView('zentrale');">\n            🏢 GF-ZENTRALE\n          </button>\n          <button class="btn primary" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="GameClock.skipOneDay();">\n            🌙 SCHLAFEN GEHEN\n          </button>\n        </div>\n      </div>\n\n      <div style="padding:12px;display:flex;flex-direction:column;gap:14px;">\n\n        \x3c!-- KPI-Leiste --\x3e\n        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">\n          ${[
+    const inner = `\n      \x3c!-- Header-Bereich --\x3e\n      <div class="view-header">\n        <div>\n          <div class="view-title">🏠 PRIVATLEBEN</div>\n          <div class="view-subtitle">Familie · Gesundheit · Privates — Tag ${State.day}</div>\n        </div>\n        <div style="display:flex;gap:8px;">\n          <button class="btn" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="UI.showView('zentrale');">\n            🏢 BÜRO\n          </button>\n          <button class="btn primary" style="font-family:'Bebas Neue';letter-spacing:1px;padding:10px 18px;font-size:14px;"\n            onclick="GameClock.skipOneDay();">\n            🌙 SCHLAFEN GEHEN\n          </button>\n        </div>\n      </div>\n\n      <div style="padding:12px;display:flex;flex-direction:column;gap:14px;">\n\n        \x3c!-- KPI-Leiste --\x3e\n        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">\n          ${[
       { label: "Tagesform", val: form.label, color: form.color },
       { label: "Stress-Level", val: stressLabel(stress), color: stressColor(stress) },
       { label: "Familienbindung", val: Math.round(famHappy) + "%", color: moodColor(famHappy) },
@@ -30835,7 +30877,7 @@ const UI = {
       )
       .join(
         "",
-      )}\n        </div>\n\n        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">\n\n          \x3c!-- Linke Spalte: Familie + Gesundheit --\x3e\n          <div style="display:flex;flex-direction:column;gap:12px;">\n\n            \x3c!-- Familie --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🏠 FAMILIE</div>\n              ${"ledig" === fam.status ? '\n                <div style="color:var(--muted2);font-size:12px;padding:8px 0;">\n                  Ledig — keine Familie zu Hause. Mehr Freiheit, weniger Rückhalt.\n                </div>\n                <button class="btn small" onclick="UI._showFamilyOptions()" style="margin-top:6px;">💑 Beziehungsstatus ändern</button>\n              ' : partner ? `\n                \x3c!-- Partner --\x3e\n                <div style="display:flex;gap:10px;align-items:center;background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;">\n                  <span style="font-size:32px;">${"verheiratet" === fam.status ? "💒" : "verlobt" === fam.status ? "💍" : "❤️"}</span>\n                  <div style="flex:1;">\n                    <div style="font-weight:700;font-size:13px;">${partner.name} <span style="font-size:9px;font-weight:700;color:var(--accent);">${"verheiratet" === fam.status ? "· VERHEIRATET" : "verlobt" === fam.status ? "· VERLOBT" : "· ZUSAMMEN"}</span></div>\n                    <div style="font-size:10px;color:var(--muted2);">${partner.job}</div>\n                    <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">\n                      <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:2px;height:5px;">\n                        <div style="background:${moodColor(partner.mood)};border-radius:2px;height:5px;width:${partner.mood}%;transition:width .3s;"></div>\n                      </div>\n                      <span style="font-size:10px;color:${moodColor(partner.mood)};">${moodEmoji(partner.mood)} ${Math.round(partner.mood)}%</span>\n                    </div>\n                    <div style="font-size:9px;color:var(--muted2);margin-top:2px;">${partner.mood >= 80 ? "Sehr glücklich" : partner.mood >= 60 ? "Zufrieden" : partner.mood >= 40 ? "Okay" : partner.mood >= 20 ? "Unzufrieden — mehr Zeit investieren" : "Sehr unzufrieden!"}</div>\n                  </div>\n                </div>\n                ${overtime >= 3 ? `<div style="background:rgba(251,191,36,0.1);border:1px solid var(--warn);border-radius:6px;padding:8px;font-size:11px;color:var(--warn);margin-bottom:8px;">\n                  ⚠ ${overtime} Überstunden-Abende diese Woche — ${partner.name} wartet jeden Abend\n                </div>` : ""}\n                ${kids.length ? `\n                <div style="margin-bottom:8px;">\n                  <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px;">KINDER (${kids.length})</div>\n                  <div style="display:flex;gap:6px;flex-wrap:wrap;">\n                    ${kids.map((c) => `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;text-align:center;">\n                      <div style="font-size:18px;">${c.age < 6 ? "🧸" : c.age < 12 ? "🎒" : c.age < 18 ? "📚" : "🎓"}</div>\n                      <div style="font-weight:700;">${c.name}</div>\n                      <div style="color:var(--muted2);font-size:9px;">${c.age} J. · ${c.age < 6 ? "Kita" : c.age < 10 ? "Grundschule" : c.age < 13 ? "Mittelschule" : c.age < 16 ? "Gymnasium" : c.age < 18 ? "Oberstufe" : "Volljährig"}</div>\n                    </div>`).join("")}\n                  </div>\n                </div>` : ""}\n                \x3c!-- Partner: Kontakt aufnehmen --\x3e\n                <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px;">📞 KONTAKT <span style="color:${socialDone ? "var(--accent2)" : "var(--muted2)"};">· ${socialDone ? "✓ heute erledigt" : "1× pro Tag"}</span></div>\n                <div style="display:flex;gap:6px;flex-wrap:wrap;">\n                  <button class="btn small primary" onclick="UI._showFamilyOptions()" style="font-size:10px;">💞 Beziehung verwalten</button>\n                  <button class="btn small" ${socialDone ? "disabled" : ""} onclick="UI._callPartner('lunch')" style="font-size:10px;${socialDone ? "opacity:0.4;cursor:not-allowed;" : ""}">☎️ Mittags anrufen</button>\n                  <button class="btn small" ${socialDone ? "disabled" : ""} onclick="UI._callPartner('tonight')" style="font-size:10px;${socialDone ? "opacity:0.4;cursor:not-allowed;" : ""}">🌙 Auf den Abend freuen</button>\n                  ${partner.mood < 50 ? `<button class="btn small primary" ${socialDone ? "disabled" : ""} onclick="UI._callPartner('sorry')" style="font-size:10px;${socialDone ? "opacity:0.4;cursor:not-allowed;" : ""}">💐 Entschuldigen</button>` : ""}\n                </div>\n              ` : ""}\n            </div>\n\n            \x3c!-- Büro-Draht --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">📱 BÜRO-DRAHT</div>\n              <div style="font-size:10px;color:var(--muted2);margin-bottom:10px;">Vom Sofa kurz ins Büro schauen — kostet Ruhe und Nerven${partner ? ", und " + partner.name + " merkt's" : ""}.</div>\n              <div style="display:flex;flex-direction:column;gap:6px;">\n                <button class="btn small" onclick="UI._checkOffice('phone')" style="text-align:left;font-size:10px;">📱 <b>Kurz aufs Handy schauen</b> — Kasse &amp; Warnungen <span style="color:var(--muted2);">· Stress +3${partner ? " · Partner −3" : ""}</span></button>\n                ${State.devices?.tablet ? `<button class="btn small" onclick="UI._checkOffice('tablet')" style="text-align:left;font-size:10px;">📋 <b>Tablet-Check</b> — + Touren &amp; Auslastung <span style="color:var(--muted2);">· Stress +5${partner ? " · Partner −6" : ""}</span></button>` : `<button class="btn small" onclick="UI._buyDevice('tablet')" style="text-align:left;font-size:10px;color:var(--info);">🛒 <b>Tablet anschaffen</b> — schaltet Touren- &amp; Auslastungs-Check frei <span style="color:var(--muted2);">· ${U.euro(600)} einmalig</span></button>`}\n                ${State.devices?.laptop ? `<button class="btn small" onclick="UI._checkOffice('laptop')" style="text-align:left;font-size:10px;">💻 <b>Laptop-Session</b> — volle Büro-KPIs <span style="color:var(--muted2);">· Stress +8${partner ? " · Partner −10 · Familie −5" : ""}</span></button>` : `<button class="btn small" onclick="UI._buyDevice('laptop')" style="text-align:left;font-size:10px;color:var(--info);">🛒 <b>Laptop anschaffen</b> — schaltet die vollen Büro-KPIs frei <span style="color:var(--muted2);">· ${U.euro(1400)} einmalig</span></button>`}\n              </div>\n            </div>\n\n            \x3c!-- GF-Gesundheit --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🩺 GF-GESUNDHEIT</div>\n\n              \x3c!-- Stress-Balken --\x3e\n              <div style="margin-bottom:10px;">\n                <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">\n                  <span style="color:var(--muted);">Stress-Level</span>\n                  <b style="color:${stressColor(stress)};">${Math.round(stress)}% — ${stressLabel(stress)}</b>\n                </div>\n                <div style="background:rgba(255,255,255,0.06);border-radius:3px;height:8px;">\n                  <div style="background:${stressColor(stress)};border-radius:3px;height:8px;width:${stress}%;transition:width .3s;"></div>\n                </div>\n                <div style="font-size:9px;color:var(--muted2);margin-top:3px;">${form.bonus}</div>\n              </div>\n\n              \x3c!-- Burnout-Risiko --\x3e\n              ${burnoutRisk > 30 ? `\n              <div style="margin-bottom:10px;">\n                <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">\n                  <span style="color:var(--muted);">Burnout-Risiko</span>\n                  <b style="color:${burnoutRisk > 70 ? "var(--danger)" : "var(--warn)"};">${Math.round(burnoutRisk)}%</b>\n                </div>\n                <div style="background:rgba(255,255,255,0.06);border-radius:3px;height:6px;">\n                  <div style="background:${burnoutRisk > 70 ? "var(--danger)" : "var(--warn)"};border-radius:3px;height:6px;width:${burnoutRisk}%;transition:width .3s;"></div>\n                </div>\n              </div>` : ""}\n\n            </div>\n\n            \x3c!-- Tag gestalten: Morgenroutine & Feierabend --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">🌤️ TAG GESTALTEN</div>\n              <div style="font-size:10px;color:var(--muted2);margin-bottom:10px;">Routinen laufen automatisch: 🌅 morgens beim Aufstehen, 🌆 abends beim Schlafengehen.</div>\n              <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">\n                <div style="display:flex;justify-content:space-between;"><span>🌅 Morgenroutine</span><b style="color:${State.morningActionDay === State.day ? "var(--accent2)" : "var(--muted2)"};">${State.morningActionDay === State.day ? "✓ erledigt" : "offen"}</b></div>\n                <div style="display:flex;justify-content:space-between;"><span>🌆 Feierabend</span><b style="color:${State.eveningActionDay === State.day ? "var(--accent2)" : "var(--muted2)"};">${State.eveningActionDay === State.day ? "✓ erledigt" : "offen"}</b></div>\n              </div>\n              <div style="font-size:10px;color:var(--muted2);margin-top:8px;">Verfügbare Urlaubstage: <b style="color:${State.vacationDaysAvailable > 0 ? "var(--accent2)" : "var(--warn)"};">${State.vacationDaysAvailable || 0}/14</b></div>\n            </div>\n          </div>\n\n          \x3c!-- Rechte Spalte: Status + Luxus + Tagebuch --\x3e\n          <div style="display:flex;flex-direction:column;gap:12px;">\n\n            \x3c!-- GF-Status & Reputation --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🌟 GF-STATUS</div>\n              <div style="font-size:11px;line-height:2.1;">\n                ${[
+      )}\n        </div>\n\n        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">\n\n          \x3c!-- Linke Spalte: Familie + Gesundheit --\x3e\n          <div style="display:flex;flex-direction:column;gap:12px;">\n\n            \x3c!-- Familie --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🏠 FAMILIE</div>\n              ${"ledig" === fam.status ? '\n                <div style="color:var(--muted2);font-size:12px;padding:8px 0;">\n                  Ledig — keine Familie zu Hause. Mehr Freiheit, weniger Rückhalt.\n                </div>\n                <button class="btn small" onclick="UI._showFamilyOptions()" style="margin-top:6px;">💑 Beziehungsstatus ändern</button>\n              ' : partner ? `\n                \x3c!-- Partner --\x3e\n                <div style="display:flex;gap:10px;align-items:center;background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;">\n                  <span style="font-size:32px;">${"verheiratet" === fam.status ? "💒" : "verlobt" === fam.status ? "💍" : "❤️"}</span>\n                  <div style="flex:1;">\n                    <div style="font-weight:700;font-size:13px;">${partner.name} <span style="font-size:9px;font-weight:700;color:var(--accent);">${"verheiratet" === fam.status ? "· VERHEIRATET" : "verlobt" === fam.status ? "· VERLOBT" : "· ZUSAMMEN"}</span></div>\n                    <div style="font-size:10px;color:var(--muted2);">${partner.job}</div>\n                    <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">\n                      <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:2px;height:5px;">\n                        <div style="background:${moodColor(partner.mood)};border-radius:2px;height:5px;width:${partner.mood}%;transition:width .3s;"></div>\n                      </div>\n                      <span style="font-size:10px;color:${moodColor(partner.mood)};">${moodEmoji(partner.mood)} ${Math.round(partner.mood)}%</span>\n                    </div>\n                    <div style="font-size:9px;color:var(--muted2);margin-top:2px;">${partner.mood >= 80 ? "Sehr glücklich" : partner.mood >= 60 ? "Zufrieden" : partner.mood >= 40 ? "Okay" : partner.mood >= 20 ? "Unzufrieden — mehr Zeit investieren" : "Sehr unzufrieden!"}</div>\n                  </div>\n                </div>\n                ${overtime >= 3 ? `<div style="background:rgba(251,191,36,0.1);border:1px solid var(--warn);border-radius:6px;padding:8px;font-size:11px;color:var(--warn);margin-bottom:8px;">\n                  ⚠ ${overtime} Überstunden-Abende diese Woche — ${partner.name} wartet jeden Abend\n                </div>` : ""}\n                ${kids.length ? `\n                <div style="margin-bottom:8px;">\n                  <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px;">KINDER (${kids.length})</div>\n                  <div style="display:flex;gap:6px;flex-wrap:wrap;">\n                    ${kids.map((c) => `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;text-align:center;">\n                      <div style="font-size:18px;">${c.age < 6 ? "🧸" : c.age < 12 ? "🎒" : c.age < 18 ? "📚" : "🎓"}</div>\n                      <div style="font-weight:700;">${c.name}</div>\n                      <div style="color:var(--muted2);font-size:9px;">${c.age} J. · ${c.age < 6 ? "Kita" : c.age < 10 ? "Grundschule" : c.age < 13 ? "Mittelschule" : c.age < 16 ? "Gymnasium" : c.age < 18 ? "Oberstufe" : "Volljährig"}</div>\n                    </div>`).join("")}\n                  </div>\n                </div>` : ""}\n                \x3c!-- Partner: Kontakt aufnehmen --\x3e\n                <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px;">📞 KONTAKT <span style="color:${socialDone ? "var(--accent2)" : "var(--muted2)"};">· ${socialDone ? "✓ heute erledigt" : "1× pro Tag"}</span></div>\n                <div style="display:flex;gap:6px;flex-wrap:wrap;">\n                  <button class="btn small primary" onclick="UI._showFamilyOptions()" style="font-size:10px;">💞 Beziehung verwalten</button>\n                  <button class="btn small" ${socialDone ? "disabled" : ""} onclick="UI._callPartner('lunch')" style="font-size:10px;${socialDone ? "opacity:0.4;cursor:not-allowed;" : ""}">☎️ Mittags anrufen</button>\n                  <button class="btn small" ${socialDone ? "disabled" : ""} onclick="UI._callPartner('tonight')" style="font-size:10px;${socialDone ? "opacity:0.4;cursor:not-allowed;" : ""}">🌙 Auf den Abend freuen</button>\n                  ${partner.mood < 50 ? `<button class="btn small primary" ${socialDone ? "disabled" : ""} onclick="UI._callPartner('sorry')" style="font-size:10px;${socialDone ? "opacity:0.4;cursor:not-allowed;" : ""}">💐 Entschuldigen</button>` : ""}\n                </div>\n              ` : ""}\n            </div>\n\n            \x3c!-- Büro-Draht --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">📱 BÜRO-DRAHT</div>\n              <div style="font-size:10px;color:var(--muted2);margin-bottom:10px;">Vom Sofa kurz ins Büro schauen — kostet Ruhe und Nerven${partner ? ", und " + partner.name + " merkt's" : ""}.</div>\n              <div style="display:flex;flex-direction:column;gap:6px;">\n                <button class="btn small" onclick="UI._checkOffice('phone')" style="text-align:left;font-size:10px;">📱 <b>Kurz aufs Handy schauen</b> — Kasse &amp; Warnungen <span style="color:var(--muted2);">· Stress +3${partner ? " · Partner −3" : ""}</span></button>\n                ${State.devices?.tablet ? `<button class="btn small" onclick="UI._checkOffice('tablet')" style="text-align:left;font-size:10px;">📋 <b>Tablet-Check</b> — + Touren &amp; Auslastung <span style="color:var(--muted2);">· Stress +5${partner ? " · Partner −6" : ""}</span></button>` : `<button class="btn small" onclick="UI._buyDevice('tablet')" style="text-align:left;font-size:10px;color:var(--info);">🛒 <b>Tablet anschaffen</b> — schaltet Touren- &amp; Auslastungs-Check frei <span style="color:var(--muted2);">· ${U.euro(600)} einmalig</span></button>`}\n                ${State.devices?.laptop ? `<button class="btn small" onclick="UI._checkOffice('laptop')" style="text-align:left;font-size:10px;">💻 <b>Laptop-Session</b> — volle Büro-KPIs <span style="color:var(--muted2);">· Stress +8${partner ? " · Partner −10 · Familie −5" : ""}</span></button>` : `<button class="btn small" onclick="UI._buyDevice('laptop')" style="text-align:left;font-size:10px;color:var(--info);">🛒 <b>Laptop anschaffen</b> — schaltet die vollen Büro-KPIs frei <span style="color:var(--muted2);">· ${U.euro(1400)} einmalig</span></button>`}\n              </div>\n            </div>\n\n            \x3c!-- GF-Gesundheit --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🩺 GF-GESUNDHEIT</div>\n\n              \x3c!-- Stress-Balken --\x3e\n              <div style="margin-bottom:10px;">\n                <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">\n                  <span style="color:var(--muted);">Stress-Level</span>\n                  <b style="color:${stressColor(stress)};">${Math.round(stress)}% — ${stressLabel(stress)}</b>\n                </div>\n                <div style="background:rgba(255,255,255,0.06);border-radius:3px;height:8px;">\n                  <div style="background:${stressColor(stress)};border-radius:3px;height:8px;width:${stress}%;transition:width .3s;"></div>\n                </div>\n                <div style="font-size:9px;color:var(--muted2);margin-top:3px;">${form.bonus}</div>\n              </div>\n\n              \x3c!-- Burnout-Risiko --\x3e\n              ${burnoutRisk > 30 ? `\n              <div style="margin-bottom:10px;">\n                <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">\n                  <span style="color:var(--muted);">Burnout-Risiko</span>\n                  <b style="color:${burnoutRisk > 70 ? "var(--danger)" : "var(--warn)"};">${Math.round(burnoutRisk)}%</b>\n                </div>\n                <div style="background:rgba(255,255,255,0.06);border-radius:3px;height:6px;">\n                  <div style="background:${burnoutRisk > 70 ? "var(--danger)" : "var(--warn)"};border-radius:3px;height:6px;width:${burnoutRisk}%;transition:width .3s;"></div>\n                </div>\n              </div>` : ""}\n\n            </div>\n\n            \x3c!-- Tag gestalten: Morgenroutine & Feierabend --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">📅 HEUTE</div>\n              <div style="font-size:10px;color:var(--muted2);margin-bottom:10px;">Dein Tagesablauf — die Routinen laufen automatisch zur passenden Tageszeit.</div>\n              <div style="display:flex;flex-direction:column;gap:5px;font-size:11px;">\n                <div style="display:flex;justify-content:space-between;"><span>🌅 Morgenroutine</span><b style="color:${State.morningActionDay === State.day ? "var(--accent2)" : "var(--muted2)"};">${State.morningActionDay === State.day ? "✓ erledigt" : "offen"}</b></div>\n                ${5 === new Date(State.date).getDay() ? `<div style="display:flex;justify-content:space-between;"><span>🌟 Wochenende</span><b style="color:var(--muted2);">am Freitagabend</b></div>` : `<div style="display:flex;justify-content:space-between;"><span>🌆 Feierabend</span><b style="color:${State.eveningActionDay === State.day ? "var(--accent2)" : "var(--muted2)"};">${State.eveningActionDay === State.day ? "✓ erledigt" : "offen"}</b></div>`}\n              </div>\n              <div style="font-size:10px;color:var(--muted2);margin-top:8px;">Verfügbare Urlaubstage: <b style="color:${State.vacationDaysAvailable > 0 ? "var(--accent2)" : "var(--warn)"};">${State.vacationDaysAvailable || 0}/14</b></div>\n            </div>\n          </div>\n\n          \x3c!-- Rechte Spalte: Status + Luxus + Tagebuch --\x3e\n          <div style="display:flex;flex-direction:column;gap:12px;">\n\n            \x3c!-- GF-Status & Reputation --\x3e\n            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n              <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🌟 GF-STATUS</div>\n              <div style="font-size:11px;line-height:2.1;">\n                ${[
       ["GF-Gehalt", U.euro(State.ownerSalary) + "/Mon.", "var(--accent)"],
       ["Unternehmens-Reputation", Math.round(State.reputation) + "%", moodColor(State.reputation)],
       ["Spieltag", "Tag " + State.day, "var(--muted2)"],
@@ -30907,10 +30949,10 @@ const UI = {
     this.renderPrivate();
   },
   MORNING_ACTIONS: [
-    { icon: "☕", label: "Ruhig Kaffee & ankommen", stress: -5, cost: 0, family: 0 },
-    { icon: "🥐", label: "Ausgiebig frühstücken", stress: -7, cost: 0, family: 4 },
-    { icon: "🏃", label: "Morgens joggen", stress: -10, cost: 0, family: 0 },
-    { icon: "⚡", label: "Sofort durchstarten", stress: 3, cost: 0, family: 0 },
+    { icon: "☕", label: "Ruhig Kaffee & ankommen", stress: -5, cost: 0, family: 0, mins: 15 },
+    { icon: "🥐", label: "Ausgiebig frühstücken", stress: -7, cost: 0, family: 4, mins: 30 },
+    { icon: "🏃", label: "Morgens joggen", stress: -10, cost: 0, family: 0, mins: 45 },
+    { icon: "⚡", label: "Sofort durchstarten", stress: 3, cost: 0, family: 0, mins: 0 },
   ],
   EVENING_ACTIONS: [
     { icon: "📺", label: "Serie schauen", stress: -7, cost: 0, family: 0 },
@@ -31032,10 +31074,11 @@ const UI = {
     }
     State.stress = Math.max(0, Math.min(100, (State.stress || 30) + a.stress));
     this._applyFamilyEffect(a.family);
+    if (a.mins && "undefined" != typeof GameClock) GameClock.delayArrival(a.mins);
     State.morningActionDay = State.day;
     EventManager.addNews("good", `${a.icon} Morgen: ${a.label}`);
     this.toast(`${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.family ? ", Familie +" + a.family : ""}`, "good");
-    this.renderPrivate();
+    this.showView("zentrale");
     this.renderHeader();
   },
   _doEveningAction(idx) {
