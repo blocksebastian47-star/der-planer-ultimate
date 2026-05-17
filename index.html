@@ -17935,7 +17935,7 @@ const StaffDepth = {
           case "anxious":
             if (State.stress > 70 && Math.random() < 0.04) {
               s.status = "krank";
-              s._sickDays = Utils.randInt(2, 5);
+              s.sickDaysRemaining = Utils.randInt(2, 5);
               EventManager.addNews("warn", `🌸 ${s.name} meldet sich krank (Überlastung im Team)`);
             }
             break;
@@ -18636,7 +18636,7 @@ const CrisisSystem = {
       const damage = Math.round(1e3 * Utils.randInt(15, 80));
       const injuryDays = severity > 0.7 ? Utils.randInt(14, 60) : Utils.randInt(3, 14);
       driver.status = "krank";
-      driver._sickDays = injuryDays;
+      driver.sickDaysRemaining = injuryDays;
       driver._accidentInjury = true;
       truck.status = "broken";
       truck.condition = Math.max(10, truck.condition - Utils.randInt(30, 70));
