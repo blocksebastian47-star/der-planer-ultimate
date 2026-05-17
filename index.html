@@ -13032,12 +13032,10 @@ const AnnualClose = {
       content: `\n        <div style="font-size:13px; line-height:1.9;">\n          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">JAHRESUMSATZ</div>\n              <div style="font-size:18px; font-weight:700; color:var(--accent2);">${Utils.euro(revenue)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">NETTOGEWINN</div>\n              <div style="font-size:18px; font-weight:700; color:${netProfit > 0 ? "var(--accent2)" : "var(--danger)"};">${Utils.euro(netProfit)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">STEUER (${Math.round(100 * effTaxRate)}%)</div>\n              <div style="font-size:18px; font-weight:700; color:var(--warn);">${Utils.euro(tax)}</div>\n            </div>\n            <div style="background:var(--bg); padding:8px; border-radius:6px;">\n              <div style="color:var(--muted); font-size:10px;">MITARBEITER-BONI</div>\n              <div style="font-size:18px; font-weight:700; color:var(--accent);">${Utils.euro(bonusTotal)}</div>\n            </div>\n          </div>\n          <div style="font-size:11px; color:var(--muted2); margin-bottom:8px;">Die Jahressteuer ist die Summe der bereits monatlich gezahlten Ertragsteuern.</div>\n          <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Was passiert mit dem Nettogewinn?</div>\n        </div>`,
       choices: [
         {
-          text: "💰 Reinvestieren — Flotte erweitern",
+          text: "💰 Gewinn im Unternehmen behalten — liquide bleiben",
           action: () => {
-            const bonus = Math.round(0.1 * netProfit);
-            State.cash += bonus;
             State.reputation = Math.min(100, State.reputation + 3);
-            Notifier.add(`Reinvestition: +${Utils.euro(bonus)} Bonus + Reputationsgewinn`, "good");
+            Notifier.add("Gewinn bleibt liquide im Unternehmen — Reputation +3", "good");
           },
         },
         {
@@ -19952,7 +19950,7 @@ const CashflowSystem = {
       }
       if (!rec.paid && !rec.factored) cf.overdueTotal += rec.overdue ? rec.amount : 0;
     }
-    cf.receivables = cf.receivables.filter((r) => !r.paid || State.day - r.paidDay < 30);
+    cf.receivables = cf.receivables.filter((r) => (!r.paid && !r.factored) || State.day - (r.paidDay || r.factoredDay || 0) < 30);
     this._checkLiquidityCrisis();
   },
   _processPayment(rec) {
@@ -20050,7 +20048,8 @@ const CashflowSystem = {
     rec.factorFee = fee;
     rec.factoredDay = State.day;
     State.cashflow.factoringUsed += rec.amount;
-    FinanceManager.recordRevenue("fleet", payout);
+    // Brutto als Einnahme buchen; die Gebuehr darunter als Kosten — netto bleibt der Auszahlungsbetrag.
+    FinanceManager.recordRevenue("fleet", rec.amount);
     FinanceManager.recordCost("admin", fee, false);
     if (void 0 !== BankAccount)
       BankAccount.record("revenue_other", payout, `Factoring: ${rec.customerName} (Gebühr: ${Utils.euro(fee)})`);
