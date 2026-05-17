@@ -22034,9 +22034,11 @@ const FinanceManager = {
       (v.purchasePrice || 0) *
       ((v.condition || 100) / 100) *
       Math.pow(0.88, (State.day - (v.purchaseDay || State.day)) / 365);
-    const trucks = (State.trucks || []).reduce((s, t) => s + depreciated(t), 0);
-    // Eigene Anhänger zählen zum Anlagevermögen — Leasing-Anhänger nicht.
-    const trailers = (State.trailers || []).filter((t) => !t.leasing).reduce((s, t) => s + depreciated(t), 0);
+    // Geleaste Fahrzeuge gehoeren nicht ins Anlagevermoegen (zwei Leasing-Systeme:
+    // LeasingManager -> isLeased, VehicleLeasingManager -> leasing.active).
+    const notLeased = (v) => !v.isLeased && !(v.leasing && v.leasing.active);
+    const trucks = (State.trucks || []).filter(notLeased).reduce((s, t) => s + depreciated(t), 0);
+    const trailers = (State.trailers || []).filter(notLeased).reduce((s, t) => s + depreciated(t), 0);
     return trucks + trailers;
   },
   equity() {
@@ -24226,8 +24228,6 @@ const DayCycle = {
     if (void 0 !== FuelStations) FuelStations.generateDailyPrices();
     if (void 0 !== RoadClosures) RoadClosures.cleanup();
     if (void 0 !== LeasingManager) LeasingManager.checkLeaseEnd();
-    if (void 0 !== VehicleLeasingManager) VehicleLeasingManager.monthlyTick();
-    if (void 0 !== ServiceContractManager) ServiceContractManager.monthlyTick();
     if (void 0 !== DepartmentSystem) DepartmentSystem.dailyTick();
     if (void 0 !== StaffInteraction) StaffInteraction.dailyTick();
     if (void 0 !== GameDepth) GameDepth.dailyTick();
@@ -24319,6 +24319,8 @@ const DayCycle = {
       if (void 0 !== DepartmentSystem) DepartmentSystem.monthlyTick();
       if (void 0 !== LocationSystem) LocationSystem.monthlyTick();
       if (void 0 !== LeasingManager) LeasingManager.monthlyTick();
+      if (void 0 !== VehicleLeasingManager) VehicleLeasingManager.monthlyTick();
+      if (void 0 !== ServiceContractManager) ServiceContractManager.monthlyTick();
       if (void 0 !== LegalForms) {
         LegalForms.init();
         LegalForms.monthlyTick(FinanceManager.equity() / 12);
