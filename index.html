@@ -19763,8 +19763,8 @@ const CashflowSystem = {
       name: "FactoringPlus GmbH",
       fee: 0.035,
       maxAmount: 5e4,
-      minRep: 50,
-      desc: "3,5% Gebühr, bis 50.000€ pro Monat",
+      minRep: 20,
+      desc: "Basisgebühr 3,5%, bis 50.000€ pro Monat",
     },
     {
       id: "fac_premium",
@@ -19779,8 +19779,8 @@ const CashflowSystem = {
       name: "ExpressFactor",
       fee: 0.055,
       maxAmount: 2e4,
-      minRep: 50,
-      desc: "5,5% Gebühr — teuer aber sofort, kein Limit-Check",
+      minRep: 20,
+      desc: "Basisgebühr 5,5% — teuer aber sofort, kein Limit-Check",
     },
   ],
   init() {
@@ -19938,12 +19938,13 @@ const CashflowSystem = {
       5e3
     );
   },
+  factoringSurcharge() {
+    const rep = State.reputation;
+    if (rep >= 50) return 0;
+    return 0.06 * Math.min(1, (50 - rep) / 30);
+  },
   factorReceivable(recId, factorId) {
     this.init();
-    if (State.reputation < 50) {
-      Notifier.add("Factoring erst ab Reputation 50 verfügbar", "warn");
-      return false;
-    }
     const rec = State.cashflow.receivables.find((r) => r.id === recId);
     const factor = this.FACTORING.find((f) => f.id === factorId);
     if (!rec || !factor || rec.paid || rec.factored) return false;
@@ -19960,7 +19961,8 @@ const CashflowSystem = {
       Notifier.add(`Monatslimit ${factor.name} erreicht (${Utils.euro(factor.maxAmount)}/Monat)`, "warn");
       return false;
     }
-    const fee = Math.round(rec.amount * factor.fee);
+    const effectiveFee = factor.fee + this.factoringSurcharge();
+    const fee = Math.round(rec.amount * effectiveFee);
     const payout = rec.amount - fee;
     rec.factored = true;
     rec.factorId = factorId;
@@ -19973,7 +19975,7 @@ const CashflowSystem = {
       BankAccount.record("revenue_other", payout, `Factoring: ${rec.customerName} (Gebühr: ${Utils.euro(fee)})`);
     EventManager.addNews(
       "info",
-      `🏦 Factoring: ${Utils.euro(payout)} sofort erhalten (Gebühr: ${Utils.euro(fee)}, ${(100 * factor.fee).toFixed(1)}%)`,
+      `🏦 Factoring: ${Utils.euro(payout)} sofort erhalten (Gebühr: ${Utils.euro(fee)}, ${(100 * effectiveFee).toFixed(1)}%)`,
     );
     return true;
   },
@@ -20038,7 +20040,7 @@ const CashflowSystem = {
     if (!container) return;
     const recs = State.cashflow.receivables.filter((r) => !r.paid && !r.factored);
     const status = this.getStatus();
-    const canFactor = State.reputation >= 50;
+    const canFactor = State.reputation >= 20;
     const rows =
       0 === recs.length
         ? '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;">Keine offenen Forderungen</td></tr>'
@@ -20054,7 +20056,7 @@ const CashflowSystem = {
               return `<tr style="border-bottom:1px solid var(--border);">\n            <td style="font-size:11px;padding:5px 4px;">${r.customerName}</td>\n            <td style="font-size:11px;color:var(--muted);">${r.jobFrom}→${r.jobTo}</td>\n            <td style="font-size:11px;font-weight:700;color:#4ade80;">${Utils.euro(r.amount)}</td>\n            <td style="font-size:11px;color:${urgency};">${badge}</td>\n            <td>${skontoCell}</td>\n            <td>${canFactor ? `<button class="btn small" onclick="UI.showFactoringModal('${r.id}')" style="font-size:9px;">🏦</button>` : ""}</td>\n          </tr>`;
             })
             .join("");
-    container.innerHTML = `\n      <div style="padding:16px;">\n        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">AUSSTEHEND</div>\n            <div style="font-size:20px;font-weight:700;color:#4ade80;">${Utils.euro(status.total)}</div>\n          </div>\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">ÜBERFÄLLIG</div>\n            <div style="font-size:20px;font-weight:700;color:${status.overdue > 0 ? "#f87171" : "var(--muted2)"};">${Utils.euro(status.overdue)}</div>\n          </div>\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">FÄLLIG IN 7 TAGEN</div>\n            <div style="font-size:20px;font-weight:700;color:#ffb627;">${Utils.euro(status.due7)}</div>\n          </div>\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">KASSENBESTAND</div>\n            <div style="font-size:20px;font-weight:700;color:${State.cash < 0 ? "#f87171" : "var(--fg)"};">${Utils.euro(State.cash)}</div>\n          </div>\n        </div>\n        ${!canFactor ? `<div style="background:rgba(255,182,39,0.1);border:1px solid #ffb627;border-radius:6px;padding:8px;font-size:11px;margin-bottom:12px;">\n          🏦 <b>Factoring</b> verfügbar ab Reputation 50 (aktuell: ${Math.round(State.reputation)})\n        </div>` : '<div style="background:rgba(74,222,128,0.08);border:1px solid #4ade80;border-radius:6px;padding:8px;font-size:11px;margin-bottom:12px;">\n          🏦 <b>Factoring aktiv</b> — Forderungen sofort in Liquidität umwandeln (Gebühr 2,5–5,5%)\n        </div>'}\n        <table style="width:100%;border-collapse:collapse;">\n          <thead><tr style="font-size:10px;color:var(--muted);text-align:left;">\n            <th style="padding:6px 4px;">Kunde</th>\n            <th>Route</th>\n            <th>Betrag</th>\n            <th>Fälligkeit</th>\n            <th>Skonto</th>\n            <th>Factoring</th>\n          </tr></thead>\n          <tbody>${rows}</tbody>\n        </table>\n\n        <div style="margin-top:20px;">\n          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">\n            <div style="font-size:12px;font-weight:700;">📋 Skonto-Rahmenvereinbarungen</div>\n            <button class="btn small primary" onclick="UI.showSkontoAgreementModal()" style="font-size:10px;">+ Neue Vereinbarung</button>\n          </div>\n          ${(() => {
+    container.innerHTML = `\n      <div style="padding:16px;">\n        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">AUSSTEHEND</div>\n            <div style="font-size:20px;font-weight:700;color:#4ade80;">${Utils.euro(status.total)}</div>\n          </div>\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">ÜBERFÄLLIG</div>\n            <div style="font-size:20px;font-weight:700;color:${status.overdue > 0 ? "#f87171" : "var(--muted2)"};">${Utils.euro(status.overdue)}</div>\n          </div>\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">FÄLLIG IN 7 TAGEN</div>\n            <div style="font-size:20px;font-weight:700;color:#ffb627;">${Utils.euro(status.due7)}</div>\n          </div>\n          <div style="background:var(--bg2);border-radius:8px;padding:12px;flex:1;min-width:120px;">\n            <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">KASSENBESTAND</div>\n            <div style="font-size:20px;font-weight:700;color:${State.cash < 0 ? "#f87171" : "var(--fg)"};">${Utils.euro(State.cash)}</div>\n          </div>\n        </div>\n        ${!canFactor ? `<div style="background:rgba(255,182,39,0.1);border:1px solid #ffb627;border-radius:6px;padding:8px;font-size:11px;margin-bottom:12px;">\n          🏦 <b>Factoring gesperrt</b> — erst ab Reputation 20 (aktuell: ${Math.round(State.reputation)})\n        </div>` : `<div style="background:rgba(74,222,128,0.08);border:1px solid #4ade80;border-radius:6px;padding:8px;font-size:11px;margin-bottom:12px;">\n          🏦 <b>Factoring aktiv</b> — Forderungen sofort in Liquidität umwandeln${CashflowSystem.factoringSurcharge() > 0 ? ` · Bonitätsaufschlag +${(100 * CashflowSystem.factoringSurcharge()).toFixed(1)}%` : " (Gebühr 2,5–5,5%)"}\n        </div>`}\n        <table style="width:100%;border-collapse:collapse;">\n          <thead><tr style="font-size:10px;color:var(--muted);text-align:left;">\n            <th style="padding:6px 4px;">Kunde</th>\n            <th>Route</th>\n            <th>Betrag</th>\n            <th>Fälligkeit</th>\n            <th>Skonto</th>\n            <th>Factoring</th>\n          </tr></thead>\n          <tbody>${rows}</tbody>\n        </table>\n\n        <div style="margin-top:20px;">\n          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">\n            <div style="font-size:12px;font-weight:700;">📋 Skonto-Rahmenvereinbarungen</div>\n            <button class="btn small primary" onclick="UI.showSkontoAgreementModal()" style="font-size:10px;">+ Neue Vereinbarung</button>\n          </div>\n          ${(() => {
       const agreements = Object.entries(State.cashflow.skontoAgreements || {});
       if (0 === agreements.length)
         return '<div style="font-size:11px;color:var(--muted2);padding:8px;">Keine aktiven Vereinbarungen. Vereinbarungen gelten für alle künftigen Aufträge des jeweiligen Kunden.</div>';
@@ -26962,20 +26964,22 @@ const UI = {
     if (void 0 === CashflowSystem) return;
     const rec = State.cashflow?.receivables?.find((r) => r.id === recId);
     if (!rec) return;
-    if (State.reputation < 50) {
-      this.toast("Factoring erst ab Reputation 50 verfügbar", "warn");
+    const options = CashflowSystem.FACTORING.filter((f) => State.reputation >= f.minRep);
+    if (0 === options.length) {
+      this.toast("Factoring gesperrt — Reputation unter 20", "warn");
       return;
     }
-    const options = CashflowSystem.FACTORING.filter((f) => State.reputation >= f.minRep);
     this.showModal({
       title: "🏦 Factoring — Forderung sofort verkaufen",
       subtitle: `${rec.customerName} · ${Utils.euro(rec.amount)}`,
       maxWidth: "480px",
       content: `\n        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">\n          Du verkaufst die Forderung sofort gegen eine Gebühr. Das Factoring-Unternehmen übernimmt das Ausfallrisiko und treibt selbst ein.\n        </div>\n        <div style="background:var(--bg2);border-radius:6px;padding:10px;margin-bottom:12px;font-size:11px;">\n          <div style="display:flex;justify-content:space-between;"><span style="color:var(--muted);">Forderung</span><span>${Utils.euro(rec.amount)}</span></div>\n          <div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="color:var(--muted);">Fälligkeit</span><span>${rec.dueDay - State.day} Tage (${rec.termLabel})</span></div>\n          <div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="color:var(--muted);">Status</span><span style="color:${rec.overdue ? "#f87171" : "#4ade80"}">${rec.overdue ? "⚠️ Überfällig" : "✅ Laufend"}</span></div>\n        </div>\n        <div style="display:flex;flex-direction:column;gap:8px;">\n          ${options
         .map((f) => {
-          const fee = Math.round(rec.amount * f.fee);
+          const surcharge = CashflowSystem.factoringSurcharge();
+          const effectiveFee = f.fee + surcharge;
+          const fee = Math.round(rec.amount * effectiveFee);
           const payout = rec.amount - fee;
-          return `<div style="background:var(--bg2);border-radius:6px;padding:10px;border:1px solid var(--border);">\n              <div style="display:flex;justify-content:space-between;align-items:center;">\n                <div>\n                  <div style="font-size:12px;font-weight:700;">${f.name}</div>\n                  <div style="font-size:10px;color:var(--muted);margin-top:2px;">${f.desc}</div>\n                </div>\n                <div style="text-align:right;">\n                  <div style="font-size:14px;font-weight:700;color:#4ade80;">${Utils.euro(payout)}</div>\n                  <div style="font-size:10px;color:#f87171;">−${Utils.euro(fee)} Gebühr</div>\n                </div>\n              </div>\n              <button class="btn small primary" onclick="CashflowSystem.factorReceivable('${rec.id}','${f.id}'); UI.closeModal(); if(typeof CashflowSystem!=='undefined') CashflowSystem.renderReceivables();" style="margin-top:8px;width:100%;font-size:10px;">Sofort verkaufen für ${Utils.euro(payout)}</button>\n            </div>`;
+          return `<div style="background:var(--bg2);border-radius:6px;padding:10px;border:1px solid var(--border);">\n              <div style="display:flex;justify-content:space-between;align-items:center;">\n                <div>\n                  <div style="font-size:12px;font-weight:700;">${f.name}</div>\n                  <div style="font-size:10px;color:var(--muted);margin-top:2px;">${f.desc}</div>\n                </div>\n                <div style="text-align:right;">\n                  <div style="font-size:14px;font-weight:700;color:#4ade80;">${Utils.euro(payout)}</div>\n                  <div style="font-size:10px;color:#f87171;">−${Utils.euro(fee)} Gebühr (${(100 * effectiveFee).toFixed(1)}%)</div>${surcharge > 0 ? `<div style="font-size:9px;color:#f87171;opacity:0.85;">inkl. Bonitätsaufschlag +${(100 * surcharge).toFixed(1)}%</div>` : ""}\n                </div>\n              </div>\n              <button class="btn small primary" onclick="CashflowSystem.factorReceivable('${rec.id}','${f.id}'); UI.closeModal(); if(typeof CashflowSystem!=='undefined') CashflowSystem.renderReceivables();" style="margin-top:8px;width:100%;font-size:10px;">Sofort verkaufen für ${Utils.euro(payout)}</button>\n            </div>`;
         })
         .join("")}\n        </div>`,
       actions: [{ label: "Abbrechen", onclick: () => this.closeModal() }],
