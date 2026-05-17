@@ -22169,6 +22169,7 @@ const EmployeeManager = {
       quitRisk: 0,
       status: "aktiv",
       sickDaysRemaining: 0,
+      restDaysRemaining: 0,
       hireDay: State.day,
       jobsCompleted: 0,
       accidents: 0,
@@ -22353,6 +22354,17 @@ const EmployeeManager = {
           s.daysAway = 0;
           s.lastHomeDay = State.day;
           EventManager.addNews("good", `🏖️ ${s.name} ist aus dem Urlaub zurück`);
+        }
+        return;
+      }
+      if ("ruhetag" === s.status) {
+        s.restDaysRemaining = (s.restDaysRemaining || 0) - 1;
+        s.stress = Utils.clamp(s.stress - 12, 0, 100);
+        s.motivation = Utils.clamp(s.motivation + 3, 0, 100);
+        if (s.restDaysRemaining <= 0) {
+          s.status = "aktiv";
+          s.restDaysRemaining = 0;
+          EventManager.addNews("good", `😌 ${s.name.split(" ").pop()} ist nach den Ruhetagen erholt zurück`);
         }
         return;
       }
@@ -23082,6 +23094,7 @@ const JobManager = {
       if ("krank" === driver.status) return;
       if ("urlaub" === driver.status) return;
       if ("schulung" === driver.status) return;
+      if ("ruhetag" === driver.status) return;
       if ("repair" === t.status) return;
       if (FleetManager.getDriverSkillLevel(driver) < (job.skillRequired || 1)) return;
       const isIdle = "idle" === t.status;
@@ -24296,7 +24309,24 @@ const DayCycle = {
 const DispoManager = {
   runDispatchers() {
     const dispos = (State.staff || []).filter((s) => "dispo" === s.roleId && "aktiv" === s.status);
-    if (0 === dispos.length) return;
+    if (0 === dispos.length) {
+      if (
+        State.day - (State._dispoPausedWarnDay || -99) >= 5 &&
+        (State.staff || []).some((s) => "driver" === s.roleId)
+      ) {
+        State._dispoPausedWarnDay = State.day;
+        const hasDispo = (State.staff || []).some((s) => "dispo" === s.roleId);
+        EventManager.addNews(
+          "warn",
+          hasDispo
+            ? "⚠ Disposition pausiert — kein einsatzfähiger Disponent (krank). Aufträge werden nicht automatisch angenommen."
+            : "⚠ Keine Disposition — ohne Disponent werden Aufträge nicht automatisch angenommen.",
+        );
+      }
+      return;
+    }
+    this.assignIdleDrivers();
+    this.restExhaustedDrivers();
     const totalCapacity = dispos.reduce((s, d) => s + 2 + Math.floor(d.experience / 30), 0);
     const sortedJobs = State.jobs.slice().sort((a, b) => b.price / (b.km || 1) - a.price / (a.km || 1));
     let handled = 0;
@@ -24357,6 +24387,37 @@ const DispoManager = {
       }
       return true;
     });
+  },
+  assignIdleDrivers() {
+    const assigned = new Set((State.trucks || []).map((t) => t.driverId).filter(Boolean));
+    const freeDrivers = (State.staff || []).filter(
+      (s) => "driver" === s.roleId && "aktiv" === s.status && !assigned.has(s.id),
+    );
+    if (0 === freeDrivers.length) return;
+    (State.trucks || []).forEach((t) => {
+      if (t.driverId || "repair" === t.status) return;
+      const d = freeDrivers.shift();
+      if (!d) return;
+      t.driverId = d.id;
+      EventManager.addNews("good", `🧑‍✈ Disponent: ${d.name.split(" ").pop()} dem ${t.plate} zugewiesen`);
+    });
+  },
+  restExhaustedDrivers() {
+    const exhausted = (State.staff || []).filter(
+      (s) =>
+        "driver" === s.roleId &&
+        "aktiv" === s.status &&
+        (s.stress || 0) >= 80 &&
+        !(State.activeJobs || []).some((j) => j.driverId === s.id),
+    );
+    if (0 === exhausted.length) return;
+    const s = exhausted.sort((a, b) => (b.stress || 0) - (a.stress || 0))[0];
+    s.status = "ruhetag";
+    s.restDaysRemaining = 3;
+    EventManager.addNews(
+      "info",
+      `😴 Disponent: ${s.name.split(" ").pop()} (${Math.round(s.stress)} % Stress) — 3 Ruhetage zur Erholung angeordnet`,
+    );
   },
   checkConsultation(job, truck, driver, days, daysLeft, perKm) {
     if (days >= daysLeft)
@@ -27456,7 +27517,9 @@ const UI = {
                   ? "🤒 Krank"
                   : "urlaub" === m.status
                     ? "🏖️ Urlaub"
-                    : `Motivation: <span style="color:${motColor};">${mot}%</span>`;
+                    : "ruhetag" === m.status
+                      ? "😴 Ruhetag"
+                      : `Motivation: <span style="color:${motColor};">${mot}%</span>`;
               const dept = void 0 !== DepartmentSystem ? DepartmentSystem.DEPTS[m.dept || ""]?.name || m.role : m.role;
               const rIcon =
                 {
@@ -29820,7 +29883,12 @@ const UI = {
           const motClass = s.motivation > 60 ? "good" : s.motivation > 30 ? "warn" : "bad";
           const stressClass = s.stress > 70 ? "bad" : s.stress > 50 ? "warn" : "good";
           const reliClass = s.reliability > 70 ? "good" : s.reliability > 40 ? "warn" : "bad";
-          const statusBadge = "krank" === s.status ? "b-broken" : "urlaub" === s.status ? "b-repair" : "b-active";
+          const statusBadge =
+            "krank" === s.status
+              ? "b-broken"
+              : "urlaub" === s.status || "ruhetag" === s.status
+                ? "b-repair"
+                : "b-active";
           const styleColor =
             { ruhig: "var(--accent2)", normal: "var(--info)", sportlich: "var(--warn)", aggressiv: "var(--danger)" }[
               s.drivingStyle
@@ -29850,7 +29918,7 @@ const UI = {
                   return `<div style="margin-top:5px;">\n              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">\n                <span style="color:var(--muted);">${lvl.icon} ${lvl.name}</span>\n                ${nextLvl ? `<span style="font-size:9px;color:var(--muted2);">→ ${nextLvl.name} bei ${nextLvl.minXP}% XP</span>` : '<span style="font-size:9px;color:var(--accent2);">★ Maximal</span>'}\n              </div>\n              <div style="background:rgba(255,255,255,0.06);border-radius:2px;height:4px;">\n                <div style="background:${"experte" === lvl.id ? "var(--accent2)" : "var(--accent)"};border-radius:2px;height:4px;width:${Math.min(100, pct)}%;transition:width .3s;"></div>\n              </div>\n              <div style="font-size:9px;color:var(--muted2);margin-top:2px;">${lvl.fuelBonus < 0 ? 100 * lvl.fuelBonus + "% Diesel" : ""}${lvl.speedBonus > 0 ? " · +" + Math.round(100 * lvl.speedBonus) + "% Speed" : ""}${lvl.accidentRisk > 0 ? " · +Unfallrisiko" : lvl.accidentRisk < 0 ? " · −Unfallrisiko" : ""}</div>\n            </div>`;
                 })()
               : ""
-          }\n          ${s.jobsCompleted > 0 ? `<div style="color:var(--muted);">Aufträge: ${s.jobsCompleted}${s.accidents > 0 ? ` · <span style="color:var(--danger);">Unfälle: ${s.accidents}</span>` : ""}</div>` : ""}\n          <div style="margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.06);">\n            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px;">\n              <span style="color:var(--muted);">🏖 Urlaub</span>\n              <span style="${(s.vacationDaysUsed || 0) >= (s.vacationDaysTotal || 26) ? "color:var(--danger);" : "color:var(--muted2);"}">\n                ${s.vacationDaysUsed || 0} / ${s.vacationDaysTotal || 26} Tage genutzt\n              </span>\n            </div>\n            <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">\n              <span class="health-bar" style="flex:1; height:4px;"><span class="health-fill" style="width:${Math.min(100, Math.round(((s.vacationDaysUsed || 0) / (s.vacationDaysTotal || 26)) * 100))}%; background:${(s.vacationDaysUsed || 0) >= (s.vacationDaysTotal || 26) ? "var(--danger)" : "var(--accent2)"};"></span></span>\n              <span style="font-size:9px; color:var(--muted2); flex-shrink:0;">${Math.max(0, (s.vacationDaysTotal || 26) - (s.vacationDaysUsed || 0))} verfügbar</span>\n            </div>\n            ${"urlaub" === s.status ? `<div style="color:var(--warn); font-size:9px; margin-top:2px;">🏖 Im Urlaub — zurück Tag ${s.vacationEnd || "?"}</div>` : ""}\n            ${"krank" === s.status ? `<div style="color:var(--danger); font-size:9px; margin-top:2px;">🤒 Krank — noch ${s.sickDaysRemaining || 0} Tag${1 !== (s.sickDaysRemaining || 0) ? "e" : ""}</div>` : ""}\n          </div>\n        </div>\n\n        ${(() => {
+          }\n          ${s.jobsCompleted > 0 ? `<div style="color:var(--muted);">Aufträge: ${s.jobsCompleted}${s.accidents > 0 ? ` · <span style="color:var(--danger);">Unfälle: ${s.accidents}</span>` : ""}</div>` : ""}\n          <div style="margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.06);">\n            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px;">\n              <span style="color:var(--muted);">🏖 Urlaub</span>\n              <span style="${(s.vacationDaysUsed || 0) >= (s.vacationDaysTotal || 26) ? "color:var(--danger);" : "color:var(--muted2);"}">\n                ${s.vacationDaysUsed || 0} / ${s.vacationDaysTotal || 26} Tage genutzt\n              </span>\n            </div>\n            <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">\n              <span class="health-bar" style="flex:1; height:4px;"><span class="health-fill" style="width:${Math.min(100, Math.round(((s.vacationDaysUsed || 0) / (s.vacationDaysTotal || 26)) * 100))}%; background:${(s.vacationDaysUsed || 0) >= (s.vacationDaysTotal || 26) ? "var(--danger)" : "var(--accent2)"};"></span></span>\n              <span style="font-size:9px; color:var(--muted2); flex-shrink:0;">${Math.max(0, (s.vacationDaysTotal || 26) - (s.vacationDaysUsed || 0))} verfügbar</span>\n            </div>\n            ${"urlaub" === s.status ? `<div style="color:var(--warn); font-size:9px; margin-top:2px;">🏖 Im Urlaub — zurück Tag ${s.vacationEnd || "?"}</div>` : ""}\n            ${"ruhetag" === s.status ? `<div style="color:var(--warn); font-size:9px; margin-top:2px;">😴 Ruhetag — noch ${s.restDaysRemaining || 0} Tag${1 !== (s.restDaysRemaining || 0) ? "e" : ""}</div>` : ""}\n            ${"krank" === s.status ? `<div style="color:var(--danger); font-size:9px; margin-top:2px;">🤒 Krank — noch ${s.sickDaysRemaining || 0} Tag${1 !== (s.sickDaysRemaining || 0) ? "e" : ""}</div>` : ""}\n          </div>\n        </div>\n\n        ${(() => {
             const ws = s.warnings || [];
             if (0 === ws.length) return "";
             const severityColor = { mild: "var(--warn)", serious: "var(--danger)", gross: "#cc1a1a" };
