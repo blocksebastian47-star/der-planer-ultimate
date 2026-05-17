@@ -25261,6 +25261,17 @@ const Game = {
       }
     });
     if (fixed > 0) console.warn(`Reconciled ${fixed} stale truck status flag(s) to idle`);
+    // Backfill missing customer ids on legacy saves (customers predate the id field) and
+    // drop the orphaned "undefined" skonto agreement such id-less customers could produce.
+    let custFixed = 0;
+    (State.customers || []).forEach((c) => {
+      if (c && !c.id) {
+        c.id = Utils.uid("C");
+        custFixed++;
+      }
+    });
+    if (custFixed > 0) console.warn(`Backfilled ${custFixed} missing customer id(s)`);
+    if (State.cashflow && State.cashflow.skontoAgreements) delete State.cashflow.skontoAgreements["undefined"];
   },
   slotMeta(slotKey) {
     try {
