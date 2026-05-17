@@ -28426,6 +28426,7 @@ const UI = {
       ],
     };
     const opts = DIRECTIVES[deptId] || DIRECTIVES.fleet_mgmt;
+    this._directiveModal = { deptId: deptId, headId: head.id, opts: opts };
     this.showModal({
       title: `📋 Direktive: ${dept.icon} ${dept.name}`,
       subtitle: `Abteilungsleiter: ${head.name} · ${head.role}`,
@@ -28454,7 +28455,7 @@ const UI = {
               return `<span style="background:rgba(${"var(--danger)" === col ? "248,113,113" : "74,222,128"},0.12);color:${col};padding:1px 6px;border-radius:3px;font-size:9px;">${{ taxRate: "Steuer", invoiceDelay: "Zahlung", jobPriceMul: "Preis", jobVolumeMul: "Volumen", fuelMul: "Diesel", repairCostMul: "Reparatur", fineMul: "Bußgeld", quitRiskAdd: "Kündigung", motivationBonus: "Motivation", costMul: "Kosten", hiringQuality: "Bewerberkval.", contractBonus: "Vertrag", breakdownRisk: "Panne", legalCost: "Anwaltskosten", externalRevenue: "Extraumsatz", maxContracts: "Verträge" }[k] || k} ${disp}</span>`;
             })
             .join(" ");
-          return `<button class="btn" style="padding:12px;text-align:left;border-radius:8px;border:1px solid ${isActive ? "var(--accent)" : "var(--border)"};background:${isActive ? "rgba(255,182,39,0.08)" : "var(--bg2)"};"\n              onclick="DepartmentSystem.setDirective('${deptId}','${d.id}',${JSON.stringify(d.effect)},${d.duration},'${d.label}','${head.id}');UI.closeModal();UI.toast('📋 Direktive aktiv: ${d.label}','good');UI.renderAll();">\n              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">\n                <b style="font-size:12px;">${d.label}</b>\n                ${isActive ? '<span style="font-size:10px;color:var(--accent);">✓ AKTIV</span>' : ""}\n                ${d.duration > 0 ? `<span style="font-size:9px;color:var(--muted);">${d.duration} Tage</span>` : '<span style="font-size:9px;color:var(--muted);">dauerhaft</span>'}\n              </div>\n              <div style="font-size:10px;color:var(--muted2);margin-bottom:6px;">${d.desc}</div>\n              <div style="display:flex;flex-wrap:wrap;gap:3px;">${effectTags}</div>\n            </button>`;
+          return `<button class="btn" style="padding:12px;text-align:left;border-radius:8px;border:1px solid ${isActive ? "var(--accent)" : "var(--border)"};background:${isActive ? "rgba(255,182,39,0.08)" : "var(--bg2)"};"\n              onclick="UI.applyDirective('${d.id}')">\n              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">\n                <b style="font-size:12px;">${d.label}</b>\n                ${isActive ? '<span style="font-size:10px;color:var(--accent);">✓ AKTIV</span>' : ""}\n                ${d.duration > 0 ? `<span style="font-size:9px;color:var(--muted);">${d.duration} Tage</span>` : '<span style="font-size:9px;color:var(--muted);">dauerhaft</span>'}\n              </div>\n              <div style="font-size:10px;color:var(--muted2);margin-bottom:6px;">${d.desc}</div>\n              <div style="display:flex;flex-wrap:wrap;gap:3px;">${effectTags}</div>\n            </button>`;
         })
         .join("")}\n        </div>`,
       actions: [{ label: "Abbrechen", onclick: () => this.closeModal() }],
@@ -28584,6 +28585,25 @@ const UI = {
     this.toast("Antwort gesendet — Reputation +0.5%", "good");
     this.renderCustomerPortal();
   },
+  bookCourse(staffId, courseId) {
+    const r = StaffDevelopment.startCourse(staffId, courseId);
+    const course = StaffDevelopment.COURSES[courseId];
+    this.toast(
+      r.ok ? `📚 ${course ? course.name : "Kurs"} gebucht — ${Utils.euro(r.cost)}` : r.reason,
+      r.ok ? "good" : "warn",
+    );
+    this.renderStaffDev();
+  },
+  applyDirective(directiveId) {
+    const m = this._directiveModal;
+    if (!m) return;
+    const d = (m.opts || []).find((x) => x.id === directiveId);
+    if (!d) return;
+    DepartmentSystem.setDirective(m.deptId, directiveId, d.effect, d.duration, d.label, m.headId);
+    this.closeModal();
+    this.toast("📋 Direktive aktiv: " + d.label, "good");
+    this.renderAll();
+  },
   renderStaffDev() {
     const el = UI._getContentEl("personal-content");
     if (!el || void 0 === StaffDevelopment) return;
@@ -28642,7 +28662,7 @@ const UI = {
               : !hasXP
                 ? `📈 Erfahrung: ${c.requiresExperience}%`
                 : "";
-            return `<div style="border:1px solid ${blocked ? "rgba(255,255,255,0.06)" : "var(--border)"};border-radius:8px;padding:10px;background:${blocked ? "rgba(255,255,255,0.02)" : "var(--bg)"};opacity:${blocked ? 0.6 : 1};">\n            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">\n              <div style="display:flex;gap:8px;align-items:center;">\n                <span style="font-size:20px;">${c.icon}</span>\n                <div>\n                  <div style="font-size:12px;font-weight:700;">${c.name}</div>\n                  <div style="font-size:10px;color:var(--muted2);">${c.durationDays} Tag${1 !== c.durationDays ? "e" : ""} · ${Utils.euro(c.cost)}</div>\n                </div>\n              </div>\n              ${blocked ? `<span style="font-size:9px;color:var(--muted);max-width:110px;text-align:right;line-height:1.3;">${blockReason}</span>` : `<button class="btn small primary" style="font-size:10px;white-space:nowrap;${!canAfford ? "opacity:0.5;" : ""}"\n                    onclick="const r=StaffDevelopment.startCourse('${s.id}','${c.id}');UI.toast(r.ok?'📚 '+Utils.euro(r.cost)+' · '+${JSON.stringify(c.name)}:r.reason,r.ok?'good':'warn');UI.renderStaffDev();">\n                    ${canAfford ? "Buchen" : "Kein Kapital"}\n                  </button>`}\n            </div>\n            <div style="font-size:10px;color:var(--muted2);margin-bottom:6px;line-height:1.5;">${c.desc}</div>\n            <div style="display:flex;flex-wrap:wrap;gap:3px;">${effectTags(c.effect)}</div>\n          </div>`;
+            return `<div style="border:1px solid ${blocked ? "rgba(255,255,255,0.06)" : "var(--border)"};border-radius:8px;padding:10px;background:${blocked ? "rgba(255,255,255,0.02)" : "var(--bg)"};opacity:${blocked ? 0.6 : 1};">\n            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">\n              <div style="display:flex;gap:8px;align-items:center;">\n                <span style="font-size:20px;">${c.icon}</span>\n                <div>\n                  <div style="font-size:12px;font-weight:700;">${c.name}</div>\n                  <div style="font-size:10px;color:var(--muted2);">${c.durationDays} Tag${1 !== c.durationDays ? "e" : ""} · ${Utils.euro(c.cost)}</div>\n                </div>\n              </div>\n              ${blocked ? `<span style="font-size:9px;color:var(--muted);max-width:110px;text-align:right;line-height:1.3;">${blockReason}</span>` : `<button class="btn small primary" style="font-size:10px;white-space:nowrap;${!canAfford ? "opacity:0.5;" : ""}" ${!canAfford ? "disabled" : ""}\n                    onclick="UI.bookCourse('${s.id}','${c.id}')">\n                    ${canAfford ? "Buchen" : "Kein Kapital"}\n                  </button>`}\n            </div>\n            <div style="font-size:10px;color:var(--muted2);margin-bottom:6px;line-height:1.5;">${c.desc}</div>\n            <div style="display:flex;flex-wrap:wrap;gap:3px;">${effectTags(c.effect)}</div>\n          </div>`;
           })
           .join("");
         return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--bg2);">\n          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">\n            <div>\n              <b style="font-size:13px;">${s.name}</b>\n              <span style="font-size:11px;color:var(--muted);margin-left:6px;">${s.role}</span>\n              <span style="font-size:10px;color:var(--muted2);margin-left:6px;">Erfahrung: ${Math.round(s.experience || 0)}%</span>\n            </div>\n            <div style="font-size:10px;color:var(--muted2);">${done.length} Kurs${1 !== done.length ? "e" : ""} absolviert</div>\n          </div>\n          ${certs ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;">${certs}</div>` : ""}\n          ${inQ ? `<div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;color:var(--accent);">📚 In Schulung: ${StaffDevelopment.COURSES[inQ.courseId]?.name} — noch ${inQ.endsDay - State.day} Tage</div>` : ""}\n          ${avail.length > 0 ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;">${courseCards}</div>` : '<div style="font-size:11px;color:var(--accent2);padding:6px 0;">✓ Alle verfügbaren Kurse absolviert</div>'}\n        </div>`;
