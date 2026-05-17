@@ -23259,21 +23259,17 @@ const JobManager = {
     let deadheadKm = 0;
     let deadheadDays = 0;
     let deadheadCost = 0;
-    let deadheadFerries = [];
     let hasDeadhead = false;
     if (truckCity && jobFromCity && truckCityId !== job.from) {
       const deadheadRoute = RouteManager.chooseRoute(truckCityId, job.from, truck.id, "fastest");
       if (deadheadRoute && deadheadRoute.km > 0) {
         deadheadKm = deadheadRoute.km;
         deadheadDays = Math.max(0, Math.ceil(deadheadKm / 650));
-        const fuelPerKm = (truck.fuelConsumption || 32) / 100;
+        const fuelPerKm = (truck.mpg || 32) / 100;
         deadheadCost = Math.round(deadheadKm * fuelPerKm * (State.fuelPriceCurrent || 1.65));
-        if (void 0 !== Pathfinding && deadheadRoute.path) {
-          deadheadFerries = Pathfinding.getFerryLegs(deadheadRoute.path);
-          deadheadFerries.forEach((leg) => {
-            deadheadCost += leg.ferry.cost;
-          });
-        }
+        truck.km += Math.round(deadheadKm);
+        truck.lifetimeKm = (truck.lifetimeKm || 0) + deadheadKm;
+        State.stats.totalDistance += deadheadKm;
         hasDeadhead = deadheadDays > 0;
         if (deadheadCost > 0) {
           if (void 0 !== FinanceManager) FinanceManager.recordCost("fuelToll", deadheadCost, true);
@@ -23292,24 +23288,8 @@ const JobManager = {
           );
       }
     }
-    let jobFerries = [];
-    let ferryCost = 0;
-    if (void 0 !== Pathfinding && route.path) {
-      jobFerries = Pathfinding.getFerryLegs(route.path);
-      jobFerries.forEach((leg) => {
-        ferryCost += leg.ferry.cost;
-      });
-      if (ferryCost > 0) {
-        if (void 0 !== FinanceManager) FinanceManager.recordCost("fuelToll", ferryCost, true);
-        else State.cash -= ferryCost;
-        if (void 0 !== BankAccount)
-          BankAccount.record("other_out", -ferryCost, `Fähre ${job.fromName}→${job.toName} (${truck.plate})`);
-        EventManager.addNews(
-          "info",
-          `⛴️ Fähre gebucht: ${jobFerries.map((l) => l.ferry.name).join(", ")} — ${Utils.euro(ferryCost)}`,
-        );
-      }
-    }
+    const jobFerries = [];
+    const ferryCost = 0;
     const realTotalDays = deadheadDays + totalDays;
     const activeJob = {
       ...job,
