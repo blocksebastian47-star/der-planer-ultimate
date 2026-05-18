@@ -23068,11 +23068,17 @@ const JobManager = {
     const missing = (rep < 40 ? 3 : rep < 60 ? 5 : rep < 80 ? 8 : 12) - (State.jobs || []).length;
     if (missing > 0) this.generateJobs(missing);
   },
+  // Fruehspiel-Gate: kleine Flotte -> kuerzere Auftraege (mehr Dispo-Entscheidungen)
+  _smallCompany() {
+    return (State.trucks || []).length <= 3;
+  },
   generateOneJob() {
     let from, to, customer;
     const rep = State.reputation || 50;
     const homeCity = State.locationId || "berlin";
-    const maxKm = rep < 60 ? 400 : rep < 75 ? 1000 : rep < 90 ? 2000 : 99999;
+    let maxKm = rep < 60 ? 400 : rep < 75 ? 1000 : rep < 90 ? 2000 : 99999;
+    // Fruehspiel: engerer Radius -> kurze Touren, kaum Leerfahrt
+    if (this._smallCompany()) maxKm = Math.min(maxKm, 260);
     const homeC = MAP_DATA.getCity(homeCity);
     let cityPool = homeC
       ? MAP_DATA.cities.filter((c) => {
@@ -23080,7 +23086,15 @@ const JobManager = {
         })
       : MAP_DATA.cities;
     if (cityPool.length < 5) cityPool = MAP_DATA.cities;
-    if (Math.random() < 0.6 && State.customers.length > 0) {
+    if (this._smallCompany() && Math.random() < 0.7) {
+      // Fruehspiel: Heimatstadt als Beladeort -> keine Leerfahrt zum Start
+      from = homeCity;
+      to = Utils.pick(cityPool.filter((c) => c.id !== homeCity)).id;
+      customer =
+        State.customers.length > 0 && Math.random() < 0.6
+          ? Utils.pick(State.customers)
+          : { name: Utils.pick(DATA.companyNames).name, id: "spot", relationship: 50 };
+    } else if (Math.random() < 0.6 && State.customers.length > 0) {
       customer = Utils.pick(State.customers);
       from = customer.cityId || homeCity;
       const fromC2 = MAP_DATA.getCity(from) || homeC;
