@@ -27504,6 +27504,7 @@ const UI = {
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
         ${tabBtn("uebersicht", "📊", "Übersicht")}
         ${tabBtn("posteingang", "📥", "Posteingang")}
+        ${tabBtn("telefon", "📞", "Telefon")}
         ${tabBtn("abteilungen", "🏢", "Abteilungen")}
         ${tabBtn("automatik", "⚙️", "Automatik")}
         ${tabBtn("karte", "🗺️", "Live-Karte")}
@@ -27535,10 +27536,9 @@ const UI = {
         sectionHead("📥 Posteingang") +
         this._renderOfficeInbox() +
         sectionHead("📞 Eingehende Anrufe") +
-        this._renderOfficeCalls() +
-        sectionHead("📲 Ausgehende Anrufe") +
-        this._renderOfficeOutbound()
+        this._renderOfficeCalls()
       );
+    if ("telefon" === tab) return this._renderOfficeOutbound();
     if ("abteilungen" === tab) return this._renderOfficeDepts();
     if ("automatik" === tab) return this._renderOfficeThresholds();
     if ("karte" === tab) return this._renderOfficeLiveMap();
