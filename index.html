@@ -12552,6 +12552,35 @@ const Tutorial = {
   init() {
     if (!State.tutorial) State.tutorial = { done: [], completed: false, financeViewed: false };
   },
+  _contextualPanel() {
+    if (void 0 === JobManager || !JobManager._smallCompany()) return "";
+    const trucks = State.trucks || [];
+    const staff = State.staff || [];
+    const jobsAvail = (State.jobs || []).length > 0;
+    const idleTruck = trucks.some((t) => "idle" === t.status && t.driverId);
+    const allBusy = trucks.length > 0 && trucks.every((t) => "idle" !== t.status);
+    const tired = staff.some((s) => "driver" === s.roleId && "aktiv" === s.status && (s.stress || 0) > 70);
+    const out = [];
+    if (idleTruck && jobsAvail)
+      out.push(["🚚", "LKW steht bereit", "Ein freier LKW bringt nur Umsatz, wenn er rollt — nimm einen Auftrag an.", "UI.showView('jobs')"]);
+    if (tired)
+      out.push(["😴", "Fahrer erschöpft", "Ein Fahrer ist stark gestresst — ein Ruhetag senkt das Unfallrisiko.", "UI.showView('staff')"]);
+    if (allBusy && jobsAvail)
+      out.push(["📋", "Nächste Tour vorplanen", "Alle LKW unterwegs? Auftrag trotzdem annehmen — er wird automatisch eingereiht.", "UI.showView('jobs')"]);
+    if (0 === (State.activeMarketing || []).length)
+      out.push(["📢", "Keine Werbung aktiv", "Eine günstige Kampagne bringt mehr und bessere Aufträge.", "UI.showView('markt')"]);
+    if (State.cash > 3e4)
+      out.push(["🚛", "Kapital für mehr Flotte", "Genug in der Kasse — ein weiterer LKW steigert den Umsatz.", "UI.showView('fuhrpark');UI._switchTab('fuhrpark','handel')"]);
+    if (!out.length) return "";
+    const rows = out
+      .slice(0, 3)
+      .map(
+        (s) =>
+          `\n        <div style="display:flex; gap:10px; align-items:center; padding:6px 0; border-top:1px solid rgba(255,255,255,0.07);">\n          <div style="font-size:18px; flex-shrink:0;">${s[0]}</div>\n          <div style="flex:1;">\n            <div style="font-size:11px; font-weight:700; color:var(--accent2);">${s[1]}</div>\n            <div style="font-size:10px; color:var(--muted2); margin-top:1px;">${s[2]}</div>\n          </div>\n          <button class="btn small primary" onclick="${s[3]}" style="font-size:10px; flex-shrink:0;">Jetzt</button>\n        </div>`,
+      )
+      .join("");
+    return `\n      <div style="background:rgba(74,222,128,0.12); border:1px solid var(--accent2); border-radius:8px; padding:8px 14px 10px; margin-bottom:12px;">\n        <div style="font-size:12px; font-weight:700; color:var(--accent2);">💡 NÄCHSTE SCHRITTE</div>${rows}\n      </div>`;
+  },
   renderHint() {
     const el = document.getElementById("tutorial-hint");
     if (!el) return;
@@ -12560,9 +12589,13 @@ const Tutorial = {
       el.innerHTML = "";
       return;
     }
-    const step = this.currentStep();
-    if (!step || State.tutorial?.skipped) {
+    if (State.tutorial?.skipped) {
       el.innerHTML = "";
+      return;
+    }
+    const step = this.currentStep();
+    if (!step) {
+      el.innerHTML = this._contextualPanel();
       return;
     }
     if (step.day > State.day + 1) {
