@@ -4552,6 +4552,10 @@ function _planerDefaultState() {
     fuelPriceTrend: 0,
     tollEvent: null,
     investorEquity: 1.0,
+    priceMultiplier: 1,
+    co2TaxMul: 1,
+    globalMautMulPolitics: 1,
+    badWeather: 0,
     lastInsolvencyWarningDay: -100,
     devices: { tablet: false, laptop: false },
     dealer: { mode: "new", newStock: [], usedStock: [], lastRefresh: 0 },
@@ -9182,7 +9186,11 @@ const AdvancedEvents = {
   fireDieselShock() {
     const direction = Math.random() < 0.7 ? 1 : -1;
     const magnitude = 0.15 + 0.15 * Math.random();
-    const newPrice = Math.round((State.fuelPriceCurrent || 1.65) * (1 + direction * magnitude) * 100) / 100;
+    const newPrice = Utils.clamp(
+      Math.round((State.fuelPriceCurrent || 1.65) * (1 + direction * magnitude) * 100) / 100,
+      1.2,
+      2.8,
+    );
     State.fuelPriceCurrent = newPrice;
     if (void 0 !== FuelStations) FuelStations.generateDailyPrices();
     if (void 0 !== EventManager)
@@ -9228,8 +9236,6 @@ const AdvancedEvents = {
     const borders = ["fr", "ch", "pl", "cz", "at", "it"];
     const country = borders[Math.floor(Math.random() * borders.length)];
     const days = 1 + Math.floor(3 * Math.random());
-    if (!State.borderStrikes) State.borderStrikes = [];
-    State.borderStrikes.push({ country: country, endDay: State.day + days });
     if (void 0 !== EventManager)
       EventManager.addNews(
         "warn",
@@ -15297,8 +15303,6 @@ const PoliticalEvents = {
             {
               text: "📍 Alternativrouten einplanen (+8% Umwegkosten)",
               action: () => {
-                State.routeDetoursActive = (State.routeDetoursActive || 0) + 1;
-                State.routeDetoursExpiry = State.day + 7 * weeks;
                 EventManager.addNews("warn", `🚧 Alternativrouten aktiv bis Tag ${State.day + 7 * weeks} (+8% Kosten)`);
               },
             },
@@ -15360,24 +15364,18 @@ const PoliticalEvents = {
               text: "✓ Euro-6-Nachrüstung planen",
               action: () => {
                 EventManager.addNews("info", `🔧 Euro-6-Nachrüstung für ${city}-Lieferungen geplant`);
-                if (!State.driveBanCities) State.driveBanCities = {};
-                State.driveBanCities[city.toLowerCase()] = { minEuro: euro, fromDay: State.day + 30 };
               },
             },
             {
               text: `🔄 ${city} aus Auftragspool ausschließen`,
               action: () => {
                 EventManager.addNews("warn", `🚫 Keine ${city}-Aufträge mehr angenommen (Fahrverbot)`);
-                if (!State.excludedCities) State.excludedCities = [];
-                State.excludedCities.push(city.toLowerCase());
               },
             },
             {
               text: "Abwarten (Risiko Bußgeld)",
               action: () => {
                 EventManager.addNews("warn", `⚠ Fahrverbot ${city} ignoriert — Bußgeldrisiko`);
-                if (!State.driveBanIgnored) State.driveBanIgnored = 0;
-                State.driveBanIgnored++;
               },
             },
           ],
@@ -15405,7 +15403,7 @@ const PoliticalEvents = {
             text: "🏛️ Lobbyarbeit gegen Erhöhung",
             action: () => {
               if (void 0 !== LobbySystem && State.cash >= 8e3) {
-                State.cash -= 8e3;
+                FinanceManager.recordCost("admin", 8e3, false);
                 EventManager.addNews("info", "🏛️ Lobbying gegen Mauterhöhung gestartet");
               } else EventManager.addNews("warn", "🏛️ Lobbying: Nicht genug Kapital oder LobbySystem nicht verfügbar");
             },
@@ -15474,7 +15472,7 @@ const PoliticalEvents = {
                 const drivers = (State.staff || []).filter((s) => "driver" === s.roleId && "aktiv" === s.status);
                 const cost = 200 * drivers.length;
                 if (State.cash >= cost) {
-                  State.cash -= cost;
+                  FinanceManager.recordCost("personnel", cost, false);
                   drivers.forEach((d) => {
                     d.motivation = Math.min(100, d.motivation + 10);
                     d.quitRisk = Math.max(0, d.quitRisk - 0.05);
@@ -15487,7 +15485,7 @@ const PoliticalEvents = {
               text: "🤝 Subunternehmer einsetzen",
               action: () => {
                 EventManager.addNews("warn", "✊ Subunternehmer für Streikzeit gebucht (+15% Kosten)");
-                State.cash -= Math.round(500 * State.trucks.length);
+                FinanceManager.recordCost("fleet", Math.round(500 * State.trucks.length), false);
               },
             },
             {
@@ -15585,7 +15583,7 @@ const PoliticalEvents = {
                 if ("drivingSchool" === prog.condition)
                   bonus = (State.drivingSchool?.completedCourses || 0) * prog.amount;
                 if (bonus > 0) {
-                  State.cash += bonus;
+                  FinanceManager.recordRevenue("admin", bonus);
                   if (State.subRevenue) State.subRevenue.other += bonus;
                   EventManager.addNews("good", `💰 Förderung erhalten: ${Utils.euro(bonus)} (${prog.name})`);
                 } else EventManager.addNews("info", "💰 Förderprogramm: Voraussetzungen nicht erfüllt");
@@ -16693,6 +16691,7 @@ const SeasonCalendar = {
     this._active.forEach((ev) => {
       if (ev.effect?.fuelMul) mul *= ev.effect.fuelMul;
     });
+    if (State._crisisFuelMul) mul *= State._crisisFuelMul;
     return mul;
   },
   dailyTick() {
@@ -18669,9 +18668,9 @@ const CrisisSystem = {
         this._resolvecrisis(c);
         return false;
       }
-      this._applyCrisisEffect(c);
       return true;
     });
+    this._recomputeCrisisEffects();
     if (State.activeCrises.length >= 2) return;
     if (State.day < 5) return;
     for (const [key, ct] of Object.entries(this.CRISIS_TYPES)) {
@@ -18707,8 +18706,6 @@ const CrisisSystem = {
         truck: truck.plate,
         damage: damage,
         insured: (State.insurances || []).some((i) => "fleet_comprehensive" === i.type),
-        phases: ["Unfall", "Polizeiaufnahme", "Ermittlung", "Abschluss"],
-        currentPhase: 0,
       };
       State.activeCrises.push(crisis);
       EventManager.queueDecision({
@@ -18817,14 +18814,13 @@ const CrisisSystem = {
       Notifier.add(`${ct.icon} ${ct.name} — ${days} Tage`, "error");
     } else if ("cyberattack" === ct.id) {
       const damage = 1e3 * Utils.randInt(5, 25);
-      State.cash -= damage;
+      FinanceManager.recordCost("admin", damage, false);
       State.activeCrises.push({
         id: Utils.uid("CR"),
         type: "cyberattack",
         icon: "💻",
         name: "Cyberangriff",
         daysRemaining: Utils.randInt(3, 10),
-        effect: { reportAccuracy: -0.3 },
       });
       EventManager.queueDecision({
         isCrisis: true,
@@ -18835,7 +18831,7 @@ const CrisisSystem = {
           {
             text: "🔒 Externe IT-Firma beauftragen (+5.000€)",
             action: () => {
-              State.cash -= 5e3;
+              FinanceManager.recordCost("admin", 5e3, false);
               EventManager.addNews("good", "Externe IT: Systeme gesichert");
             },
           },
@@ -18861,32 +18857,38 @@ const CrisisSystem = {
           {
             text: "📢 Transparent kommunizieren (Risiko: Verlust, Chance: Vertrauen)",
             action: () => {
-              State.reputation += Math.random() < 0.6 ? 5 : -3;
+              State.reputation = Utils.clamp(State.reputation + (Math.random() < 0.6 ? 5 : -3), 0, 100);
               EventManager.addNews("info", "Transparente Kommunikation — gemischte Reaktionen");
             },
           },
           {
             text: "⚖️ Anwalt einschalten (3.000€)",
             action: () => {
-              State.cash -= 3e3;
-              State.reputation += 2;
+              FinanceManager.recordCost("admin", 3e3, false);
+              State.reputation = Utils.clamp(State.reputation + 2, 0, 100);
             },
           },
           {
             text: "🤐 Kein Kommentar",
             action: () => {
-              State.reputation -= 5;
+              State.reputation = Utils.clamp(State.reputation - 5, 0, 100);
               EventManager.addNews("warn", "Kein Kommentar — Reputation −5");
             },
           },
         ],
       });
   },
-  _applyCrisisEffect(c) {
-    if (c.effect?.jobMul && void 0 !== SeasonCalendar) State._crisisJobMul = c.effect.jobMul;
+  _recomputeCrisisEffects() {
+    let jobMul = 1,
+      fuelMul = 1;
+    State.activeCrises.forEach((c) => {
+      if (c.effect?.jobMul) jobMul *= c.effect.jobMul;
+      if (c.effect?.fuelMul) fuelMul *= c.effect.fuelMul;
+    });
+    State._crisisJobMul = jobMul;
+    State._crisisFuelMul = fuelMul;
   },
   _resolvecrisis(c) {
-    State._crisisJobMul = 1;
     State.crisisHistory.push({ ...c, resolvedDay: State.day });
     EventManager.addNews("good", `${c.icon} Krise beendet: ${c.name}`);
   },
@@ -21887,7 +21889,7 @@ const LocationManager = {
   monthlyRent() {
     return this.current()?.monthlyRent || 0;
   },
-  fuelPrice: () => State.fuelPriceCurrent,
+  fuelPrice: () => State.fuelPriceCurrent * (void 0 !== SeasonCalendar ? SeasonCalendar.fuelMultiplier() : 1),
   jobDensityMultiplier() {
     return this.current()?.jobDensity || 1;
   },
@@ -23097,7 +23099,8 @@ const JobManager = {
         seasonMul *
         cyclePayMul *
         variability *
-        sizeScale,
+        sizeScale *
+        (State.priceMultiplier || 1),
     );
     const maxPrice = rep < 40 ? 8e3 : rep < 60 ? 2e4 : rep < 80 ? 45e3 : 8e4;
     price = Utils.clamp(price, 80, maxPrice);
@@ -23155,6 +23158,8 @@ const JobManager = {
       if ("schulung" === driver.status) return;
       if ("ruhetag" === driver.status) return;
       if ("repair" === t.status) return;
+      if (t.recalled && (t.recalledUntil || 0) > State.day) return;
+      if ((t.strikePauseUntil || 0) > State.day) return;
       if (FleetManager.getDriverSkillLevel(driver) < (job.skillRequired || 1)) return;
       const isIdle = "idle" === t.status;
       const freeDay = isIdle ? State.day : this.truckFreeDay(t.id);
@@ -23461,11 +23466,17 @@ const JobManager = {
           (FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1) *
           courseFuelMul *
           skillFuelMul;
+      dailyFuel *= State.co2TaxMul || 1;
       const lobbyFx = void 0 !== LobbySystem ? LobbySystem.getEffects() : {};
       const mautBaseMul = truck.mautMul || 1;
       const globalMautMul = lobbyFx.globalMautMul || 1;
       const tollEventMul = State.tollEvent && State.tollEvent.until > State.day ? State.tollEvent.mul : 1;
-      const dailyToll = ((j.route?.tollCost || 0) / j.daysTotal) * mautBaseMul * globalMautMul * tollEventMul;
+      const dailyToll =
+        ((j.route?.tollCost || 0) / j.daysTotal) *
+        mautBaseMul *
+        globalMautMul *
+        tollEventMul *
+        (State.globalMautMulPolitics || 1);
       FinanceManager.recordCost("fuelToll", dailyFuel + dailyToll, false);
       truck.lifetimeCost += dailyFuel + dailyToll;
       if (State.subCosts) {
@@ -23700,6 +23711,7 @@ const EventManager = {
       (0.02 + 0.05 * reliFactor + conditionFactor + driverFactor + styleFactor) *
       (FleetManager.hasEquipment(truck, "safety") ? 0.7 : 1) *
       assistanceReduction *
+      (State.badWeather && State.badWeather > State.day ? 1.5 : 1) *
       (1 - Math.min(0.6, (driver._accidentBonus || 0) + (void 0 !== DriverSkills ? DriverSkills.getAccidentReduction(driver) : 0)));
     if (Math.random() < totalRisk) {
       const reverseCam = FleetManager.hasAssistance(truck, "reverse_cam");
@@ -23762,7 +23774,7 @@ const EventManager = {
                     text: "⚖ Anwalt: Höhere Entschädigung fordern",
                     action: () => {
                       const extra = Math.round(0.15 * damage);
-                      State.cash += extra;
+                      FinanceManager.recordRevenue("insurance", extra);
                       EventManager.addNews(
                         "good",
                         `⚖ Anwalt: +${Utils.euro(extra)} zusätzliche Entschädigung für Diebstahl ${truck.plate}`,
@@ -23775,7 +23787,7 @@ const EventManager = {
               text: `🔍 Polizei-Report stellen (−${Utils.euro(500)}, Chance auf Wiederfund)`,
               action: () => {
                 if (State.cash >= 500) {
-                  State.cash -= 500;
+                  FinanceManager.recordCost("admin", 500, false);
                   if (Math.random() < 0.2) {
                     const recovered = {
                       ...truck,
@@ -24266,15 +24278,12 @@ const DayCycle = {
           : 1;
     const cycleMul = void 0 !== MarketCycles ? MarketCycles.jobMultiplier() : 1;
     const seasonMul = void 0 !== SeasonCalendar ? SeasonCalendar.jobMultiplier() : 1;
-    const seasonFuel = void 0 !== SeasonCalendar ? SeasonCalendar.fuelMultiplier() : 1;
     const strikeMul =
       (State.strike && State.strike > State.day) ||
       (State._strikeWarning && Math.abs(State._strikeWarning - State.day) <= 2)
         ? 0.3
         : 1;
     const boomMul = State._boomBonus && State._boomBonus > State.day ? 1.3 : 1;
-    if (void 0 !== SeasonCalendar && State.day % 7 == 0)
-      State.fuelPriceCurrent = Utils.clamp(State.fuelPriceCurrent * seasonFuel, 1.2, 2.8);
     const baseCount = Math.max(2, 4 + 2 * phoneBonus + managerBonus + repBonus + jobBoost);
     JobManager.generateJobs(Math.round(baseCount * economyMul * strikeMul * boomMul * cycleMul * seasonMul));
     JobManager.expireJobs();
