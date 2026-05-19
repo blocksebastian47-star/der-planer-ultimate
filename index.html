@@ -12459,7 +12459,8 @@ const Tutorial = {
       day: 1,
       title: "📦 Ersten Auftrag annehmen",
       desc: 'Gehen Sie zu "Aufträge" und nehmen Sie Ihren ersten Auftrag an. Klicken Sie auf "Annehmen" und wählen Sie eine Route.',
-      target: "jobs",
+      target: "markt",
+      onClick: "UI.showView('markt');UI._switchTab('markt','auftraege')",
       done: () => State.stats.totalJobs > 0 || State.activeJobs?.length > 0,
       reward: null,
     },
@@ -12562,11 +12563,11 @@ const Tutorial = {
     const tired = staff.some((s) => "driver" === s.roleId && "aktiv" === s.status && (s.stress || 0) > 70);
     const out = [];
     if (idleTruck && jobsAvail)
-      out.push(["🚚", "LKW steht bereit", "Ein freier LKW bringt nur Umsatz, wenn er rollt — nimm einen Auftrag an.", "UI.showView('jobs')"]);
+      out.push(["🚚", "LKW steht bereit", "Ein freier LKW bringt nur Umsatz, wenn er rollt — nimm einen Auftrag an.", "UI.showView('markt');UI._switchTab('markt','auftraege')"]);
     if (tired)
       out.push(["😴", "Fahrer erschöpft", "Ein Fahrer ist stark gestresst — ein Ruhetag senkt das Unfallrisiko.", "UI.showView('staff')"]);
     if (allBusy && jobsAvail)
-      out.push(["📋", "Nächste Tour vorplanen", "Alle LKW unterwegs? Auftrag trotzdem annehmen — er wird automatisch eingereiht.", "UI.showView('jobs')"]);
+      out.push(["📋", "Nächste Tour vorplanen", "Alle LKW unterwegs? Auftrag trotzdem annehmen — er wird automatisch eingereiht.", "UI.showView('markt');UI._switchTab('markt','auftraege')"]);
     if (0 === (State.activeMarketing || []).length)
       out.push(["📢", "Keine Werbung aktiv", "Eine günstige Kampagne bringt mehr und bessere Aufträge.", "UI.showView('markt')"]);
     if (State.cash > 3e4)
