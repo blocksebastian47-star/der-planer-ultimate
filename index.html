@@ -12455,7 +12455,7 @@ const LocationSystem = {
   },
 };
 const Tutorial = {
-  STEPS: [
+  _baseSteps: [
     {
       id: "first_job",
       day: 1,
@@ -12514,6 +12514,31 @@ const Tutorial = {
       reward: { cash: 1e3, text: "+1.000€ Werbekostenzuschuss" },
     },
   ],
+  // Tutorial-Schritte je nach Schwierigkeit: Einfach ohne "3. Truck", Schwer mit Fahrzeug zuerst.
+  get STEPS() {
+    const diff = State.difficulty || "mittel";
+    let steps = this._baseSteps.map((s) => ({ ...s }));
+    if ("einfach" === diff) {
+      // Einfach startet mit 3 LKW -> der "Dritten Truck kaufen"-Schritt entfaellt.
+      steps = steps.filter((s) => "buy_truck" !== s.id);
+    } else if ("schwer" === diff) {
+      // Schwer startet ohne LKW -> Fahrzeug-Schritt umbenennen und vor den ersten Auftrag ziehen.
+      const bt = steps.find((s) => "buy_truck" === s.id);
+      if (bt) {
+        bt.day = 1;
+        bt.title = "🚛 Erstes Fahrzeug beschaffen";
+        bt.desc = 'Ohne LKW kein Auftrag. Öffnen Sie Fuhrpark → "LKW kaufen" oder leasen Sie ein Fahrzeug.';
+        bt.done = () => (State.trucks || []).length >= 1;
+        steps = steps.filter((s) => "buy_truck" !== s.id);
+        steps.unshift(bt);
+      }
+      const fj = steps.find((s) => "first_job" === s.id);
+      if (fj)
+        fj.desc =
+          'Nehmen Sie Ihren ersten Auftrag an. Noch kein Fahrer? Klicken Sie in der Auftragszeile auf "🚛 Selbst fahren" und fahren Sie die Tour selbst.';
+    }
+    return steps;
+  },
   currentStep() {
     if (!State.tutorial) return null;
     if (State.tutorial.completed) return null;
@@ -21372,7 +21397,7 @@ const GameDebugger = {
 if ("loading" === document.readyState) document.addEventListener("DOMContentLoaded", () => GameDebugger.install());
 else GameDebugger.install();
 const Onboarding = {
-  SLIDES: [
+  _baseSlides: [
     {
       icon: "🚛",
       title: "Willkommen bei deiner Spedition",
@@ -21404,6 +21429,17 @@ const Onboarding = {
       hint: "Du startest regional (~400 km). Ab Reputation 60 öffnet sich ganz Deutschland, ab 75 Zentraleuropa, ab 90 ganz Europa.",
     },
   ],
+  // Folie 1 wird aus der gewaehlten Schwierigkeit erzeugt (Start-Aussagen sonst fix falsch).
+  get SLIDES() {
+    const slides = this._baseSlides.map((s) => ({ ...s }));
+    const d = (void 0 !== DIFFICULTIES && DIFFICULTIES[State.difficulty]) || null;
+    if (d && slides[0]) {
+      slides[0].text = `Du übernimmst ab heute deine eigene Spedition. Dein Start (${d.name}): ${d.desc}. Dein Ziel: eine profitable Spedition aufbauen — ohne pleite zu gehen.`;
+      if ("schwer" === d.id)
+        slides[0].hint = "Dein erster Schritt: ein Fahrzeug kaufen oder leasen — ohne LKW läuft kein Auftrag.";
+    }
+    return slides;
+  },
   COACH_MESSAGES: {
     2: [
       {
@@ -21414,12 +21450,12 @@ const Onboarding = {
     3: [
       {
         subject: "💡 Tag 3 — Personal und Wachstum",
-        body: "Dein erster Auftrag sollte bald abgeliefert sein. Nächste Schritte:\n\n→ Neuen Fahrer einstellen wenn ein zweiter LKW frei ist\n→ Marketing-Budget erhöht die Anzahl eingehender Aufträge\n→ Ziele setzen unter Strategie → Ziele gibt dir Bonusse\n\nAb hier bist du auf dich allein gestellt — viel Erfolg! 🚛",
+        body: "Dein erster Auftrag sollte bald abgeliefert sein. Nächste Schritte:\n\n→ Stelle Fahrer ein, sobald ein LKW ohne Fahrer bereitsteht\n→ Marketing-Budget erhöht die Anzahl eingehender Aufträge\n→ Ziele setzen unter Strategie → Ziele gibt dir Bonusse\n\nAb hier bist du auf dich allein gestellt — viel Erfolg! 🚛",
         final: true,
       },
     ],
   },
-  STEPS: [
+  _baseSteps: [
     {
       id: "goto_jobs",
       target: '.nav-btn[data-view="markt"]',
@@ -21449,6 +21485,27 @@ const Onboarding = {
       position: "right",
     },
   ],
+  // Tour-Schritte je nach Schwierigkeit: auf Schwer zuerst ein Fahrzeug beschaffen.
+  get STEPS() {
+    const steps = this._baseSteps.map((s) => ({ ...s }));
+    steps.forEach((s) => {
+      s.title = s.title.replace(/^Schritt \d+ — /, "");
+    });
+    if ("schwer" === State.difficulty) {
+      steps.unshift({
+        id: "goto_fleet",
+        target: '.nav-btn[data-view="fuhrpark"]',
+        title: "Erst ein Fahrzeug",
+        text: "Auf Schwer startest du ohne LKW. Öffne den Fuhrpark und kaufe oder lease ein Fahrzeug — ohne Fahrzeug kannst du keinen Auftrag fahren.",
+        position: "right",
+      });
+      const pj = steps.find((s) => "pick_job" === s.id);
+      if (pj)
+        pj.text =
+          'Wähle einen regionalen Auftrag. Hast du noch keinen Fahrer eingestellt, klicke in der Auftragszeile auf "🚛 Selbst fahren" — so fährst du die erste Tour als Chef selbst.';
+    }
+    return steps;
+  },
   isActive: () => true === State.onboarding?.active,
   isSkipped: () => true === State.onboarding?.skipped,
   isDone: () => true === State.onboarding?.done,
