@@ -15709,41 +15709,6 @@ const LegalForms = {
       desc: "Kleinunternehmer-Form. Volle Haftung mit Privatvermögen. Kein Mindestkapital. Gehalt als Gewinnentnahme — kein festes GF-Gehalt buchbar.",
       advantages: ["Einfache Gründung", "Keine Mindesteinlage", "Geringe Verwaltung"],
       disadvantages: ["Unbeschränkte Privathaftung", "Kein festes Gehalt", "Schwieriger Kredit"],
-      maxTrucks: 5,
-    },
-    gbr: {
-      id: "gbr",
-      name: "GbR",
-      fullName: "Gesellschaft bürgerlichen Rechts",
-      icon: "🤝",
-      minDay: 1,
-      setupCost: 500,
-      minCapital: 0,
-      haftung: "gesamtschuldnerisch (alle Gesellschafter)",
-      taxRate: 0.34,
-      taxNote: "Einkommensteuer der Gesellschafter + Gewerbesteuer",
-      salaryType: "gewinn",
-      desc: "Einfachste Gesellschaftsform für mehrere Gründer. Alle Gesellschafter haften persönlich und gesamtschuldnerisch. Kein Handelsregistereintrag nötig.",
-      advantages: ["Keine Kapitaleinlage", "Schnelle Gründung", "Flexibel"],
-      disadvantages: ["Volle Privathaftung aller", "Kein festes GF-Gehalt", "Kein HGB-Schutz"],
-      shareholders: true,
-    },
-    kg: {
-      id: "kg",
-      name: "KG",
-      fullName: "Kommanditgesellschaft",
-      icon: "📋",
-      minDay: 10,
-      setupCost: 2e3,
-      minCapital: 0,
-      haftung: "Komplementär unbeschränkt, Kommanditisten bis Einlage",
-      taxRate: 0.33,
-      taxNote: "Einkommensteuer + Gewerbesteuer. Kommanditisten: Kapitaleinkünfte",
-      salaryType: "mixed",
-      desc: "Komplementär (Sie) haftet unbeschränkt, Kommanditisten nur bis zur Einlage. Fremdkapital leichter einwerbbar. GF-Gehalt als Vorwegentnahme buchbar.",
-      advantages: ["Externe Investoren möglich", "Gestaffelte Haftung", "Steuervorteil bei Kommanditisten"],
-      disadvantages: ["Komplementär haftet voll", "Komplexere Buchführung"],
-      shareholders: true,
     },
     gmbh: {
       id: "gmbh",
@@ -15751,7 +15716,7 @@ const LegalForms = {
       fullName: "Gesellschaft mit beschränkter Haftung",
       icon: "🏛",
       minDay: 30,
-      setupCost: 25e3,
+      setupCost: 1200,
       minCapital: 25e3,
       haftung: "beschränkt auf Gesellschaftsvermögen",
       taxRate: 0.3,
@@ -15765,7 +15730,6 @@ const LegalForms = {
         "Fremdkapital leichter",
       ],
       disadvantages: ["25.000€ Mindestkapital", "Jahresabschlusspflicht", "Höhere Verwaltungskosten"],
-      shareholders: true,
       minSalary: 3e3,
       maxSalary: 25e3,
     },
@@ -15775,7 +15739,7 @@ const LegalForms = {
       fullName: "Unternehmergesellschaft (haftungsbeschränkt)",
       icon: "🌱",
       minDay: 20,
-      setupCost: 1e3,
+      setupCost: 800,
       minCapital: 1,
       haftung: "beschränkt (wie GmbH)",
       taxRate: 0.3,
@@ -15784,32 +15748,8 @@ const LegalForms = {
       desc: "Mini-GmbH ab 1€ Stammkapital. 25% des Jahresgewinns müssen als Rücklage zur GmbH-Umwandlung angespart werden. Ideal für günstige GmbH-ähnliche Haftung.",
       advantages: ["Ab 1€ gründbar", "Beschränkte Haftung", "Günstige GmbH-Alternative"],
       disadvantages: ["25% Rücklagenpflicht", "Eingeschränkte Ausschüttung", "Externe nehmen UG weniger ernst"],
-      shareholders: true,
       minSalary: 2e3,
       maxSalary: 2e4,
-    },
-    gmbh_co_kg: {
-      id: "gmbh_co_kg",
-      name: "GmbH & Co. KG",
-      fullName: "GmbH & Co. Kommanditgesellschaft",
-      icon: "🏢",
-      minDay: 60,
-      setupCost: 3e4,
-      minCapital: 25e3,
-      haftung: "beschränkt (GmbH als Komplementär)",
-      taxRate: 0.29,
-      taxNote:
-        "Personensteuer + Gewerbesteuer. Keine Körperschaftsteuer auf Gesellschaftsebene — steuerlich transparent",
-      salaryType: "salary",
-      desc: "Hybrid aus GmbH und KG. GmbH übernimmt als Komplementär die Haftung, KG-Gesellschafter haften nur bis Einlage. Steuerliche Vorteile gegenüber reiner GmbH.",
-      advantages: [
-        "Haftungsbeschränkung",
-        "Steuerlich günstig",
-        "Flexible Finanzierung",
-        "Ideal für Familienunternehmen",
-      ],
-      disadvantages: ["Komplexe Struktur", "Zwei Gesellschaften nötig", "Hohe Gründungskosten"],
-      shareholders: true,
     },
     ag: {
       id: "ag",
@@ -15817,7 +15757,7 @@ const LegalForms = {
       fullName: "Aktiengesellschaft",
       icon: "📈",
       minDay: 180,
-      setupCost: 75e3,
+      setupCost: 5000,
       minCapital: 5e4,
       haftung: "beschränkt auf AG-Vermögen",
       taxRate: 0.295,
@@ -15836,8 +15776,6 @@ const LegalForms = {
         "Aufsichtsrat nötig",
         "Veröffentlichungspflichten",
       ],
-      shareholders: true,
-      hasBoard: true,
       minSalary: 8e3,
       maxSalary: 8e4,
     },
@@ -15847,7 +15785,7 @@ const LegalForms = {
       fullName: "Societas Europaea (Europäische Gesellschaft)",
       icon: "🇪🇺",
       minDay: 365,
-      setupCost: 15e4,
+      setupCost: 15000,
       minCapital: 12e4,
       haftung: "beschränkt auf SE-Vermögen",
       taxRate: 0.28,
@@ -15866,8 +15804,6 @@ const LegalForms = {
         "Arbeitnehmer-Mitbestimmung",
         "Nur für große Unternehmen",
       ],
-      shareholders: true,
-      hasBoard: true,
       minSalary: 15e3,
       maxSalary: 15e4,
     },
@@ -15877,8 +15813,6 @@ const LegalForms = {
       State.legal = {
         formId: "ek",
         gfSalary: 0,
-        shareholders: [],
-        dividends: 0,
         reserves: 0,
         taxesPaid: 0,
         totalWithdrawn: 0,
@@ -15887,12 +15821,6 @@ const LegalForms = {
   },
   currentForm() {
     return this.FORMS[State.legal?.formId] || this.FORMS.ek;
-  },
-  calcTax(profit) {
-    if (profit <= 0) return 0;
-    const form = this.currentForm();
-    if (form.taxRate <= 0.35 && profit < 9744) return 0;
-    return Math.round(profit * form.taxRate);
   },
   payGFSalary() {
     const form = this.currentForm();
@@ -22147,7 +22075,10 @@ const FinanceManager = {
     // Einzige Steuerbuchung des Spiels — Satz aus currentTaxRate()
     // (Rechtsform + Buchhaltung). Die alte LegalForms-Quartalssteuer ist raus.
     const taxRate = this.currentTaxRate();
-    const taxes = Math.max(0, profitBeforeTax * taxRate);
+    // e.K. = Einkommensteuer mit Grundfreibetrag (~11.604 EUR/Jahr, hier monatlich anteilig).
+    let taxBase = profitBeforeTax;
+    if (void 0 !== LegalForms && "ek" === LegalForms.currentForm().id) taxBase = Math.max(0, profitBeforeTax - 967);
+    const taxes = Math.max(0, taxBase * taxRate);
     if (taxes > 0) {
       State.cash -= taxes;
       // Steuer als echte Kontoauszug-Buchung — vorher als getarnte
@@ -24450,11 +24381,9 @@ const DayCycle = {
       if (void 0 !== LeasingManager) LeasingManager.monthlyTick();
       if (void 0 !== VehicleLeasingManager) VehicleLeasingManager.monthlyTick();
       if (void 0 !== ServiceContractManager) ServiceContractManager.monthlyTick();
-      if (void 0 !== LegalForms) {
-        LegalForms.init();
-        LegalForms.monthlyTick(FinanceManager.equity() / 12);
-      }
-      FinanceManager.closeMonth();
+      if (void 0 !== LegalForms) LegalForms.init();
+      const _monthReport = FinanceManager.closeMonth();
+      if (void 0 !== LegalForms) LegalForms.monthlyTick(_monthReport ? _monthReport.profitNet : 0);
     }
     const todayRev = FinanceManager.todayRevenue();
     const todayCosts = FinanceManager.todayCosts();
@@ -29199,7 +29128,10 @@ const UI = {
     const form = LegalForms.currentForm();
     const legal = State.legal;
     const equity = FinanceManager.equity();
-    const formCards = Object.values(LegalForms.FORMS).map((f) => {
+    const formCards = Object.values(LegalForms.FORMS)
+      .slice()
+      .sort((a, b) => a.minDay - b.minDay)
+      .map((f) => {
       const isCurrent = f.id === form.id;
       const canUpgrade = !isCurrent && State.day >= f.minDay && equity >= f.minCapital && State.cash >= f.setupCost;
       const locked = f.minDay > State.day;
@@ -29273,6 +29205,30 @@ const UI = {
     this.renderHeader();
   },
   _legalUpgrade(formId) {
+    const cur = LegalForms.currentForm();
+    if ("ek" === formId && "ek" !== cur.id) {
+      this.showModal({
+        title: "⚠ Rückwechsel zum e.K.?",
+        content:
+          '<div style="font-size:13px; line-height:1.7; padding:6px;">Als e.K. geben Sie die <b>beschränkte Haftung</b> auf — Sie haften dann wieder voll mit Ihrem Privatvermögen. Wirklich umwandeln?</div>',
+        maxWidth: "460px",
+        actions: [
+          { label: "Abbrechen", onclick: () => this.closeModal() },
+          {
+            label: "Trotzdem umwandeln",
+            primary: true,
+            onclick: () => {
+              this.closeModal();
+              this._doLegalUpgrade(formId);
+            },
+          },
+        ],
+      });
+      return;
+    }
+    this._doLegalUpgrade(formId);
+  },
+  _doLegalUpgrade(formId) {
     const r = LegalForms.upgrade(formId);
     if (r.ok) {
       this.toast(`⚖️ Umwandlung zu ${LegalForms.FORMS[formId].name} erfolgreich!`, "good");
