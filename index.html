@@ -19329,7 +19329,7 @@ const HomerunSystem = {
       if (!jFromC || !jToC) return false;
       if (MAP_DATA.distanceKm(fromC, jFromC) > this.RETURN_SEARCH_RADIUS) return false;
       if (MAP_DATA.distanceKm(jToC, homeC) >= 0.8 * distToHome) return false;
-      if (truck.capacity < (j.weight || 0)) return false;
+      if (FleetManager.effectiveCapacity(truck) < (j.weight || 0)) return false;
       const daysNeeded = JobManager.totalDays(j, truck);
       if (j.deadline && State.day + daysNeeded > j.deadline) return false;
       return true;
@@ -22927,6 +22927,20 @@ const FleetManager = {
     }
     return true;
   },
+  effectiveCapacity(truck) {
+    if (!truck) return 0;
+    let cap = truck.capacity || 0;
+    const model = DATA.truckModels.find((m) => m.id === truck.modelId);
+    // Sattelzugmaschine: cap modelliert bereits das ganze Gespann -> Auflieger nicht aufaddieren.
+    if (model && "tractor" === model.type) return cap;
+    // Van / starrer LKW tragen selbst Last -> ein gekoppelter Anhaenger erhoeht die Nutzlast.
+    const trailer = (State.trailers || []).find((t) => t.id === truck.trailerId);
+    if (trailer) {
+      const td = DATA.trailers.find((x) => x.id === trailer.typeId);
+      if (td && td.capacity) cap += td.capacity;
+    }
+    return cap;
+  },
   checkSuitability(truck, job) {
     const reasons = [];
     const cargoType = job.cargoType || {};
@@ -22955,7 +22969,8 @@ const FleetManager = {
       else if (trailer && !cargoType.requiresTrailer.includes(trailer.typeId))
         reasons.push(`Angehängter ${trailer.typeId}-Anhänger passt nicht (benötigt: ${cargoType.requiresTrailer.join(" / ")})`);
     }
-    if (job.weight && truck.capacity < job.weight) reasons.push(`Kapazität ${truck.capacity}t < Fracht ${job.weight}t`);
+    const effCap = this.effectiveCapacity(truck);
+    if (job.weight && effCap < job.weight) reasons.push(`Kapazität ${effCap}t < Fracht ${job.weight}t`);
     if (cargoType.requiresAssist && cargoType.requiresAssist.length > 0)
       for (const a of cargoType.requiresAssist)
         if (!this.hasAssistance(truck, a) && !this.hasEquipment(truck, a))
@@ -23075,6 +23090,11 @@ const JobManager = {
   _smallCompany() {
     return (State.trucks || []).length <= 3;
   },
+  // V2: groesste effektive Nutzlast der Flotte (Truck + Anhaenger); 3,5 t falls noch kein Fahrzeug.
+  _fleetWeightCap() {
+    const caps = (State.trucks || []).map((t) => FleetManager.effectiveCapacity(t)).filter((c) => c > 0);
+    return caps.length > 0 ? Math.max(...caps) : 3.5;
+  },
   generateOneJob() {
     let from, to, customer;
     const rep = State.reputation || 50;
@@ -23121,8 +23141,19 @@ const JobManager = {
       );
       if (matches.length > 0) cargoPool = matches;
     }
-    const cargo = Utils.pick(cargoPool);
-    const weight = cargo.minWeight + Math.random() * (cargo.maxWeight - cargo.minWeight);
+    let cargo = Utils.pick(cargoPool);
+    let weight;
+    // V2: kleine Flotte -> ~80% der Auftraege gewichtsmaessig an die Flotten-Nutzlast koppeln,
+    // damit der Auftrags-Pool zur kleinen Flotte passt (sonst auf Schwer alles zu schwer).
+    if (this._smallCompany() && Math.random() < 0.8) {
+      const fleetCap = this._fleetWeightCap();
+      const light = cargoPool.filter((c) => (c.minWeight || 0) <= fleetCap);
+      if (light.length > 0) cargo = Utils.pick(light);
+      weight = cargo.minWeight + Math.random() * (cargo.maxWeight - cargo.minWeight);
+      weight = Math.min(weight, fleetCap);
+    } else {
+      weight = cargo.minWeight + Math.random() * (cargo.maxWeight - cargo.minWeight);
+    }
     const basePrice = km * weight * cargo.perKg;
     const dieselFactor = 1 + 0.3 * (LocationManager.fuelPrice() - 1.65);
     const reputationBonus = Utils.clamp(1 + 0.005 * (State.reputation - 50), 0.8, 1.25);
@@ -23198,7 +23229,7 @@ const JobManager = {
     let best = null,
       bestScore = -1 / 0;
     (State.trucks || []).forEach((t) => {
-      if (t.capacity < (job.weight || 0)) return;
+      if (FleetManager.effectiveCapacity(t) < (job.weight || 0)) return;
       if (job.cargoType && !FleetManager.canHaul(t, job.cargoType)) return;
       if (!t.driverId) return;
       const driver = (State.staff || []).find((s) => s.id === t.driverId);
@@ -30035,7 +30066,7 @@ const UI = {
         const equipCount = (t.equipment || []).length;
         const accidentRed = Math.round(100 * FleetManager.totalAccidentReduction(t));
         const ptype = FleetManager.modelType(t);
-        return `<div class="card truck-card" style="margin-bottom:0;"\n        onmouseenter="HoverTooltip.show(UI._truckTooltipHTML((State.trucks||[]).find(x=>x.id==='${t.id}')),event)"\n        onmouseleave="HoverTooltip.hide()">\n        <div style="display:flex; gap:12px; margin-bottom:10px; align-items:center;">\n          <div style="flex-shrink:0;">${Visuals.truck(t.modelId, 180, 90)}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="display:flex; justify-content:space-between; align-items:start;">\n              <div>\n                <div style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; color:var(--accent);">${t.plate}</div>\n                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${t.model}</div>\n                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">\n                  ${UI._truckBadge(ptype)}\n                  <span style="font-size:10px; color:var(--muted);">${t.capacity}t Nutzlast</span>\n                </div>\n              </div>\n              <span class="badge-status b-${t.status}">${t.status.toUpperCase()}</span>\n            </div>\n            ${(() => {
+        return `<div class="card truck-card" style="margin-bottom:0;"\n        onmouseenter="HoverTooltip.show(UI._truckTooltipHTML((State.trucks||[]).find(x=>x.id==='${t.id}')),event)"\n        onmouseleave="HoverTooltip.hide()">\n        <div style="display:flex; gap:12px; margin-bottom:10px; align-items:center;">\n          <div style="flex-shrink:0;">${Visuals.truck(t.modelId, 180, 90)}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="display:flex; justify-content:space-between; align-items:start;">\n              <div>\n                <div style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; color:var(--accent);">${t.plate}</div>\n                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${t.model}</div>\n                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">\n                  ${UI._truckBadge(ptype)}\n                  <span style="font-size:10px; color:var(--muted);">${(() => { const ec = FleetManager.effectiveCapacity(t); return ec > (t.capacity || 0) ? ec + "t Nutzlast (inkl. Anhänger)" : t.capacity + "t Nutzlast"; })()}</span>\n                </div>\n              </div>\n              <span class="badge-status b-${t.status}">${t.status.toUpperCase()}</span>\n            </div>\n            ${(() => {
           const desc = UI._truckDesc(t.type, t.modelId);
           return `<div style="margin-top:6px; background:var(--bg2); border-radius:5px; padding:6px 8px; font-size:10px; line-height:1.7; border-left:3px solid ${"tractor" === ptype ? "#e07070" : "rigid" === ptype ? "#9ecf6b" : "#7ec8e3"};">\n                <div style="color:var(--fg); margin-bottom:2px;">${desc.detail}</div>\n                <div style="color:var(--accent2); font-weight:700;">🔗 ${desc.trailerHint}</div>\n              </div>`;
         })()}\n            <div style="margin-top:6px; font-size:10px; line-height:1.7;">\n              <div><span style="color:var(--muted)">km:</span> ${t.km.toLocaleString("de-DE")}\n                ${(() => {
