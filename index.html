@@ -25368,6 +25368,10 @@ const SelfDrive = {
       dismissible: false,
       actions: [
         {
+          label: "📱 Büro-Lage prüfen",
+          onclick: () => SelfDrive._officeCheck(),
+        },
+        {
           label: lastLeg ? "Ziel ansteuern & Tour abschließen" : "Weiterfahren → nächster Tag",
           primary: true,
           onclick: () => SelfDrive.advanceDay(),
@@ -25376,6 +25380,25 @@ const SelfDrive = {
     });
   },
   advanceDay() {
+    if (!State.gfTour) return;
+    const moment = this._rollMoment();
+    if (!moment) return void this._doAdvance();
+    UI.showModal({
+      title: moment.title,
+      subtitle: "Unterwegs",
+      content: `<div style="font-size:12px;line-height:1.7;">${moment.content}</div>`,
+      dismissible: false,
+      actions: moment.choices.map((c, i) => ({
+        label: c.label,
+        primary: 0 === i,
+        onclick: () => {
+          c.effect();
+          SelfDrive._doAdvance();
+        },
+      })),
+    });
+  },
+  _doAdvance() {
     const gt = State.gfTour;
     if (!gt) return;
     gt.daysElapsed++;
@@ -25392,6 +25415,85 @@ const SelfDrive = {
     }
     if (gt.daysElapsed >= gt.totalDays) this.finish();
     else this.renderTourScreen();
+  },
+  // Interaktive Tour-Momente (2b) — ~40% pro Tag, dann Stau ODER Lenkzeit.
+  _rollMoment() {
+    if (Math.random() > 0.4) return null;
+    if (Math.random() < 0.5)
+      return {
+        title: "🚧 Stau voraus",
+        content: "Vor Ihnen staut sich der Verkehr auf der Autobahn. Wie reagieren Sie?",
+        choices: [
+          {
+            label: "↪️ Umleitung über die Landstraße",
+            effect: () => {
+              FinanceManager.recordCost("fuelToll", 90, false);
+              EventManager.addNews("info", "🚧 Stau umfahren — etwas Mehrsprit");
+            },
+          },
+          {
+            label: "⏳ Im Stau ausharren",
+            effect: () => {
+              State.stress = Utils.clamp((State.stress || 0) + 4, 0, 100);
+              EventManager.addNews("warn", "🚧 Im Stau gewartet — zermürbend");
+            },
+          },
+        ],
+      };
+    return {
+      title: "😴 Lenkzeit erreicht",
+      content: "Ihre gesetzliche Lenkzeit ist ausgeschöpft — eigentlich ist jetzt Pflichtpause.",
+      choices: [
+        {
+          label: "☕ Vorschriftsmäßig pausieren",
+          effect: () => {
+            EventManager.addNews("info", "😴 Pause eingelegt — alles korrekt");
+          },
+        },
+        {
+          label: "🚗 Durchfahren (Risiko)",
+          effect: () => {
+            State.stress = Utils.clamp((State.stress || 0) + 3, 0, 100);
+            if (Math.random() < 0.5) {
+              FinanceManager.recordCost("admin", 500, false);
+              EventManager.addNews("error", "👮 Lenkzeitkontrolle — 500 € Bußgeld");
+            } else EventManager.addNews("warn", "🚗 Durchgefahren — diesmal gutgegangen");
+          },
+        },
+      ],
+    };
+  },
+  // Geraete-gestufte Buero-Lage (Schritt 3): Smartphone wenig, Tablet mehr, Laptop am meisten.
+  _officeCheck() {
+    const dev = State.devices || {};
+    const tier = dev.laptop ? "laptop" : dev.tablet ? "tablet" : "phone";
+    const lines = [];
+    lines.push("💰 Kasse: " + Utils.euro(State.cash || 0));
+    lines.push("📋 Offene Entscheidungen: " + (State.pendingDecisions || []).length);
+    if ("tablet" === tier || "laptop" === tier) {
+      const act = (State.trucks || []).filter((t) => "active" === t.status).length;
+      lines.push("🚛 LKW im Einsatz: " + act + " / " + (State.trucks || []).length);
+      lines.push("📦 Offene Aufträge: " + (State.jobs || []).length);
+    }
+    if ("laptop" === tier) {
+      lines.push("🏆 Reputation: " + Math.round(State.reputation || 0) + " %");
+      lines.push("💳 Schulden: " + Utils.euro(State.debt || 0));
+    }
+    State.stress = Utils.clamp((State.stress || 0) + 2, 0, 100);
+    const devName = { phone: "📱 Smartphone", tablet: "📋 Tablet", laptop: "💻 Laptop" }[tier];
+    UI.showModal({
+      title: devName + " — Büro-Lage",
+      subtitle: "Tag " + State.day + " · aus der Schlafkabine",
+      content:
+        '<div style="font-size:12px;line-height:2;">' +
+        lines.join("<br>") +
+        "</div>" +
+        ("phone" === tier
+          ? '<div style="font-size:10px;color:var(--muted2);margin-top:8px;">Mit Tablet oder Laptop sehen Sie unterwegs deutlich mehr. Entscheidungen warten bis zur Rückkehr ins Büro.</div>'
+          : '<div style="font-size:10px;color:var(--muted2);margin-top:8px;">Entscheidungen warten bis zur Rückkehr ins Büro.</div>'),
+      dismissible: false,
+      actions: [{ label: "← Zurück zur Tour", primary: true, onclick: () => SelfDrive.renderTourScreen() }],
+    });
   },
   finish() {
     const gt = State.gfTour;
