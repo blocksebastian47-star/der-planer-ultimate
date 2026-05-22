@@ -25651,9 +25651,16 @@ const SelfDrive = {
           },
         ],
       },
-      {
+    ];
+    // "Anruf aus dem Buero" nur, wenn es aktives Werkstatt-Personal gibt, das anrufen kann.
+    const workshopStaff = (State.staff || []).filter(
+      (s) => ["mechanic", "kfz_meister", "workshop_chief"].includes(s.roleId) && "aktiv" === s.status,
+    );
+    if (workshopStaff.length > 0) {
+      const caller = Utils.pick(workshopStaff);
+      pool.push({
         title: "📞 Anruf aus dem Büro",
-        content: "Ihr Werkstattleiter ruft an: ein LKW in der Halle braucht dringend ein Ersatzteil für 450 €.",
+        content: `${caller.name} (${caller.role || "Werkstatt"}) ruft an: ein LKW in der Halle braucht dringend ein Ersatzteil für 450 €.`,
         choices: [
           {
             label: "✅ Aus der Ferne freigeben",
@@ -25670,8 +25677,8 @@ const SelfDrive = {
             },
           },
         ],
-      },
-    ];
+      });
+    }
     return Utils.pick(pool);
   },
   // Geraete-gestufte Buero-Lage (Etappe 2): Smartphone liest, Tablet sieht die
@@ -28490,12 +28497,21 @@ const UI = {
       }
       TOPICS.push({
         label: "💬 Wie läuft es?",
-        desc: "Motivationsgespräch — +5 Motivation wenn positiv.",
+        desc: "Kurzes Gespräch — der Fahrer berichtet, Motivation +5.",
         action: () => {
-          if (Math.random() < 0.7) {
-            staff.motivation = Math.min(100, staff.motivation + 5);
-            EventManager.addNews("good", `💬 ${staff.name}: Kurzes Gespräch — Motivation +5`);
-          } else EventManager.addNews("info", `💬 ${staff.name}: Kurzes Gespräch`);
+          const mot = staff.motivation || 50;
+          const str = staff.stress || 0;
+          const antwort =
+            str > 70
+              ? "Ehrlich gesagt bin ich ziemlich erschöpft."
+              : mot > 70
+                ? "Läuft super, alles im grünen Bereich!"
+                : mot > 45
+                  ? "Geht klar, soweit alles ruhig."
+                  : "Könnte besser laufen, um ehrlich zu sein.";
+          this.toast(`💬 ${staff.name}: "${antwort}"`, mot > 55 && str < 70 ? "good" : "info");
+          staff.motivation = Math.min(100, mot + 5);
+          EventManager.addNews("good", `💬 Motivationsgespräch mit ${staff.name} — Motivation +5`);
         },
       });
       TOPICS.push({
