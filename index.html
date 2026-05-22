@@ -30191,7 +30191,7 @@ const UI = {
         const t = (State.trucks || []).find((x) => x.id === sq.truckId);
         const d = t && t.driverId ? State.staff.find((x) => x.id === t.driverId) : null;
         const waitDays = Math.max(0, (sq.estimatedStartDay || State.day) - State.day);
-        return `<tr>\n            <td>${sq.job?.customerName || "—"}</td>\n            <td>${sq.job?.fromName || "?"} → ${sq.job?.toName || "?"}</td>\n            <td>${t?.plate || "—"} / ${d?.name || "—"}</td>\n            <td class="num">Pos. ${sq.queuePosition || "?"}</td>\n            <td class="num"><span title="Start frühestens an diesem Spieltag">Tag ${sq.estimatedStartDay || "?"}</span><div style="font-size:9px;color:var(--muted2);margin-top:1px;">${waitDays === 0 ? "startet heute" : "wartet noch " + waitDays + " Tag" + (1 !== waitDays ? "e" : "")}</div></td>\n            <td class="num" style="color:var(--accent2);">${Utils.euro(sq.job?.price || 0)}</td>\n            <td><button class="btn small danger" onclick="UI.cancelScheduledJob('${sq.id}')" style="font-size:9px;" title="Auftrag aus Warteschlange zurück in Verfügbar">↩ Stornieren</button></td>\n          </tr>`;
+        return `<tr>\n            <td>${sq.job?.customerName || "—"}</td>\n            <td>${sq.job?.fromName || "?"} → ${sq.job?.toName || "?"}</td>\n            <td>${t?.plate || "—"} / ${d?.name || "—"}</td>\n            <td class="num">Pos. ${sq.queuePosition || "?"}</td>\n            <td class="num"><span title="Start frühestens an diesem Spieltag">Tag ${sq.estimatedStartDay || "?"}</span><div style="font-size:9px;color:var(--muted2);margin-top:1px;">${waitDays === 0 ? "startet heute" : "wartet noch " + waitDays + " Tag" + (1 !== waitDays ? "e" : "")}</div></td>\n            <td class="num" style="color:var(--accent2);">${Utils.euro(sq.job?.price || 0)}</td>\n            <td><button class="btn small danger" onclick="UI.cancelScheduledJob('${sq.id}')" style="font-size:9px;" title="Auftrag aus Warteschlange zurück in Verfügbar">↩ Stornieren</button>${void 0 !== SelfDrive && SelfDrive.canStart(sq.job) ? `<button class="btn small" onclick="UI._selfDriveQueued('${sq.id}')" style="display:block;margin-top:3px;font-size:9px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#22c55e;">🚛 Selbst fahren</button>` : ""}</td>\n          </tr>`;
       })
       .join("");
     const dispoCount = (State.staff || []).filter((s) => "dispo" === s.roleId && "aktiv" === s.status).length;
@@ -30215,6 +30215,22 @@ const UI = {
     EventManager.addNews("info", `↩ ${sq.job?.fromName || "?"} → ${sq.job?.toName || "?"} aus Warteschlange storniert`);
     this.toast("Auftrag zurück in Verfügbar", "info");
     this.renderAll();
+  },
+  _selfDriveQueued(sqId) {
+    const sq = (State.scheduledJobs || []).find((x) => x.id === sqId);
+    if (!sq || !sq.job || void 0 === SelfDrive) return;
+    if (SelfDrive.active()) {
+      this.toast("Sie sind bereits selbst auf Tour.", "warn");
+      return;
+    }
+    if (!SelfDrive.canStart(sq.job)) {
+      this.toast("Kein fahrerloser LKW frei zum Selbstfahren.", "warn");
+      return;
+    }
+    State.scheduledJobs = (State.scheduledJobs || []).filter((x) => x.id !== sqId);
+    State.jobs = State.jobs || [];
+    if (!State.jobs.some((j) => j.id === sq.job.id)) State.jobs.push(sq.job);
+    SelfDrive.promptStart(sq.job.id);
   },
   openRouteSelector(jobId) {
     const job = (State.jobs || []).find((j) => j.id === jobId);
