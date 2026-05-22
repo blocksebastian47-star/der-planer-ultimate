@@ -4475,6 +4475,7 @@ function _planerDefaultState() {
     cash: 5e4,
     debt: 45e3,
     difficulty: "mittel",
+    gfTour: null,
     loans: [],
     reputation: 50,
     fame: 5,
@@ -23207,6 +23208,7 @@ const JobManager = {
       if ("schulung" === driver.status) return;
       if ("ruhetag" === driver.status) return;
       if ("repair" === t.status) return;
+      if (t._gfTour) return;
       if (t.recalled && (t.recalledUntil || 0) > State.day) return;
       if ((t.strikePauseUntil || 0) > State.day) return;
       if (FleetManager.getDriverSkillLevel(driver) < (job.skillRequired || 1)) return;
@@ -25269,6 +25271,159 @@ const DIFFICULTIES = {
     spareTrailers: [],
   },
 };
+const SelfDrive = {
+  active() {
+    return !!State.gfTour;
+  },
+  // Ein einsatzbereiter LKW, dessen Fahrer nicht verfuegbar ist (kein Fahrer ODER krank/Urlaub).
+  availableTruck(job) {
+    return (State.trucks || []).find((t) => {
+      if ("idle" !== t.status || t._gfTour) return false;
+      if (job && (t.capacity || 0) < (job.weight || 0)) return false;
+      const drv = t.driverId && (State.staff || []).find((s) => s.id === t.driverId);
+      return !drv || "aktiv" !== drv.status;
+    });
+  },
+  canStart(job) {
+    return !this.active() && !!job && !!this.availableTruck(job);
+  },
+  promptStart(jobId) {
+    const job = (State.jobs || []).find((j) => j.id === jobId);
+    if (!job) return;
+    const truck = this.availableTruck(job);
+    const days =
+      truck && void 0 !== JobManager && JobManager.totalDays
+        ? JobManager.totalDays(job, truck)
+        : Math.ceil((job.km || 200) / 450);
+    UI.showModal({
+      title: "🚛 Selbst fahren?",
+      subtitle: job.fromName + " → " + job.toName,
+      content:
+        '<div style="font-size:12px;line-height:1.7;">Kein Fahrer verfügbar — aber Sie können <b>' +
+        (truck ? truck.plate : "den LKW") +
+        "</b> selbst fahren.<br><br>Auftrag: <b>" +
+        job.cargo +
+        "</b> · " +
+        job.km +
+        " km · " +
+        Utils.euro(job.price) +
+        "<br>Dauer: ca. <b>" +
+        days +
+        " Tag(e)</b> — solange sind Sie unterwegs, das Büro ist nur eingeschränkt erreichbar. Selbstfahren kostet Stress und Familienzeit, spart aber das Fahrergehalt.</div>",
+      actions: [
+        {
+          label: "🚛 Losfahren",
+          primary: true,
+          onclick: () => {
+            UI.closeModal();
+            SelfDrive.start(jobId);
+          },
+        },
+        { label: "Abbrechen", onclick: () => UI.closeModal() },
+      ],
+    });
+  },
+  start(jobId) {
+    if (this.active()) return void UI.toast("Sie sind bereits selbst auf Tour.", "warn");
+    const job = (State.jobs || []).find((j) => j.id === jobId);
+    if (!job) return void UI.toast("Auftrag nicht gefunden.", "warn");
+    const truck = this.availableTruck(job);
+    if (!truck) return void UI.toast("Kein fahrerloser LKW fuer diese Fracht bereit.", "warn");
+    const days = Math.max(
+      1,
+      void 0 !== JobManager && JobManager.totalDays ? JobManager.totalDays(job, truck) : Math.ceil((job.km || 200) / 450),
+    );
+    State.jobs = (State.jobs || []).filter((j) => j.id !== jobId);
+    State.availableJobs = State.jobs;
+    truck.status = "active";
+    truck.jobId = job.id;
+    truck._gfTour = true;
+    State.gfTour = { truckId: truck.id, job: { ...job }, totalDays: days, daysElapsed: 0 };
+    EventManager.addNews("info", `🚛 Sie fahren selbst: ${job.fromName} → ${job.toName} (${days} Tag(e))`);
+    UI.renderAll();
+    this.renderTourScreen();
+  },
+  renderTourScreen() {
+    const gt = State.gfTour;
+    if (!gt) return;
+    const job = gt.job;
+    const truck = (State.trucks || []).find((t) => t.id === gt.truckId);
+    const cur = Math.min(gt.daysElapsed + 1, gt.totalDays);
+    const pct = Math.round((gt.daysElapsed / gt.totalDays) * 100);
+    const lastLeg = gt.daysElapsed + 1 >= gt.totalDays;
+    const content =
+      `<div style="font-size:12px;line-height:1.7;">` +
+      `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;">` +
+      `<div style="font-weight:700;">${job.cargo} — ${job.fromName} → ${job.toName}</div>` +
+      `<div style="font-size:10px;color:var(--muted2);">Kunde ${job.customerName} · ${job.km} km · ${Utils.euro(job.price)} · LKW ${truck ? truck.plate : "?"}</div>` +
+      `</div>` +
+      `<div style="margin-bottom:6px;">Tour-Fortschritt — Tag ${cur} von ${gt.totalDays}</div>` +
+      `<div style="background:var(--bg2);border-radius:6px;height:14px;overflow:hidden;margin-bottom:10px;"><div style="background:var(--accent2);height:100%;width:${pct}%;"></div></div>` +
+      `<div style="font-size:10px;color:var(--muted2);">☕ Sie sind unterwegs — das Büro ist bis zur Rückkehr nicht erreichbar. Selbstfahren kostet pro Tag Stress und Familienzeit.</div>` +
+      `</div>`;
+    UI.showModal({
+      title: "🚛 Sie sind selbst unterwegs",
+      subtitle: `${job.fromName} → ${job.toName}`,
+      content: content,
+      dismissible: false,
+      actions: [
+        {
+          label: lastLeg ? "Ziel ansteuern & Tour abschließen" : "Weiterfahren → nächster Tag",
+          primary: true,
+          onclick: () => SelfDrive.advanceDay(),
+        },
+      ],
+    });
+  },
+  advanceDay() {
+    const gt = State.gfTour;
+    if (!gt) return;
+    gt.daysElapsed++;
+    State.stress = Utils.clamp((State.stress || 0) + 6, 0, 100);
+    State.familyHappiness = Utils.clamp((State.familyHappiness || 50) - 3, 0, 100);
+    try {
+      DayCycle.start();
+    } catch (e) {}
+    if (State.gameOver) {
+      State.gfTour = null;
+      UI.closeModal();
+      UI.renderAll();
+      return;
+    }
+    if (gt.daysElapsed >= gt.totalDays) this.finish();
+    else this.renderTourScreen();
+  },
+  finish() {
+    const gt = State.gfTour;
+    if (!gt) return;
+    const job = gt.job;
+    const truck = (State.trucks || []).find((t) => t.id === gt.truckId);
+    if (truck) {
+      const km = job.km || 200;
+      truck.km = (truck.km || 0) + Math.round(km);
+      truck.lifetimeKm = (truck.lifetimeKm || 0) + km;
+      truck.condition = Math.max(0, (truck.condition || 100) - 0.003 * km);
+      const fuel = Math.round((km / 100) * (truck.mpg || 30) * LocationManager.fuelPrice());
+      if (fuel > 0) FinanceManager.recordCost("fuelToll", fuel, false);
+      truck.lifetimeRevenue = (truck.lifetimeRevenue || 0) + (job.price || 0);
+      truck.lifetimeJobs = (truck.lifetimeJobs || 0) + 1;
+      truck.status = "idle";
+      truck.jobId = null;
+      truck._gfTour = false;
+    }
+    const price = job.price || 0;
+    if (void 0 !== CashflowSystem) {
+      CashflowSystem.createReceivable(job, price);
+      if (State.subRevenue) State.subRevenue.jobs += price;
+    } else FinanceManager.recordRevenue("fleet", price);
+    State.stats.totalJobs = (State.stats.totalJobs || 0) + 1;
+    State.gfTour = null;
+    EventManager.addNews("good", `✅ Selbstfahr-Tour abgeschlossen: ${job.fromName} → ${job.toName} — Forderung ${Utils.euro(price)}`);
+    UI.closeModal();
+    UI.renderAll();
+    UI.toast("Tour abgeschlossen — willkommen zurück im Büro.", "good");
+  },
+};
 const Game = {
   init() {
     State.gameOver = false;
@@ -26279,6 +26434,7 @@ const UI = {
   showJobUnsuitable(jobId) {
     const job = (State.jobs || []).find((j) => j.id === jobId);
     if (!job) return;
+    if (void 0 !== SelfDrive && SelfDrive.canStart(job)) return void SelfDrive.promptStart(jobId);
     const reasons = [];
     if (0 === State.trucks.length) reasons.push({ truck: "—", text: "Keine Trucks im Fuhrpark" });
     (State.trucks || []).forEach((t) => {
@@ -26733,6 +26889,8 @@ const UI = {
   },
   renderAll() {
     if (!State.locationId) return;
+    if (State.gfTour && void 0 !== SelfDrive && !document.getElementById("modal-overlay")?.classList.contains("show"))
+      SelfDrive.renderTourScreen();
     this.renderHeader();
     this.renderNewsPanel();
     this.updateBadges();
