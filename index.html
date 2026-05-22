@@ -4474,6 +4474,7 @@ function _planerDefaultState() {
     locationId: null,
     cash: 5e4,
     debt: 45e3,
+    difficulty: "mittel",
     loans: [],
     reputation: 50,
     fame: 5,
@@ -21603,8 +21604,8 @@ const SelfTest = {
       label: "Kassenstand-Anzeige",
       fn: () => !!document.getElementById("stat-cash") || "stat-cash fehlt im DOM",
     },
-    { id: "state_trucks", label: "LKW vorhanden", fn: () => State.trucks?.length > 0 || "Keine LKWs im State" },
-    { id: "state_staff", label: "Personal vorhanden", fn: () => State.staff?.length > 0 || "Kein Personal im State" },
+    { id: "state_trucks", label: "Fuhrpark-Liste", fn: () => Array.isArray(State.trucks) || "State.trucks ist kein Array" },
+    { id: "state_staff", label: "Personal-Liste", fn: () => Array.isArray(State.staff) || "State.staff ist kein Array" },
     {
       id: "state_cash",
       label: "Kassenstand ist Zahl",
@@ -25217,12 +25218,63 @@ const ServiceContractManager = {
   },
   getActive: () => (State.serviceContracts || []).filter((c) => c.active),
 };
+const DIFFICULTIES = {
+  einfach: {
+    id: "einfach",
+    name: "Einfach",
+    icon: "🟢",
+    desc: "3 LKW · 3 Fahrer · 100.000 € · keine Schulden",
+    flavor: "Genug Polster, um die Spedition in Ruhe kennenzulernen.",
+    cash: 1e5,
+    debt: 0,
+    repBonus: 8,
+    customers: 4,
+    drivers: 3,
+    trucks: [
+      { model: "iveco_d", condition: 95, km: 35e3, insuranceTier: "teilkasko" },
+      { model: "tractor_4x2", condition: 90, km: 7e4, insuranceTier: "teilkasko", trailer: { type: "plane", condition: 90, km: 5e4 } },
+      { model: "tractor_4x2", condition: 85, km: 11e4, insuranceTier: "teilkasko", trailer: { type: "koffer", condition: 86, km: 75e3 } },
+    ],
+    spareTrailers: [],
+  },
+  mittel: {
+    id: "mittel",
+    name: "Mittel",
+    icon: "🟡",
+    desc: "2 LKW · 2 Fahrer · 50.000 € · 50.000 € Schulden",
+    flavor: "Der ausgewogene Standard-Start.",
+    cash: 5e4,
+    debt: 5e4,
+    repBonus: 0,
+    customers: 3,
+    drivers: 2,
+    trucks: [
+      { model: "iveco_d", condition: 88, km: 84e3, insuranceTier: "haftpflicht" },
+      { model: "tractor_4x2", condition: 75, km: 156e3, insuranceTier: "teilkasko", trailer: { type: "plane", condition: 78, km: 95e3 } },
+    ],
+    spareTrailers: [{ type: "koffer", condition: 72, km: 14e4 }],
+  },
+  schwer: {
+    id: "schwer",
+    name: "Schwer",
+    icon: "🔴",
+    desc: "0 LKW · 0 Fahrer · knappes Kapital · 100.000 € Schulden",
+    flavor: "Gründung aus dem Nichts — jeder Euro zählt.",
+    cash: 4e4,
+    debt: 1e5,
+    repBonus: -10,
+    customers: 1,
+    drivers: 0,
+    trucks: [],
+    spareTrailers: [],
+  },
+};
 const Game = {
   init() {
     State.gameOver = false;
     UI.showStartMenu();
   },
-  startNewGame(locationId, companyName, companyLogo) {
+  startNewGame(locationId, companyName, companyLogo, difficulty) {
     // Full reset — wipe any fields from a previous game session before applying defaults.
     // Without the wipe, fields not in _planerDefaultState() would leak between games
     // (e.g. invoices, contracts, hrQueue, bankLedger that get added by various modules).
@@ -25234,42 +25286,47 @@ const Game = {
     const finalLogo = companyLogo || "🚛";
     State.companyName = finalName;
     State.companyLogo = finalLogo;
-    const startPlate1 = FleetManager.generatePlate(locationId);
-    const startPlate2 = FleetManager.generatePlate(locationId);
-    State.trucks = [
-      FleetManager.createTruck("iveco_d", {
-        condition: 88,
-        km: 84e3,
-        insuranceTier: "haftpflicht",
-        plate: startPlate1,
-      }),
-      FleetManager.createTruck("tractor_4x2", {
-        condition: 75,
-        km: 156e3,
-        insuranceTier: "teilkasko",
-        plate: startPlate2,
-      }),
-    ];
-    State.trailers = [
-      TrailerManager.createTrailer("plane", { condition: 78, km: 95e3 }),
-      TrailerManager.createTrailer("koffer", { condition: 72, km: 14e4 }),
-    ];
-    State.trailers[0].assignedTruckId = State.trucks[1].id;
-    State.trucks[1].trailerId = State.trailers[0].id;
-    State.trucks[0].trailerId = null;
-    State.staff = [EmployeeManager.createStaff("driver"), EmployeeManager.createStaff("driver")];
+    const diff = (void 0 !== DIFFICULTIES && DIFFICULTIES[difficulty]) || DIFFICULTIES.mittel;
+    State.difficulty = diff.id;
+    State.cash = diff.cash;
+    State.debt = diff.debt;
+    State.reputation = Utils.clamp((State.reputation || 50) + (diff.repBonus || 0), 0, 100);
+    State.trucks = [];
+    State.trailers = [];
+    diff.trucks.forEach((spec) => {
+      const truck = FleetManager.createTruck(spec.model, {
+        condition: spec.condition,
+        km: spec.km,
+        insuranceTier: spec.insuranceTier,
+        plate: FleetManager.generatePlate(locationId),
+      });
+      if (spec.trailer) {
+        const tr = TrailerManager.createTrailer(spec.trailer.type, {
+          condition: spec.trailer.condition,
+          km: spec.trailer.km,
+        });
+        tr.assignedTruckId = truck.id;
+        truck.trailerId = tr.id;
+        State.trailers.push(tr);
+      } else truck.trailerId = null;
+      State.trucks.push(truck);
+    });
+    (diff.spareTrailers || []).forEach((sp) => {
+      State.trailers.push(TrailerManager.createTrailer(sp.type, { condition: sp.condition, km: sp.km }));
+    });
+    State.staff = [];
+    for (let i = 0; i < (diff.drivers || 0); i++) State.staff.push(EmployeeManager.createStaff("driver"));
     if (void 0 !== StaffInteraction) (State.staff || []).forEach((s) => StaffInteraction.onHire(s));
     (State.staff || []).forEach((s) => {
       if (!s.status) s.status = "aktiv";
     });
     const drivers = (State.staff || []).filter((s) => "driver" === s.roleId);
-    if (drivers[0]) State.trucks[0].driverId = drivers[0].id;
-    if (drivers[1]) State.trucks[1].driverId = drivers[1].id;
-    State.customers = [
-      CustomerManager.create("hamburg"),
-      CustomerManager.create("koeln"),
-      CustomerManager.create("frankfurt"),
-    ];
+    State.trucks.forEach((t, i) => {
+      if (drivers[i]) t.driverId = drivers[i].id;
+    });
+    State.customers = ["hamburg", "koeln", "frankfurt", "muenchen"]
+      .slice(0, diff.customers || 3)
+      .map((c) => CustomerManager.create(c));
     DealerManager.refresh(false);
     if (void 0 !== TrailerDealerManager) TrailerDealerManager.refresh(false);
     JobManager.generateJobs(8);
@@ -25685,10 +25742,45 @@ const UI = {
     const logo = this._selectedLogo || "🚛";
     this._pendingCompanyName = name;
     this._pendingCompanyLogo = logo;
-    this._showStandortAuswahl();
+    this._showDifficultySelect();
   },
   _pendingCompanyName: "Meine Spedition e.K.",
   _pendingCompanyLogo: "🚛",
+  _pendingDifficulty: "mittel",
+  _showDifficultySelect() {
+    const overlay = document.getElementById("modal-overlay");
+    const box = document.getElementById("modal-box");
+    box.style.maxWidth = "640px";
+    const cur = this._pendingDifficulty || "mittel";
+    const card = (d) => {
+      const sel = d.id === cur;
+      const bc = sel ? "var(--accent)" : "var(--border)";
+      return `
+        <div onclick="UI._pickDifficulty('${d.id}')"
+          style="border:2px solid ${bc}; border-radius:10px; padding:14px; cursor:pointer; background:${sel ? "rgba(255,182,39,0.12)" : "var(--bg2)"}; transition:all .15s;"
+          onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='translateY(-2px)'"
+          onmouseout="this.style.borderColor='${bc}'; this.style.transform=''">
+          <div style="font-size:32px; margin-bottom:4px;">${d.icon}</div>
+          <div style="font-family:'Bebas Neue'; font-size:22px; letter-spacing:1px; color:var(--accent);">${d.name}</div>
+          <div style="font-size:11px; color:var(--fg); margin:6px 0; font-weight:600;">${d.desc}</div>
+          <div style="font-size:10px; color:var(--muted2); line-height:1.5;">${d.flavor}</div>
+        </div>`;
+    };
+    box.innerHTML = `
+      <button class="modal-close-x" onclick="UI._showCompanySetup()" style="left:12px; right:auto;">← Zurück</button>
+      <h2>SCHWIERIGKEITSGRAD</h2>
+      <p class="subtitle">${this._pendingCompanyLogo} ${this._pendingCompanyName} — wie hart soll der Start werden?</p>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:16px;">
+        ${Object.values(DIFFICULTIES).map(card).join("")}
+      </div>
+      <div style="font-size:10px; color:var(--muted2); margin-top:14px; text-align:center;">Der Schwierigkeitsgrad bestimmt dein Startpaket — Fahrzeuge, Personal, Kapital und Schulden. Tippe eine Stufe an, um fortzufahren.</div>
+    `;
+    overlay.classList.add("show");
+  },
+  _pickDifficulty(id) {
+    if (DIFFICULTIES[id]) this._pendingDifficulty = id;
+    this._showStandortAuswahl();
+  },
   _showStandortAuswahl() {
     const overlay = document.getElementById("modal-overlay");
     const box = document.getElementById("modal-box");
@@ -25706,7 +25798,7 @@ const UI = {
     const name = this._pendingCompanyName || "Meine Spedition e.K.";
     const logo = this._pendingCompanyLogo || "🚛";
     this.closeModal();
-    Game.startNewGame(locationId, name, logo);
+    Game.startNewGame(locationId, name, logo, this._pendingDifficulty);
     const cn = document.getElementById("company-name");
     if (cn) cn.textContent = name;
     const cl = document.getElementById("company-logo");
