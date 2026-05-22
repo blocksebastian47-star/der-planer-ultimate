@@ -18694,7 +18694,7 @@ const CrisisSystem = {
         driver: driver.name,
         truck: truck.plate,
         damage: damage,
-        insured: (State.insurances || []).some((i) => "fleet_comprehensive" === i.type),
+        insured: "vollkasko" === truck.insuranceTier,
       };
       State.activeCrises.push(crisis);
       EventManager.queueDecision({
@@ -18802,7 +18802,9 @@ const CrisisSystem = {
       );
       Notifier.add(`${ct.icon} ${ct.name} — ${days} Tage`, "error");
     } else if ("cyberattack" === ct.id) {
-      const damage = 1e3 * Utils.randInt(5, 25);
+      const grossDamage = 1e3 * Utils.randInt(5, 25);
+      const cyberInsured = (State.insurances || []).some((i) => "cyber" === i.id);
+      const damage = cyberInsured ? Math.round(0.2 * grossDamage) : grossDamage;
       FinanceManager.recordCost("admin", damage, false);
       State.activeCrises.push({
         id: Utils.uid("CR"),
@@ -18815,7 +18817,7 @@ const CrisisSystem = {
         isCrisis: true,
         title: "💻 CYBERANGRIFF",
         subtitle: "IT-Systeme kompromittiert",
-        content: `Hacker haben Ihre Systeme angegriffen. Schaden: ${Utils.euro(damage)}. Ohne IT-Fachkraft dauert die Bereinigung länger.`,
+        content: `Hacker haben Ihre Systeme angegriffen. Schaden: ${Utils.euro(grossDamage)}.${cyberInsured ? ` ✅ Cyber-Versicherung greift — Sie tragen nur ${Utils.euro(damage)}.` : ""} Ohne IT-Fachkraft dauert die Bereinigung länger.`,
         choices: [
           {
             text: "🔒 Externe IT-Firma beauftragen (+5.000€)",
@@ -23775,6 +23777,96 @@ const EventManager = {
     else if (r < 0.13) this.eventEconomyNews();
     else if (r < 0.15) this.eventWeather();
     else if (r < 0.18) this.eventCustomerCancel();
+    else if (r < 0.188) this.eventLiabilityClaim();
+    else if (r < 0.196) this.eventOfficeDamage();
+    else if (r < 0.202) this.eventEmbezzlement();
+    else if (r < 0.21) this.eventLawsuit();
+    else if (r < 0.214) this.eventDnoClaim();
+  },
+  _bizInsured(id) {
+    return (State.insurances || []).some((i) => i.id === id);
+  },
+  // Schaden buchen: mit passender Betriebsversicherung nur ~10 % Selbstbehalt, sonst voller Schaden.
+  _insuranceClaim(insId, damage) {
+    const insured = this._bizInsured(insId);
+    const selfPay = insured ? Math.max(150, Math.round(0.1 * damage)) : damage;
+    FinanceManager.recordCost("admin", selfPay, false);
+    return { insured: insured, selfPay: selfPay };
+  },
+  eventLiabilityClaim() {
+    const damage = 1e3 * Utils.randInt(3, 15);
+    const c = this._insuranceClaim("betriebshaftpflicht", damage);
+    const incident = Utils.pick([
+      "Beim Entladen hat ein Stapler die Ware eines Kunden beschädigt.",
+      "Ein Mitarbeiter hat auf dem Kundengelände ein parkendes Fahrzeug gerammt.",
+      "Auslaufendes Hydrauliköl hat die Laderampe eines Kunden verschmutzt.",
+    ]);
+    this.queueDecision({
+      title: "⚖ HAFTPFLICHTSCHADEN",
+      subtitle: "Schaden an Dritten",
+      content: `${incident}<br><br>Schadenshöhe: ${Utils.euro(damage)}.<br>${c.insured ? `✅ Betriebshaftpflicht greift — Sie zahlen nur den Selbstbehalt ${Utils.euro(c.selfPay)}.` : `⚠ Keine Betriebshaftpflicht — Sie zahlen den vollen Schaden ${Utils.euro(damage)}.`}`,
+      choices: [{ text: "Zur Kenntnis nehmen", action: () => {} }],
+    });
+    this.addNews(c.insured ? "info" : "bad", `⚖ Haftpflichtschaden ${Utils.euro(damage)} — ${c.insured ? "Versicherung greift" : "nicht versichert"}`);
+  },
+  eventOfficeDamage() {
+    const damage = 1e3 * Utils.randInt(2, 12);
+    const c = this._insuranceClaim("inhaltsversicherung", damage);
+    const incident = Utils.pick([
+      "Ein Wasserrohrbruch hat Büroausstattung und Akten durchnässt.",
+      "Einbrecher haben Laptops und Werkzeug aus der Werkstatt gestohlen.",
+      "Ein Schwelbrand in der Technik hat IT und Mobiliar beschädigt.",
+    ]);
+    this.queueDecision({
+      title: "🏢 SCHADEN IM BÜRO",
+      subtitle: "Betriebsausstattung betroffen",
+      content: `${incident}<br><br>Schadenshöhe: ${Utils.euro(damage)}.<br>${c.insured ? `✅ Inhaltsversicherung greift — Selbstbehalt ${Utils.euro(c.selfPay)}.` : `⚠ Keine Inhaltsversicherung — voller Schaden ${Utils.euro(damage)}.`}`,
+      choices: [{ text: "Zur Kenntnis nehmen", action: () => {} }],
+    });
+    this.addNews(c.insured ? "info" : "bad", `🏢 Büroschaden ${Utils.euro(damage)} — ${c.insured ? "Versicherung greift" : "nicht versichert"}`);
+  },
+  eventEmbezzlement() {
+    const staff = (State.staff || []).filter((s) => "aktiv" === s.status);
+    if (staff.length < 3) return;
+    const culprit = Utils.pick(staff);
+    const damage = 1e3 * Utils.randInt(3, 20);
+    const c = this._insuranceClaim("vertrauensschaden", damage);
+    this.queueDecision({
+      title: "💼 UNTERSCHLAGUNG",
+      subtitle: "Vertrauensbruch im Team",
+      content: `Eine interne Prüfung deckt auf: ${culprit.name} hat über Monate Firmengeld unterschlagen — Schaden ${Utils.euro(damage)}.<br>${c.insured ? `✅ Vertrauensschadenversicherung greift — Selbstbehalt ${Utils.euro(c.selfPay)}.` : `⚠ Keine Vertrauensschadenversicherung — voller Verlust ${Utils.euro(damage)}.`}`,
+      choices: [{ text: "Zur Kenntnis nehmen", action: () => {} }],
+    });
+    this.addNews(c.insured ? "info" : "bad", `💼 Unterschlagung durch ${culprit.name}: ${Utils.euro(damage)} — ${c.insured ? "versichert" : "nicht versichert"}`);
+  },
+  eventLawsuit() {
+    const damage = 1e3 * Utils.randInt(2, 10);
+    const c = this._insuranceClaim("rechtsschutz", damage);
+    const incident = Utils.pick([
+      "Ein Kunde verklagt Sie wegen einer angeblich verspäteten Lieferung.",
+      "Ein Streit mit einem Subunternehmer landet vor Gericht.",
+      "Eine Behörde leitet ein Verfahren wegen einer Betriebsauflage ein.",
+    ]);
+    this.queueDecision({
+      title: "⚖ RECHTSSTREIT",
+      subtitle: "Anwalts- und Gerichtskosten",
+      content: `${incident}<br><br>Anwalts- und Gerichtskosten: ${Utils.euro(damage)}.<br>${c.insured ? `✅ Rechtsschutzversicherung greift — Selbstbehalt ${Utils.euro(c.selfPay)}.` : `⚠ Keine Rechtsschutzversicherung — volle Kosten ${Utils.euro(damage)}.`}`,
+      choices: [{ text: "Zur Kenntnis nehmen", action: () => {} }],
+    });
+    this.addNews(c.insured ? "info" : "bad", `⚖ Rechtsstreit ${Utils.euro(damage)} — ${c.insured ? "versichert" : "nicht versichert"}`);
+  },
+  eventDnoClaim() {
+    const formId = void 0 !== LegalForms ? LegalForms.currentForm().id : "ek";
+    if (!["ug", "gmbh", "ag", "se"].includes(formId)) return;
+    const damage = 1e3 * Utils.randInt(5, 30);
+    const c = this._insuranceClaim("d_o", damage);
+    this.queueDecision({
+      title: "👔 HAFTUNGSFORDERUNG GEGEN DIE GF",
+      subtitle: "Managerhaftung",
+      content: `Gesellschafter machen eine Fehlentscheidung der Geschäftsführung geltend — Forderung ${Utils.euro(damage)}.<br>${c.insured ? `✅ D&O-Versicherung greift — Selbstbehalt ${Utils.euro(c.selfPay)}.` : `⚠ Keine D&O-Versicherung — die Geschäftsführung haftet voll: ${Utils.euro(damage)}.`}`,
+      choices: [{ text: "Zur Kenntnis nehmen", action: () => {} }],
+    });
+    this.addNews(c.insured ? "info" : "bad", `👔 Haftungsforderung ${Utils.euro(damage)} — ${c.insured ? "D&O greift" : "nicht versichert"}`);
   },
   checkRoadEvents(truck, driver, job) {
     const baseRisk = 0.02;
