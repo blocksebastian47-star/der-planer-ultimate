@@ -9971,7 +9971,7 @@ const DepartmentSystem = {
     State.contracts = State.contracts.filter((c) => c.endDay > State.day);
     if (State.contracts.length < maxContracts && salesStaff > 0) {
       (State.staff || [])
-        .filter((s) => "key_account" === s.roleId && "aktiv" === s.status)
+        .filter((s) => ("key_account" === s.roleId || "sales_manager" === s.roleId) && "aktiv" === s.status)
         .forEach((ka) => {
           if (State.contracts.length >= maxContracts) return;
           const goodCust = (State.customers || []).filter((c) => c.relationship > 60);
@@ -12497,10 +12497,11 @@ const Tutorial = {
     },
     {
       id: "first_contract",
-      day: 7,
+      day: 12,
       title: "📝 Ersten Rahmenvertrag abschließen",
-      desc: "Stellen Sie einen Vertriebsleiter ein. Er schließt monatliche Verträge mit Stammkunden ab — stabiles Basiseinkommen.",
-      target: "betrieb",
+      desc: "Bauen Sie die Beziehung zu einem Kunden auf (ab 55 %) und bieten Sie ihm im Kundenportal einen Rahmenvertrag an — stabiles monatliches Einkommen.",
+      target: "markt",
+      onClick: "UI.showView('markt');UI._switchTab('markt','kunden')",
       done: () => State.contracts?.length > 0,
       reward: { cash: 2e3, text: "+2.000€ Vertriebsbonus" },
     },
@@ -29174,14 +29175,14 @@ const UI = {
     if (void 0 !== CustomerDepth) customers.forEach((c) => CustomerDepth.enrich(c));
     const customerRows =
       0 === customers.length
-        ? '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;">Noch keine Kunden — über „+ Akquirieren" oder Marketing-Kampagnen gewinnen</td></tr>'
+        ? '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:12px;">Noch keine Kunden — über „+ Akquirieren" oder Marketing-Kampagnen gewinnen</td></tr>'
         : customers
             .map((c) => {
               const rel = Math.round(c.relationship || 0);
               const relColor = rel > 70 ? "var(--accent2)" : rel > 40 ? "var(--warn)" : "var(--danger)";
               const cr = cp.ratings.filter((r) => r.customerId === c.id);
               const cAvg = cr.length ? (cr.reduce((s, r) => s + r.stars, 0) / cr.length).toFixed(1) : null;
-              return `<tr><td><b>${c.name}</b></td><td>${c.city || "—"}</td><td>${c.industry || "—"}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:32px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;"><div style="height:6px;border-radius:3px;width:${rel}%;background:${relColor};"></div></div><span style="color:${relColor};">${rel}%</span></div></td><td>${c.contractType || "Spot"}</td><td>${c.jobsCompleted || 0}</td><td>${cAvg ? "⭐ " + cAvg : "—"}</td></tr>`;
+              return `<tr><td><b>${c.name}</b></td><td>${c.city || "—"}</td><td>${c.industry || "—"}</td><td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:32px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;"><div style="height:6px;border-radius:3px;width:${rel}%;background:${relColor};"></div></div><span style="color:${relColor};">${rel}%</span></div></td><td>${(State.contracts || []).some((ct) => ct.customerId === c.id && ct.endDay > State.day) ? "📝 Rahmenvertrag" : "Spot"}</td><td>${c.jobsCompleted || 0}</td><td>${cAvg ? "⭐ " + cAvg : "—"}</td><td>${rel >= 55 && !(State.contracts || []).some((ct) => ct.customerId === c.id && ct.endDay > State.day) ? `<button class="btn small primary" style="font-size:9px;" onclick="UI._offerContract('${c.id}')">📝 Anbieten</button>` : '<span style="color:var(--muted);">—</span>'}</td></tr>`;
             })
             .join("");
     const ratingsHTML = cp.ratings
@@ -29204,7 +29205,7 @@ const UI = {
     const openBad = cp.ratings.filter((r) => r.stars <= 2 && !r.responded).length;
     const kpiTile = (val, label, color) =>
       `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:${color};">${val}</div><div style="font-size:10px;color:var(--muted);">${label}</div></div>`;
-    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;">🤝 KUNDEN & PORTAL</div><button class="btn small primary" onclick="CustomerManager.acquire();UI.renderAll();" ${State.cash < 200 ? "disabled" : ""}>+ Akquirieren (€ 200)</button></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;">${stars(avg || 0)}</div><div style="font-size:16px;font-weight:800;color:var(--accent2);">${avg.toFixed(1)}</div><div style="font-size:10px;color:var(--muted);">Ø Bewertung</div></div>${kpiTile(cp.ratings.length, "Bewertungen gesamt", "var(--accent)")}${kpiTile(openBad, "Unbeantw. ⭐⭐", openBad > 0 ? "var(--danger)" : "var(--accent2)")}${kpiTile(cp.loyaltyProgram.filter((l) => "Gold" === l.tier || "Platin" === l.tier).length, "Gold/Platin-Kunden", "var(--accent2)")}</div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">KUNDENSTAMM (${customers.length})</div><table class="data-table" style="width:100%;font-size:11px;margin-bottom:16px;"><thead><tr><th>Firma</th><th>Stadt</th><th>Branche</th><th>Beziehung</th><th>Vertrag</th><th>Aufträge</th><th>⭐ Ø</th></tr></thead><tbody>${customerRows}</tbody></table><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LETZTE BEWERTUNGEN</div>${ratingsHTML || '<div style="color:var(--muted);font-size:11px;">Noch keine Bewertungen</div>'}</div><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LOYALITÄTSPROGRAMM</div>${loyaltyHTML ? `<table class="data-table" style="width:100%;font-size:11px;"><thead><tr><th>Kunde</th><th>Stufe</th><th>Aufträge</th><th>⭐</th><th>Rabatt</th><th></th></tr></thead><tbody>${loyaltyHTML}</tbody></table>` : '<div style="color:var(--muted);font-size:11px;">Noch keine Stammkunden</div>'}</div></div>`;
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px;">🤝 KUNDEN & PORTAL</div><button class="btn small primary" onclick="CustomerManager.acquire();UI.renderAll();" ${State.cash < 200 ? "disabled" : ""}>+ Akquirieren (€ 200)</button></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"><div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;">${stars(avg || 0)}</div><div style="font-size:16px;font-weight:800;color:var(--accent2);">${avg.toFixed(1)}</div><div style="font-size:10px;color:var(--muted);">Ø Bewertung</div></div>${kpiTile(cp.ratings.length, "Bewertungen gesamt", "var(--accent)")}${kpiTile(openBad, "Unbeantw. ⭐⭐", openBad > 0 ? "var(--danger)" : "var(--accent2)")}${kpiTile(cp.loyaltyProgram.filter((l) => "Gold" === l.tier || "Platin" === l.tier).length, "Gold/Platin-Kunden", "var(--accent2)")}</div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">KUNDENSTAMM (${customers.length})</div><table class="data-table" style="width:100%;font-size:11px;margin-bottom:16px;"><thead><tr><th>Firma</th><th>Stadt</th><th>Branche</th><th>Beziehung</th><th>Vertrag</th><th>Aufträge</th><th>⭐ Ø</th><th>Rahmenvertrag</th></tr></thead><tbody>${customerRows}</tbody></table><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LETZTE BEWERTUNGEN</div>${ratingsHTML || '<div style="color:var(--muted);font-size:11px;">Noch keine Bewertungen</div>'}</div><div><div style="font-family:'Bebas Neue';font-size:16px;color:var(--accent2);margin-bottom:8px;">LOYALITÄTSPROGRAMM</div>${loyaltyHTML ? `<table class="data-table" style="width:100%;font-size:11px;"><thead><tr><th>Kunde</th><th>Stufe</th><th>Aufträge</th><th>⭐</th><th>Rabatt</th><th></th></tr></thead><tbody>${loyaltyHTML}</tbody></table>` : '<div style="color:var(--muted);font-size:11px;">Noch keine Stammkunden</div>'}</div></div>`;
   },
   _respondToRating(ratingId) {
     CustomerPortal.respondToRating(
@@ -29213,6 +29214,54 @@ const UI = {
     );
     this.toast("Antwort gesendet — Reputation +0.5%", "good");
     this.renderCustomerPortal();
+  },
+  _offerContract(customerId) {
+    const cust = (State.customers || []).find((c) => c.id === customerId);
+    if (!cust) return;
+    const rel = Math.round(cust.relationship || 0);
+    if (rel < 55) {
+      this.toast(`${cust.name}: Beziehung erst ${rel} % — ein Rahmenvertrag braucht mind. 55 %.`, "warn");
+      return;
+    }
+    if ((State.contracts || []).some((c) => c.customerId === customerId && c.endDay > State.day)) {
+      this.toast(`${cust.name} hat bereits einen laufenden Rahmenvertrag.`, "warn");
+      return;
+    }
+    const monthlyValue = Utils.randInt(4e3, 11e3);
+    const months = Utils.randInt(3, 6);
+    this.showModal({
+      title: "📝 Rahmenvertrag anbieten",
+      subtitle: cust.name,
+      maxWidth: "460px",
+      content: `<div style="font-size:13px; line-height:1.8; padding:6px;">${cust.name} ist ein zufriedener Stammkunde (Beziehung ${rel} %) und an einer festen Zusammenarbeit interessiert.<br><br>Angebot: <b>${Utils.euro(monthlyValue)} / Monat</b> über <b>${months} Monate</b> — verlässliches Einkommen ohne Einzelakquise.</div>`,
+      actions: [
+        { label: "Abbrechen", onclick: () => this.closeModal() },
+        {
+          label: "Rahmenvertrag abschließen",
+          primary: true,
+          onclick: () => {
+            if (!State.contracts) State.contracts = [];
+            State.contracts.push({
+              id: Utils.uid("C"),
+              customerId: cust.id,
+              customerName: cust.name,
+              monthlyValue: monthlyValue,
+              startDay: State.day,
+              endDay: State.day + 30 * months,
+              managedBy: "Geschäftsführung",
+            });
+            EventManager.addNews(
+              "good",
+              `📝 Rahmenvertrag mit ${cust.name}: ${Utils.euro(monthlyValue)}/Mon. für ${months} Monate`,
+            );
+            this.closeModal();
+            this.toast("Rahmenvertrag abgeschlossen", "good");
+            this.renderCustomerPortal();
+            this.renderHeader();
+          },
+        },
+      ],
+    });
   },
   bookCourse(staffId, courseId) {
     const r = StaffDevelopment.startCourse(staffId, courseId);
