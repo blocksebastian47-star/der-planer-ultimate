@@ -25437,11 +25437,12 @@ const SelfDrive = {
     if (gt.daysElapsed >= gt.totalDays) this.finish();
     else this.renderTourScreen();
   },
-  // Interaktive Tour-Momente (2b) — ~40% pro Tag, dann Stau ODER Lenkzeit.
+  // Interaktive Tour-Momente (Etappe 2) — ~50% pro Tag, dann zufaellig einer aus dem Pool.
   _rollMoment() {
-    if (Math.random() > 0.4) return null;
-    if (Math.random() < 0.5)
-      return {
+    if (Math.random() > 0.5) return null;
+    const truck = (State.trucks || []).find((t) => t.id === State.gfTour?.truckId);
+    const pool = [
+      {
         title: "🚧 Stau voraus",
         content: "Vor Ihnen staut sich der Verkehr auf der Autobahn. Wie reagieren Sie?",
         choices: [
@@ -25460,37 +25461,130 @@ const SelfDrive = {
             },
           },
         ],
-      };
-    return {
-      title: "😴 Lenkzeit erreicht",
-      content: "Ihre gesetzliche Lenkzeit ist ausgeschöpft — eigentlich ist jetzt Pflichtpause.",
-      choices: [
-        {
-          label: "☕ Vorschriftsmäßig pausieren",
-          effect: () => {
-            EventManager.addNews("info", "😴 Pause eingelegt — alles korrekt");
+      },
+      {
+        title: "😴 Lenkzeit erreicht",
+        content: "Ihre gesetzliche Lenkzeit ist ausgeschöpft — eigentlich ist jetzt Pflichtpause.",
+        choices: [
+          {
+            label: "☕ Vorschriftsmäßig pausieren",
+            effect: () => {
+              EventManager.addNews("info", "😴 Pause eingelegt — alles korrekt");
+            },
           },
-        },
-        {
-          label: "🚗 Durchfahren (Risiko)",
-          effect: () => {
-            State.stress = Utils.clamp((State.stress || 0) + 3, 0, 100);
-            if (Math.random() < 0.5) {
-              FinanceManager.recordCost("admin", 500, false);
-              EventManager.addNews("error", "👮 Lenkzeitkontrolle — 500 € Bußgeld");
-            } else EventManager.addNews("warn", "🚗 Durchgefahren — diesmal gutgegangen");
+          {
+            label: "🚗 Durchfahren (Risiko)",
+            effect: () => {
+              State.stress = Utils.clamp((State.stress || 0) + 3, 0, 100);
+              if (Math.random() < 0.5) {
+                FinanceManager.recordCost("admin", 500, false);
+                EventManager.addNews("error", "👮 Lenkzeitkontrolle — 500 € Bußgeld");
+              } else EventManager.addNews("warn", "🚗 Durchgefahren — diesmal gutgegangen");
+            },
           },
-        },
-      ],
-    };
+        ],
+      },
+      {
+        title: "🌧️ Schlechtes Wetter",
+        content: "Starker Regen, schlechte Sicht und Aquaplaning-Gefahr. Wie fahren Sie?",
+        choices: [
+          {
+            label: "🐢 Tempo raus, vorsichtig",
+            effect: () => {
+              EventManager.addNews("info", "🌧️ Vorsichtig durch den Regen — sicher angekommen");
+            },
+          },
+          {
+            label: "🏎️ Im Zeitplan bleiben",
+            effect: () => {
+              State.stress = Utils.clamp((State.stress || 0) + 5, 0, 100);
+              if (Math.random() < 0.3) {
+                FinanceManager.recordCost("admin", 400, false);
+                EventManager.addNews("error", "🌧️ Bei Nässe ins Rutschen geraten — 400 € Schaden");
+              } else EventManager.addNews("warn", "🌧️ Zügig durchgefahren — gutgegangen, aber nervig");
+            },
+          },
+        ],
+      },
+      {
+        title: "⛽ Tankstopp fällig",
+        content: "Der Tank wird leer. Die Autobahn-Tankstelle ist teuer, die günstige Raststätte liegt 60 km weiter.",
+        choices: [
+          {
+            label: "⛽ Hier teuer volltanken",
+            effect: () => {
+              FinanceManager.recordCost("fuelToll", 120, false);
+              EventManager.addNews("info", "⛽ An der Autobahn getankt — teuer, aber sicher");
+            },
+          },
+          {
+            label: "🤞 Bis zur günstigen durchhalten",
+            effect: () => {
+              if (Math.random() < 0.55) {
+                FinanceManager.recordCost("fuelToll", 70, false);
+                EventManager.addNews("good", "⛽ Günstig getankt — Sprit gespart");
+              } else {
+                State.stress = Utils.clamp((State.stress || 0) + 4, 0, 100);
+                FinanceManager.recordCost("fuelToll", 120, false);
+                EventManager.addNews("warn", "⛽ Fast liegengeblieben — am Ende doch teuer getankt");
+              }
+            },
+          },
+        ],
+      },
+      {
+        title: "🔧 Panne unterwegs",
+        content: "Eine Warnleuchte im Cockpit — am LKW stimmt etwas nicht. Was tun?",
+        choices: [
+          {
+            label: "📞 Pannendienst rufen",
+            effect: () => {
+              FinanceManager.recordCost("repairs", 600, false);
+              EventManager.addNews("info", "🔧 Pannendienst war da — 600 € Soforthilfe");
+            },
+          },
+          {
+            label: "🔧 Selbst provisorisch flicken",
+            effect: () => {
+              if (truck) truck.condition = Math.max(0, (truck.condition || 100) - 12);
+              State.stress = Utils.clamp((State.stress || 0) + 6, 0, 100);
+              EventManager.addNews("warn", "🔧 Notdürftig geflickt — der LKW hat gelitten");
+            },
+          },
+        ],
+      },
+      {
+        title: "📞 Anruf aus dem Büro",
+        content: "Ihr Werkstattleiter ruft an: ein LKW in der Halle braucht dringend ein Ersatzteil für 450 €.",
+        choices: [
+          {
+            label: "✅ Aus der Ferne freigeben",
+            effect: () => {
+              FinanceManager.recordCost("repairs", 450, false);
+              EventManager.addNews("info", "📞 Reparatur-Teil unterwegs freigegeben — 450 €");
+            },
+          },
+          {
+            label: "⏳ Soll bis zur Rückkehr warten",
+            effect: () => {
+              State.stress = Utils.clamp((State.stress || 0) + 3, 0, 100);
+              EventManager.addNews("warn", "📞 Reparatur verschoben — der LKW steht solange still");
+            },
+          },
+        ],
+      },
+    ];
+    return Utils.pick(pool);
   },
-  // Geraete-gestufte Buero-Lage (Schritt 3): Smartphone wenig, Tablet mehr, Laptop am meisten.
+  // Geraete-gestufte Buero-Lage (Etappe 2): Smartphone liest, Tablet sieht die
+  // offenen Entscheidungen, Laptop kann eine davon direkt bearbeiten.
   _officeCheck() {
     const dev = State.devices || {};
     const tier = dev.laptop ? "laptop" : dev.tablet ? "tablet" : "phone";
+    const decisions = State.pendingDecisions || [];
     const lines = [];
     lines.push("💰 Kasse: " + Utils.euro(State.cash || 0));
-    lines.push("📋 Offene Entscheidungen: " + (State.pendingDecisions || []).length);
+    lines.push("📋 Offene Entscheidungen: " + decisions.length);
     if ("tablet" === tier || "laptop" === tier) {
       const act = (State.trucks || []).filter((t) => "active" === t.status).length;
       lines.push("🚛 LKW im Einsatz: " + act + " / " + (State.trucks || []).length);
@@ -25500,8 +25594,32 @@ const SelfDrive = {
       lines.push("🏆 Reputation: " + Math.round(State.reputation || 0) + " %");
       lines.push("💳 Schulden: " + Utils.euro(State.debt || 0));
     }
+    let listHtml = "";
+    if (("tablet" === tier || "laptop" === tier) && decisions.length > 0)
+      listHtml =
+        '<div style="margin-top:8px;font-size:11px;border-top:1px solid var(--border);padding-top:6px;">' +
+        '<div style="color:var(--muted2);margin-bottom:3px;">Offene Entscheidungen:</div>' +
+        decisions
+          .slice(0, 5)
+          .map((d) => "• " + d.title)
+          .join("<br>") +
+        "</div>";
     State.stress = Utils.clamp((State.stress || 0) + 2, 0, 100);
     const devName = { phone: "📱 Smartphone", tablet: "📋 Tablet", laptop: "💻 Laptop" }[tier];
+    const footer =
+      "phone" === tier
+        ? "Mit Tablet oder Laptop sehen Sie unterwegs mehr — der Laptop bearbeitet sogar Entscheidungen."
+        : "laptop" === tier
+          ? "Mit dem Laptop können Sie eine Entscheidung direkt von der Straße bearbeiten."
+          : "Entscheidungen bearbeiten geht nur mit Laptop — sonst warten sie bis zur Rückkehr.";
+    const actions = [];
+    if ("laptop" === tier && decisions.length > 0)
+      actions.push({ label: "💻 Entscheidung bearbeiten", primary: true, onclick: () => SelfDrive._remoteDecision() });
+    actions.push({
+      label: "← Zurück zur Tour",
+      primary: 0 === actions.length,
+      onclick: () => SelfDrive.renderTourScreen(),
+    });
     UI.showModal({
       title: devName + " — Büro-Lage",
       subtitle: "Tag " + State.day + " · aus der Schlafkabine",
@@ -25509,11 +25627,35 @@ const SelfDrive = {
         '<div style="font-size:12px;line-height:2;">' +
         lines.join("<br>") +
         "</div>" +
-        ("phone" === tier
-          ? '<div style="font-size:10px;color:var(--muted2);margin-top:8px;">Mit Tablet oder Laptop sehen Sie unterwegs deutlich mehr. Entscheidungen warten bis zur Rückkehr ins Büro.</div>'
-          : '<div style="font-size:10px;color:var(--muted2);margin-top:8px;">Entscheidungen warten bis zur Rückkehr ins Büro.</div>'),
+        listHtml +
+        '<div style="font-size:10px;color:var(--muted2);margin-top:8px;">' +
+        footer +
+        "</div>",
       dismissible: false,
-      actions: [{ label: "← Zurück zur Tour", primary: true, onclick: () => SelfDrive.renderTourScreen() }],
+      actions: actions,
+    });
+  },
+  // Laptop-Remote: die erste offene Entscheidung von unterwegs bearbeiten.
+  _remoteDecision() {
+    const d = (State.pendingDecisions || [])[0];
+    if (!d || !Array.isArray(d.choices) || 0 === d.choices.length) return void this.renderTourScreen();
+    UI.showModal({
+      title: "💻 " + d.title,
+      subtitle: "Remote bearbeitet — aus der Schlafkabine",
+      content: `<div style="font-size:12px;line-height:1.7;">${d.content || ""}</div>`,
+      dismissible: false,
+      actions: d.choices.map((c, i) => ({
+        label: c.text,
+        primary: 0 === i,
+        onclick: () => {
+          State.pendingDecisions = (State.pendingDecisions || []).filter((x) => x !== d);
+          try {
+            if ("function" === typeof c.action) c.action();
+          } catch (e) {}
+          UI.renderAll();
+          SelfDrive.renderTourScreen();
+        },
+      })),
     });
   },
   finish() {
