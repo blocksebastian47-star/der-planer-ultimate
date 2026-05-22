@@ -2091,7 +2091,7 @@ const DATA = {
       id: "medium_truck_18",
       name: "Verteiler-LKW 18t",
       class: "mittel",
-      cap: 9,
+      cap: 11,
       mpg: 22,
       reli: 0.93,
       price: 11e4,
@@ -2211,7 +2211,7 @@ const DATA = {
       id: "iveco_d",
       name: "Iveco Daily",
       class: "klein",
-      cap: 3.5,
+      cap: 2.5,
       mpg: 11,
       reli: 0.92,
       price: 32e3,
@@ -2229,7 +2229,7 @@ const DATA = {
       id: "man_tge",
       name: "MAN TGE 7t",
       class: "mittel",
-      cap: 7,
+      cap: 4,
       mpg: 18,
       reli: 0.94,
       price: 62e3,
@@ -2247,7 +2247,7 @@ const DATA = {
       id: "merc_atego",
       name: "Mercedes Atego",
       class: "mittel",
-      cap: 12,
+      cap: 11,
       mpg: 24,
       reli: 0.93,
       price: 88e3,
@@ -4098,7 +4098,7 @@ const DATA = {
       skill: 1,
       restrictions: [],
       enables: ["Kleinladungen", "Pakete", "Stückgut"],
-      desc: "Leichter Kastenanhänger für Transporter — bis 750 kg Zuladung, kein Führerschein-Zusatz nötig",
+      desc: "Geschlossener Kastenanhänger für Transporter — bis ca. 3 t Zuladung, witterungsgeschützt",
       allowedTruckTypes: ["van"],
     },
     {
@@ -22986,16 +22986,14 @@ const FleetManager = {
   },
   effectiveCapacity(truck) {
     if (!truck) return 0;
-    let cap = truck.capacity || 0;
     const model = DATA.truckModels.find((m) => m.id === truck.modelId);
-    // Sattelzugmaschine: cap modelliert bereits das ganze Gespann -> Auflieger nicht aufaddieren.
-    if (model && "tractor" === model.type) return cap;
-    // Van / starrer LKW tragen selbst Last -> ein gekoppelter Anhaenger erhoeht die Nutzlast.
     const trailer = (State.trailers || []).find((t) => t.id === truck.trailerId);
-    if (trailer) {
-      const td = DATA.trailers.find((x) => x.id === trailer.typeId);
-      if (td && td.capacity) cap += td.capacity;
-    }
+    const td = trailer && DATA.trailers.find((x) => x.id === trailer.typeId);
+    // Sattelzugmaschine traegt selbst keine Last -> die Nutzlast bestimmt allein der Auflieger.
+    if (model && "tractor" === model.type) return td ? td.capacity || 0 : 0;
+    // Van / starrer LKW tragen selbst Last -> ein gekoppelter Anhaenger erhoeht die Nutzlast.
+    let cap = truck.capacity || 0;
+    if (td && td.capacity) cap += td.capacity;
     return cap;
   },
   checkSuitability(truck, job) {
@@ -23027,7 +23025,10 @@ const FleetManager = {
         reasons.push(`Angehängter ${trailer.typeId}-Anhänger passt nicht (benötigt: ${cargoType.requiresTrailer.join(" / ")})`);
     }
     const effCap = this.effectiveCapacity(truck);
-    if (job.weight && effCap < job.weight) reasons.push(`Kapazität ${effCap}t < Fracht ${job.weight}t`);
+    const bareTractor = "tractor" === truckType && !trailer;
+    if (bareTractor && !(cargoType.requiresTrailer && cargoType.requiresTrailer.length > 0))
+      reasons.push("Sattelzugmaschine ohne Auflieger — erst einen Auflieger ankoppeln");
+    if (job.weight && !bareTractor && effCap < job.weight) reasons.push(`Kapazität ${effCap}t < Fracht ${job.weight}t`);
     if (cargoType.requiresAssist && cargoType.requiresAssist.length > 0)
       for (const a of cargoType.requiresAssist)
         if (!this.hasAssistance(truck, a) && !this.hasEquipment(truck, a))
@@ -30126,7 +30127,7 @@ const UI = {
         const equipCount = (t.equipment || []).length;
         const accidentRed = Math.round(100 * FleetManager.totalAccidentReduction(t));
         const ptype = FleetManager.modelType(t);
-        return `<div class="card truck-card" style="margin-bottom:0;"\n        onmouseenter="HoverTooltip.show(UI._truckTooltipHTML((State.trucks||[]).find(x=>x.id==='${t.id}')),event)"\n        onmouseleave="HoverTooltip.hide()">\n        <div style="display:flex; gap:12px; margin-bottom:10px; align-items:center;">\n          <div style="flex-shrink:0;">${Visuals.truck(t.modelId, 180, 90)}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="display:flex; justify-content:space-between; align-items:start;">\n              <div>\n                <div style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; color:var(--accent);">${t.plate}</div>\n                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${t.model}</div>\n                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">\n                  ${UI._truckBadge(ptype)}\n                  <span style="font-size:10px; color:var(--muted);">${(() => { const ec = FleetManager.effectiveCapacity(t); return ec > (t.capacity || 0) ? ec + "t Nutzlast (inkl. Anhänger)" : t.capacity + "t Nutzlast"; })()}</span>\n                </div>\n              </div>\n              <span class="badge-status b-${t.status}">${t.status.toUpperCase()}</span>\n            </div>\n            ${(() => {
+        return `<div class="card truck-card" style="margin-bottom:0;"\n        onmouseenter="HoverTooltip.show(UI._truckTooltipHTML((State.trucks||[]).find(x=>x.id==='${t.id}')),event)"\n        onmouseleave="HoverTooltip.hide()">\n        <div style="display:flex; gap:12px; margin-bottom:10px; align-items:center;">\n          <div style="flex-shrink:0;">${Visuals.truck(t.modelId, 180, 90)}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="display:flex; justify-content:space-between; align-items:start;">\n              <div>\n                <div style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; color:var(--accent);">${t.plate}</div>\n                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${t.model}</div>\n                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">\n                  ${UI._truckBadge(ptype)}\n                  <span style="font-size:10px; color:var(--muted);">${(() => { const ec = FleetManager.effectiveCapacity(t); if ("tractor" === ptype) return ec > 0 ? ec + "t Nutzlast (Auflieger)" : "Auflieger nötig"; return ec > (t.capacity || 0) ? ec + "t Nutzlast (inkl. Anhänger)" : (t.capacity || 0) + "t Nutzlast"; })()}</span>\n                </div>\n              </div>\n              <span class="badge-status b-${t.status}">${t.status.toUpperCase()}</span>\n            </div>\n            ${(() => {
           const desc = UI._truckDesc(t.type, t.modelId);
           return `<div style="margin-top:6px; background:var(--bg2); border-radius:5px; padding:6px 8px; font-size:10px; line-height:1.7; border-left:3px solid ${"tractor" === ptype ? "#e07070" : "rigid" === ptype ? "#9ecf6b" : "#7ec8e3"};">\n                <div style="color:var(--fg); margin-bottom:2px;">${desc.detail}</div>\n                <div style="color:var(--accent2); font-weight:700;">🔗 ${desc.trailerHint}</div>\n              </div>`;
         })()}\n            <div style="margin-top:6px; font-size:10px; line-height:1.7;">\n              <div><span style="color:var(--muted)">km:</span> ${t.km.toLocaleString("de-DE")}\n                ${(() => {
