@@ -22675,16 +22675,21 @@ const CargoInsurance = {
       onlyTotalLoss: true,
     },
   },
-  premium(jobPrice, productId) {
+  premium(job, productId) {
     const p = this.PRODUCTS[productId];
     if (!p) return 0;
-    return Math.max(50, Math.round(jobPrice * p.premiumPct));
+    const price = (job && job.price) || 0;
+    let prem = price * p.premiumPct;
+    if (job && job.hazard) prem *= 1.6; // Gefahrgut-Aufschlag
+    const km = (job && job.km) || 0;
+    prem *= 1 + Math.min(0.5, km / 2000); // Streckenexposition, bis +50 %
+    return Math.max(15, Math.round(prem));
   },
   insure(jobId, productId) {
     const job = [...(State.jobs || []), ...(State.activeJobs || [])].find((j) => j.id === jobId);
     const p = this.PRODUCTS[productId];
     if (!job || !p) return { ok: false, reason: "Auftrag oder Produkt nicht gefunden" };
-    const prem = this.premium(job.price, productId);
+    const prem = this.premium(job, productId);
     if (State.cash < prem) return { ok: false, reason: `Prämie: ${Utils.euro(prem)}` };
     State.cash -= prem;
     if (State.subCosts) State.subCosts.insurance += prem;
@@ -30085,7 +30090,7 @@ const UI = {
     const insProducts = void 0 !== CargoInsurance ? Object.values(CargoInsurance.PRODUCTS) : [];
     const insHTML =
       insProducts.length > 0
-        ? `\n      <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">\n        <div style="font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:700;">🛡 FRACHTENVERSICHERUNG (optional)</div>\n        <select id="cargo-ins-select" style="width:100%; padding:7px; background:var(--bg2); color:var(--fg); border:1px solid var(--border); border-radius:6px; font-size:11px;">\n          <option value="">Keine Versicherung</option>\n          ${insProducts.map((p) => `<option value="${p.id}">${p.icon} ${p.name} — ${Utils.euro(CargoInsurance.premium(job.price, p.id))} Prämie · ${p.desc.substring(0, 60)}…</option>`).join("")}\n        </select>\n        <div style="font-size:10px; color:var(--muted2); margin-top:4px;">Prämie wird sofort fällig. Schützt den Frachtwert bei Unfall, Diebstahl und (Vollkasko) Verspätung.</div>\n      </div>`
+        ? `\n      <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">\n        <div style="font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:700;">🛡 FRACHTVERSICHERUNG (optional)</div>\n        <select id="cargo-ins-select" style="width:100%; padding:7px; background:var(--bg2); color:var(--fg); border:1px solid var(--border); border-radius:6px; font-size:11px;">\n          <option value="">Keine Versicherung</option>\n          ${insProducts.map((p) => `<option value="${p.id}">${p.icon} ${p.name} — ${Utils.euro(CargoInsurance.premium(job, p.id))} Prämie</option>`).join("")}\n        </select>\n        <div style="font-size:10px; color:var(--muted2); margin-top:6px; line-height:1.6;">\n          ${insProducts.map((p) => `<div style="margin-bottom:3px;"><b style="color:var(--fg);">${p.icon} ${p.name}</b> — ${Utils.euro(CargoInsurance.premium(job, p.id))}: ${p.desc}</div>`).join("")}\n        </div>\n        <div style="font-size:10px; color:var(--muted2); margin-top:4px;">Prämie wird sofort fällig.</div>\n      </div>`
         : "";
     this.showModal({
       title: "🛣 ROUTE WÄHLEN",
