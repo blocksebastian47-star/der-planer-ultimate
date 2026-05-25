@@ -17512,33 +17512,48 @@ const MorningRoutine = {
   _queueMorningRoutine() {
     if (State.morningActionDay === State.day) return;
     if ((State.pendingDecisions || []).some((d) => d.isMorningRoutine)) return;
-    const acts = (void 0 !== UI && UI.MORNING_ACTIONS) || [];
+    const onTour = "undefined" != typeof SelfDrive && SelfDrive.active();
+    const acts = onTour
+      ? (void 0 !== UI && UI.TOUR_MORNING_ACTIONS) || []
+      : (void 0 !== UI && UI.MORNING_ACTIONS) || [];
     if (!acts.length) return;
     const base = this.baselineArrival();
     EventManager.queueDecision({
       isMorningRoutine: true,
-      title: "🌅 Guten Morgen",
-      subtitle: "Wie startest du in den Tag — bevor es ins Büro geht?",
-      content: `<div style="font-size:12px;color:var(--muted2);padding:6px 0;line-height:1.6;">Ein guter Start in den Tag hilft gegen Stress. Aufgestanden um <b>${this.fmtHour(this.wakeup())}</b>, dann <b>45 Min.</b> Fahrt ins Büro.</div>`,
+      title: onTour ? "🛏️ Im LKW aufgewacht" : "🌅 Guten Morgen",
+      subtitle: onTour
+        ? "Heute geht's wieder auf die Straße — wie startest du?"
+        : "Wie startest du in den Tag — bevor es ins Büro geht?",
+      content: onTour
+        ? `<div style="font-size:12px;color:var(--muted2);padding:6px 0;line-height:1.6;">Du bist in der Schlafkabine aufgewacht. Eine kleine Routine an der Raststätte — oder direkt weiter?</div>`
+        : `<div style="font-size:12px;color:var(--muted2);padding:6px 0;line-height:1.6;">Ein guter Start in den Tag hilft gegen Stress. Aufgestanden um <b>${this.fmtHour(this.wakeup())}</b>, dann <b>45 Min.</b> Fahrt ins Büro.</div>`,
       choices: acts
         .map((a, i) => ({
-          text: `${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.family ? ", Familie +" + a.family : ""} · 🏢 ${this.fmtHour(base + (a.mins || 0) / 60)}`,
+          text: onTour
+            ? `${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.cost ? ", −" + a.cost + " € (privat)" : ""}`
+            : `${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.family ? ", Familie +" + a.family : ""} · 🏢 ${this.fmtHour(base + (a.mins || 0) / 60)}`,
           action: () => {
             if (void 0 !== UI) UI._doMorningAction(i);
           },
         }))
-        .concat([
-          {
-            text: `➡️ Direkt los — ohne Morgenroutine · 🏢 ${this.fmtHour(base)}`,
-            action: () => {
-              State.morningActionDay = State.day;
-              if ("undefined" != typeof UI) UI.showView("zentrale");
-            },
-          },
-        ]),
+        .concat(
+          onTour
+            ? []
+            : [
+                {
+                  text: `➡️ Direkt los — ohne Morgenroutine · 🏢 ${this.fmtHour(base)}`,
+                  action: () => {
+                    State.morningActionDay = State.day;
+                    if ("undefined" != typeof UI) UI.showView("zentrale");
+                  },
+                },
+              ],
+        ),
     });
   },
   _triggerScenario() {
+    // Auf Tour keine Heim-Szenarien -- SelfDrive hat eigene Tour-Moments (_rollMoment).
+    if ("undefined" != typeof SelfDrive && SelfDrive.active()) return;
     const fam = State.family;
     const partner = fam.partner;
     const children = fam.children || [];
@@ -31734,6 +31749,15 @@ const UI = {
     { icon: "🏃", label: "Morgens joggen", stress: -10, cost: 0, family: 0, mins: 45 },
     { icon: "⚡", label: "Sofort durchstarten", stress: 3, cost: 0, family: 0, mins: 0 },
   ],
+  // Selbstfahr-Tour: Heim-Aktionen ergeben aus der Schlafkabine keinen Sinn —
+  // eigene Cabin/Raststaetten-Optionen. Kosten gehen aus dem Privatvermoegen
+  // (sonst wollen die Fahrer das auch von der Firma).
+  TOUR_MORNING_ACTIONS: [
+    { icon: "☕", label: "Termoskaffee aus dem Becher", stress: -3, cost: 0, family: 0, mins: 5 },
+    { icon: "🥪", label: "Raststätten-Frühstück", stress: -5, cost: 15, family: 0, mins: 20 },
+    { icon: "🚿", label: "Duschen an der Raststätte", stress: -7, cost: 4, family: 0, mins: 30 },
+    { icon: "⚡", label: "Sofort weiterfahren", stress: 3, cost: 0, family: 0, mins: 0 },
+  ],
   EVENING_ACTIONS: [
     { icon: "📺", label: "Serie schauen", stress: -7, cost: 0, family: 0 },
     { icon: "🏃", label: "Abendlauf / Sport", stress: -12, cost: 0, family: 0 },
@@ -31842,19 +31866,32 @@ const UI = {
     State.familyHappiness = Math.min(100, Math.max(0, (State.familyHappiness || 80) + 0.5 * amount));
   },
   _doMorningAction(idx) {
-    const a = this.MORNING_ACTIONS[idx];
+    const onTour = "undefined" != typeof SelfDrive && SelfDrive.active();
+    const a = onTour ? this.TOUR_MORNING_ACTIONS[idx] : this.MORNING_ACTIONS[idx];
     if (!a) return;
     if (State.morningActionDay === State.day) {
       this.toast("Die Morgenroutine ist heute schon erledigt", "warn");
       return;
     }
+    if (a.cost && (State.privateWealth || 0) < a.cost) {
+      this.toast(`Nicht genug Privatvermögen (${Utils.euro(a.cost)})`, "warn");
+      return;
+    }
+    if (a.cost) State.privateWealth -= a.cost;
     State.stress = Math.max(0, Math.min(100, (State.stress || 30) + a.stress));
-    this._applyFamilyEffect(a.family);
-    if (a.mins && "undefined" != typeof GameClock) GameClock.delayArrival(a.mins);
+    if (!onTour) this._applyFamilyEffect(a.family);
+    if (a.mins && !onTour && "undefined" != typeof GameClock) GameClock.delayArrival(a.mins);
     State.morningActionDay = State.day;
     EventManager.addNews("good", `${a.icon} Morgen: ${a.label}`);
-    this.toast(`${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.family ? ", Familie +" + a.family : ""}`, "good");
-    this.showView("zentrale");
+    this.toast(
+      `${a.icon} ${a.label} — Stress ${a.stress > 0 ? "+" + a.stress : a.stress}${a.family ? ", Familie +" + a.family : ""}${a.cost ? ", −" + Utils.euro(a.cost) : ""}`,
+      "good",
+    );
+    if (onTour) {
+      if ("undefined" != typeof SelfDrive && SelfDrive.renderTourScreen) SelfDrive.renderTourScreen();
+    } else {
+      this.showView("zentrale");
+    }
     this.renderHeader();
   },
   _doEveningAction(idx) {
