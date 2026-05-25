@@ -24300,6 +24300,8 @@ const PlayerManager = {
     return true;
   },
   generateFamilyEvent() {
+    const hasPartner = !!State.family?.partner;
+    const hasKids = (State.family?.children || []).length > 0;
     const events = [
       { id: "couch", from: "Frau", text: "Schatz, wir brauchen eine neue Couch (€ 1.200).", cost: 1200, happiness: 8 },
       { id: "computer", from: "Sohn", text: "Papa, neuer Computer für Schule? (€ 800)", cost: 800, happiness: 10 },
@@ -24320,7 +24322,13 @@ const PlayerManager = {
         cost: 3200,
         happiness: 20,
       },
-    ];
+    ].filter((e) => {
+      // Single ohne Kinder bekommt keine "Frau"-/"Sohn"-Anliegen.
+      if ("Frau" === e.from && !hasPartner) return false;
+      if ("Sohn" === e.from && !hasKids) return false;
+      return true;
+    });
+    if (0 === events.length) return;
     const pending = (State.familyMessages || []).filter((m) => !m.responded).map((m) => m.eventId);
     const recent = State.lastFamilyEventId;
     const available = events.filter((e) => !pending.includes(e.id) && e.id !== recent);
@@ -31821,14 +31829,10 @@ const UI = {
         lines.push(`${partner.name}: Stimmung ${opt.partnerMood > 0 ? "+" + opt.partnerMood : opt.partnerMood}`);
       }
     }
-    let met = false;
-    if (opt.party && !partner && Math.random() < 0.55) {
-      this._partyMeetSomeone();
-      met = true;
-    }
+    // Party-Wochenende: Modal kommt asynchron, daher kein "met"-Tracking in den lines.
+    if (opt.party && !partner && Math.random() < 0.55) this._partyMeetSomeone();
     const view = "undefined" != typeof WeekendScreen ? WeekendScreen._view(opt) : { icon: opt.icon, label: opt.label };
     EventManager.addNews(opt.id === "durcharbeiten" ? "info" : "good", `${view.icon} Wochenende: ${view.label}`);
-    if (met) lines.push("❤️ Neue Bekanntschaft auf der Party!");
     return lines;
   },
   _applyFamilyEffect(amount) {
@@ -31888,6 +31892,13 @@ const UI = {
         EventManager.addNews("good", "🎉 Feiern gewesen — Stress gesenkt, neue Leute getroffen");
         if (Math.random() < 0.55) this._partyMeetSomeone();
       }
+      // Party-Heimkehr: spaeter heim als sonst. Bedtime-Slider im EveningScreen
+      // automatisch auf 24:00 (Slider-Max) -- statt dem 22:00-Default.
+      if ("undefined" != typeof EveningScreen) {
+        const slider = document.getElementById("bedtime-slider");
+        if (slider) slider.value = 24;
+        EveningScreen._updateBedtime(24);
+      }
       this.toast(`🎉 ${a.label}`, "good");
       this.renderPrivate();
       this.renderHeader();
@@ -31905,12 +31916,40 @@ const UI = {
   },
   _partyMeetSomeone() {
     const cands = [
-      { name: "Lena Hofer", job: "Architektin", age: 33 },
-      { name: "Marie Vogt", job: "Krankenpflegerin", age: 29 },
-      { name: "Sandra Bauer", job: "Lehrerin", age: 36 },
-      { name: "Nina Albrecht", job: "Grafikerin", age: 31 },
+      { name: "Lena Hofer", job: "Architektin", age: 33, icon: "👩‍💼" },
+      { name: "Marie Vogt", job: "Krankenpflegerin", age: 29, icon: "👩‍⚕️" },
+      { name: "Sandra Bauer", job: "Lehrerin", age: 36, icon: "👩‍🏫" },
+      { name: "Nina Albrecht", job: "Grafikerin", age: 31, icon: "👩‍🎨" },
     ];
-    const p = Utils.pick(cands);
+    // 2-3 zufaellige Bekanntschaften an diesem Abend -- der Spieler entscheidet, ob/wen.
+    const n = Utils.randInt(2, 3);
+    const opts = cands.slice().sort(() => Math.random() - 0.5).slice(0, n);
+    this._partyMeetOptions = opts;
+    this.showModal({
+      title: "💑 Auf der Party kennengelernt",
+      subtitle: "Wer macht den ersten Eindruck?",
+      maxWidth: "480px",
+      content:
+        `<div style="font-size:11px;color:var(--muted2);margin-bottom:12px;padding:8px;background:var(--bg);border-radius:6px;">Du kommst auf der Party ins Gespräch — gleich mehrere interessante Bekanntschaften. Willst du jemanden näher kennenlernen?</div>` +
+        `<div style="display:flex;flex-direction:column;gap:8px;">` +
+        opts
+          .map(
+            (p, i) =>
+              `<button class="btn" style="padding:12px;text-align:left;border-radius:8px;border:1px solid var(--border);background:var(--bg2);" onclick="UI._choosePartyMeet(${i})">` +
+              `<div style="display:flex;gap:12px;align-items:center;"><span style="font-size:28px;">${p.icon}</span>` +
+              `<div style="flex:1;"><div style="font-weight:700;font-size:12px;">${p.name} · ${p.age} Jahre</div>` +
+              `<div style="font-size:10px;color:var(--muted2);margin-top:2px;">${p.job}</div></div></div></button>`,
+          )
+          .join("") +
+        `</div>`,
+      actions: [{ label: "Nein, lieber alleine heim", onclick: () => this.closeModal() }],
+    });
+  },
+  _choosePartyMeet(idx) {
+    const opts = this._partyMeetOptions;
+    if (!opts || !opts[idx]) return;
+    const p = opts[idx];
+    this.closeModal();
     if (!State.family) State.family = {};
     State.family.status = "zusammen";
     State.family.partner = { name: p.name, job: p.job, age: p.age, mood: 72, _sinceDay: State.day };
@@ -31918,6 +31957,8 @@ const UI = {
     State.familyHappiness = Math.min(100, (State.familyHappiness || 50) + 12);
     State.stress = Math.max(0, (State.stress || 30) - 4);
     EventManager.addNews("good", `❤️ Auf der Party ${p.name} (${p.job}) kennengelernt — ihr seid jetzt zusammen`);
+    this.renderPrivate();
+    this.renderHeader();
   },
   renderEvents() {
     const el = document.getElementById("events-list");
