@@ -10245,7 +10245,7 @@ const StaffInteraction = {
     const overdue = (State.invoices || []).filter((i) => "überfällig" === i.status && i.amount > 3e3);
     if (0 === overdue.length) return;
     const inv = Utils.pick(overdue);
-    const accountant = this._findStaff(["accountant", "controller"]);
+    const accountant = this._findStaff(["accountant", "controller", "tax_advisor", "head_accounting"]);
     if (!accountant) return;
     const tone = this._tone(accountant);
     const daysPast = State.day - inv.dueDay;
@@ -10475,7 +10475,7 @@ const StaffInteraction = {
     });
   },
   _t1_mechanicAlert() {
-    const mechanic = this._findStaff(["mechanic", "workshop_chief"]);
+    const mechanic = this._findStaff(["mechanic", "kfz_meister", "workshop_chief", "head_workshop"]);
     if (!mechanic) return;
     const badTruck = (State.trucks || []).find((t) => t.condition < 60 && "idle" === t.status);
     if (!badTruck) return;
@@ -10530,7 +10530,7 @@ const StaffInteraction = {
     });
   },
   _t1_salesOpportunity() {
-    const seller = this._findStaff(["sales_manager", "key_account"]);
+    const seller = this._findStaff(["sales_manager", "key_account", "head_sales"]);
     if (!seller) return;
     const tone = this._tone(seller);
     const potentialRevenue = Utils.randInt(8e3, 35e3);
@@ -10614,7 +10614,7 @@ const StaffInteraction = {
     });
   },
   _t1_hrConflict() {
-    const hr = this._findStaff(["hr_manager", "manager"]);
+    const hr = this._findStaff(["hr_manager", "manager", "head_hr"]);
     const staff = (State.staff || []).filter((s) => "aktiv" === s.status && s.motivation < 50);
     if (!hr || 0 === staff.length) return;
     const employee = Utils.pick(staff);
@@ -10677,7 +10677,7 @@ const StaffInteraction = {
     });
   },
   _t1_legalIssue() {
-    const lawyer = this._findStaff(["lawyer", "compliance"]);
+    const lawyer = this._findStaff(["lawyer", "compliance", "head_legal"]);
     if (!lawyer) return;
     const tone = this._tone(lawyer);
     const fine = Utils.randInt(500, 4e3);
@@ -10723,7 +10723,7 @@ const StaffInteraction = {
     });
   },
   _t1_itAlert() {
-    const it = this._findStaff(["it_admin", "data_analyst"]);
+    const it = this._findStaff(["it_admin", "data_analyst", "head_it"]);
     if (!it) return;
     const tone = this._tone(it);
     const upgradeCost = Utils.randInt(1200, 4e3);
@@ -10930,7 +10930,7 @@ const StaffInteraction = {
   },
   _collectWeeklyItems() {
     const items = [];
-    const accountant = this._findStaff(["accountant", "controller"]);
+    const accountant = this._findStaff(["accountant", "controller", "tax_advisor", "head_accounting"]);
     if (accountant) {
       const inv = State.invoices || [];
       const overdue = inv.filter((i) => "überfällig" === i.status);
@@ -10945,7 +10945,7 @@ const StaffInteraction = {
             overdue.length > 0 ? "Empfehle Mahnverfahren für überfällige Forderungen." : "Cashflow diese Woche stabil.",
         });
     }
-    const hr = this._findStaff(["hr_manager", "manager"]);
+    const hr = this._findStaff(["hr_manager", "manager", "head_hr"]);
     if (hr) {
       const lowMorale = (State.staff || []).filter((s) => "aktiv" === s.status && s.motivation < 45);
       const recent = (State.staff || []).filter((s) => s.hireDay > State.day - 14);
@@ -10963,7 +10963,7 @@ const StaffInteraction = {
               : "",
         });
     }
-    const sales = this._findStaff(["sales_manager", "key_account"]);
+    const sales = this._findStaff(["sales_manager", "key_account", "head_sales"]);
     if (sales) {
       const contracts = State.contracts || [];
       const expiring = contracts.filter((c) => c.endDay - State.day < 30);
@@ -10981,7 +10981,7 @@ const StaffInteraction = {
             : "Empfehle neue Akquise bei Bestandskunden.",
       });
     }
-    const dispo = this._findStaff(["dispo", "fleet_manager"]);
+    const dispo = this._findStaff(["dispo", "fleet_manager", "head_fleet"]);
     if (dispo) {
       const trucks = State.trucks || [];
       const lowCond = trucks.filter((t) => t.condition < 55);
@@ -10999,7 +10999,7 @@ const StaffInteraction = {
                 : "",
         });
     }
-    const mechanic = this._findStaff(["mechanic", "workshop_chief"]);
+    const mechanic = this._findStaff(["mechanic", "kfz_meister", "workshop_chief", "head_workshop"]);
     if (mechanic) {
       const repaired = (State.trucks || []).filter((t) => "broken" !== t.status);
       const upcoming = (State.trucks || []).filter((t) => t.condition < 65);
