@@ -18805,7 +18805,7 @@ const CrisisSystem = {
     } else if ("cyberattack" === ct.id) {
       const grossDamage = 1e3 * Utils.randInt(5, 25);
       const cyberInsured = (State.insurances || []).some((i) => "cyber" === i.id);
-      const damage = cyberInsured ? Math.round(0.2 * grossDamage) : grossDamage;
+      const damage = cyberInsured ? Math.round(0.1 * grossDamage) : grossDamage;
       FinanceManager.recordCost("admin", damage, false);
       State.activeCrises.push({
         id: Utils.uid("CR"),
@@ -25406,9 +25406,13 @@ const SelfDrive = {
   canStart(job) {
     return !this.active() && !!job && !!this.availableTruck(job);
   },
-  promptStart(jobId) {
+  promptStart(jobId, opts) {
+    opts = opts || {};
     const job = (State.jobs || []).find((j) => j.id === jobId);
-    if (!job) return;
+    if (!job) {
+      if (opts.onCancel) opts.onCancel();
+      return;
+    }
     const truck = this.availableTruck(job);
     const days =
       truck && void 0 !== JobManager && JobManager.totalDays
@@ -25438,7 +25442,13 @@ const SelfDrive = {
             SelfDrive.start(jobId);
           },
         },
-        { label: "Abbrechen", onclick: () => UI.closeModal() },
+        {
+          label: "Abbrechen",
+          onclick: () => {
+            UI.closeModal();
+            if (opts.onCancel) opts.onCancel();
+          },
+        },
       ],
     });
   },
@@ -25654,7 +25664,7 @@ const SelfDrive = {
     ];
     // "Anruf aus dem Buero" nur, wenn es aktives Werkstatt-Personal gibt, das anrufen kann.
     const workshopStaff = (State.staff || []).filter(
-      (s) => ["mechanic", "kfz_meister", "workshop_chief"].includes(s.roleId) && "aktiv" === s.status,
+      (s) => ["mechanic", "kfz_meister", "workshop_chief", "head_workshop"].includes(s.roleId) && "aktiv" === s.status,
     );
     if (workshopStaff.length > 0) {
       const caller = Utils.pick(workshopStaff);
@@ -30243,10 +30253,19 @@ const UI = {
       this.toast("Kein fahrerloser LKW frei zum Selbstfahren.", "warn");
       return;
     }
+    // Auftrag temporaer aus der Warteschlange nach State.jobs verschieben, damit promptStart ihn findet.
+    // Bei "Abbrechen" stellt der onCancel-Callback den Warteschlangen-Eintrag wieder her.
     State.scheduledJobs = (State.scheduledJobs || []).filter((x) => x.id !== sqId);
     State.jobs = State.jobs || [];
-    if (!State.jobs.some((j) => j.id === sq.job.id)) State.jobs.push(sq.job);
-    SelfDrive.promptStart(sq.job.id);
+    const jobAlreadyInJobs = State.jobs.some((j) => j.id === sq.job.id);
+    if (!jobAlreadyInJobs) State.jobs.push(sq.job);
+    const restore = () => {
+      if (!jobAlreadyInJobs) State.jobs = (State.jobs || []).filter((j) => j.id !== sq.job.id);
+      State.scheduledJobs = State.scheduledJobs || [];
+      if (!State.scheduledJobs.some((s) => s.id === sq.id)) State.scheduledJobs.push(sq);
+      this.renderAll();
+    };
+    SelfDrive.promptStart(sq.job.id, { onCancel: restore });
   },
   openRouteSelector(jobId) {
     const job = (State.jobs || []).find((j) => j.id === jobId);
@@ -31354,7 +31373,7 @@ const UI = {
       )
       .join("");
     const insLedger = (State.bankLedger || [])
-      .filter((e) => "insurance" === e.category)
+      .filter((e) => "insurance" === e.cat)
       .slice(-10)
       .reverse();
     el.innerHTML = `\n      \x3c!-- KPI --\x3e\n      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">MONATLICHE PRÄMIEN GESAMT</div>\n          <div style="font-size:22px;font-weight:900;color:var(--danger);">−${U.euro(total)}</div>\n        </div>\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">VERSICHERTE FAHRZEUGE</div>\n          <div style="font-size:22px;font-weight:900;color:var(--accent2);">${State.trucks.length}</div>\n        </div>\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">BETRIEBSVERSICHERUNGEN</div>\n          <div style="font-size:22px;font-weight:900;color:var(--info);">${allIns.length}</div>\n        </div>\n      </div>\n\n      \x3c!-- Fahrzeug-Versicherungen --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🚛 FAHRZEUGVERSICHERUNGEN</div>\n        <div style="overflow-x:auto;">\n          <table class="data-table" style="width:100%;font-size:11px;">\n            <thead><tr><th>Fahrzeug</th><th>Tarif</th><th>Prämie</th><th>Selbstbehalt</th><th>Deckung</th><th>Aktion</th></tr></thead>\n            <tbody>${truckRows || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Keine Fahrzeuge</td></tr>'}</tbody>\n            <tfoot><tr>\n              <td colspan="2" style="padding:6px;font-weight:700;">Gesamt Fahrzeuge</td>\n              <td class="num" style="font-weight:700;color:var(--danger);">−${U.euro(total)}/Mon.</td>\n              <td colspan="3"></td>\n            </tr></tfoot>\n          </table>\n        </div>\n        <div style="margin-top:10px;font-size:10px;color:var(--muted2);">\n          💡 Haftpflicht = gesetzlich Pflicht · Teilkasko = Diebstahl + Naturschäden · Vollkasko = + Unfall + Verspätungsdeckung\n        </div>\n      </div>\n\n      \x3c!-- Betriebliche Versicherungen --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🏢 BETRIEBSVERSICHERUNGEN</div>\n        ${allIns.length ? `\n          <div style="overflow-x:auto;">\n            <table class="data-table" style="width:100%;font-size:11px;">\n              <thead><tr><th>Versicherung</th><th>Beschreibung</th><th>Prämie</th><th>Deckungssumme</th><th>Aktion</th></tr></thead>\n              <tbody>${bizRows}</tbody>\n            </table>\n          </div>` : '<div style="color:var(--muted);font-style:italic;font-size:11px;">Keine betrieblichen Versicherungen abgeschlossen. Empfehlung: Betriebshaftpflicht (Pflicht ab 3 Mitarbeitern).</div>'}\n        <button class="btn small primary" style="margin-top:10px;" onclick="UI._showInsuranceShop()">+ Neue Versicherung abschließen</button>\n      </div>\n\n      \x3c!-- Buchungshistorie --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">📋 LETZTE BUCHUNGEN (Versicherung)</div>\n        ${insLedger.length ? `\n          <table class="data-table" style="width:100%;font-size:11px;">\n            <thead><tr><th>Tag</th><th>Beschreibung</th><th>Betrag</th></tr></thead>\n            <tbody>\n              ${insLedger.map((e) => `<tr>\n                <td>Tag ${e.day || "?"}</td>\n                <td style="color:var(--muted2);">${e.description || "Versicherungsprämie"}</td>\n                <td class="num" style="color:var(--danger);">−${U.euro(Math.abs(e.amount))}</td>\n              </tr>`).join("")}\n            </tbody>\n          </table>` : '<div style="color:var(--muted);font-style:italic;font-size:11px;">Noch keine Versicherungsbuchungen im Kontoauszug.</div>'}\n      </div>`;
@@ -31387,7 +31406,7 @@ const UI = {
         name: "Cyber-Versicherung",
         monthlyPremium: 280,
         coverage: 1e6,
-        desc: "IT-Angriffe, Datenverlust, Systemausfall (−80% Cyberangriffsschaden)",
+        desc: "IT-Angriffe, Datenverlust, Systemausfall (−90% Cyberangriffsschaden)",
       },
       {
         id: "rechtsschutz",
