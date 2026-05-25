@@ -1268,18 +1268,6 @@ footer {
   <div id="betrieb-content" style="padding:0 4px;"></div>
 </div>
 
-<!-- STAFF -->
-<div class="view" id="view-staff">
-  <div class="view-header">
-    <div>
-      <div class="view-title">PERSONAL</div>
-      <div class="view-subtitle">Mitarbeiter, Motivation, Stress und Fahrstil</div>
-    </div>
-    <button class="btn primary" onclick="UI.openHireModal()">+ Einstellen</button>
-  </div>
-  <div id="staff-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:12px;"></div>
-</div>
-
 <!-- CUSTOMERS -->
 <div class="view" id="view-maintenance">
   <div class="view-header"><div class="view-title">🔩 WARTUNGSPLAN</div><div class="view-subtitle">HU/AU-Fristen, Reifenwechsel, Ölwechsel — alle Fahrzeuge im Überblick</div></div>
@@ -1356,7 +1344,10 @@ footer {
 </div>
 
 <div class="view" id="view-personal">
-  <div class="view-header"><div class="view-title">👷 PERSONAL</div></div>
+  <div class="view-header">
+    <div><div class="view-title">👷 PERSONAL</div></div>
+    <button class="btn primary" onclick="UI.openHireModal()">+ Einstellen</button>
+  </div>
   <div id="personal-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:0 4px;"></div>
   <div id="personal-content" style="padding:0 4px;"></div>
 </div>
@@ -12471,7 +12462,7 @@ const Tutorial = {
       day: 2,
       title: "📊 Buchhalter einstellen",
       desc: "Ohne Buchhalter zahlen Sie 40% mehr Steuern und Rechnungen kommen nie pünktlich an. Klicken Sie 'Jetzt' für 3 Bewerber.",
-      target: "staff",
+      target: "personal",
       onClick: "UI.openCandidatePool('accountant')",
       done: () => State.staff.some((s) => "accountant" === s.roleId && "aktiv" === s.status),
       reward: { cash: 500, text: "+500€ Beratungsbonus" },
@@ -12593,7 +12584,7 @@ const Tutorial = {
     if (idleTruck && jobsAvail)
       out.push(["🚚", "LKW steht bereit", "Ein freier LKW bringt nur Umsatz, wenn er rollt — nimm einen Auftrag an.", "UI.showView('markt');UI._switchTab('markt','auftraege')"]);
     if (tired)
-      out.push(["😴", "Fahrer erschöpft", "Ein Fahrer ist stark gestresst — ein Ruhetag senkt das Unfallrisiko.", "UI.showView('staff')"]);
+      out.push(["😴", "Fahrer erschöpft", "Ein Fahrer ist stark gestresst — ein Ruhetag senkt das Unfallrisiko.", "UI.showView('personal')"]);
     if (allBusy && jobsAvail)
       out.push(["📋", "Nächste Tour vorplanen", "Alle LKW unterwegs? Auftrag trotzdem annehmen — er wird automatisch eingereiht.", "UI.showView('markt');UI._switchTab('markt','auftraege')"]);
     if (0 === (State.activeMarketing || []).length)
