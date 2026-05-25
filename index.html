@@ -4161,13 +4161,13 @@ const DATA = {
     },
   ],
   assistance: [
-    { id: "reverse_cam", name: "Rückfahrkamera", price: 800, desc: "Reduziert Rückwärtsfahrt-Unfälle um 40%" },
-    { id: "blind_spot", name: "Totwinkel-Assistent", price: 1200, desc: "Warnt vor Fahrzeugen im toten Winkel" },
+    { id: "reverse_cam", name: "Rückfahrkamera", price: 800, desc: "Sicheres Rangieren — Glasschäden -50%" },
+    { id: "blind_spot", name: "Totwinkel-Assistent", price: 1200, desc: "Warnt vor Fahrzeugen im toten Winkel — Unfall-Häufigkeit -50%" },
     {
       id: "lane_assist",
       name: "Spurhalte-Assistent",
       price: 1500,
-      desc: "Hält Spur automatisch — weniger Fahrermüdigkeit",
+      desc: "Hält Spur automatisch — Gesamt-Unfallrisiko -15%",
     },
     { id: "adr", name: "ADR-Zertifizierung", price: 600, desc: "Erlaubt Gefahrgut-Transport (muss beim Fahrer sein)" },
     { id: "crane", name: "Ladekran", price: 4500, desc: "Kran am Fahrzeug — ermöglicht selbstständige Be-/Entladung" },
@@ -23054,7 +23054,7 @@ const RouteManager = {
       jamRisk: 0.08,
     };
     const fuel = LocationManager.fuelPrice();
-    const consumption = (truck?.mpg || 25) * (truck && FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1);
+    const consumption = (truck?.mpg || 25) * (truck && FleetManager.hasEquipment(truck, "nav") ? 0.97 : 1);
     const DRIVE_HOURS_PER_DAY = 9;
     [fastest, cheapest, tollFree].forEach((r) => {
       r.hours = (r.km / r.speed) * (1 / condFactor);
@@ -23539,7 +23539,7 @@ const JobManager = {
       const courseFuelMul = 1 - Math.min(0.3, driver._courseFuelSaving || 0);
       const skillFuelMul = 1 - (void 0 !== DriverSkills ? DriverSkills.getFuelReduction(driver) : 0);
       if (void 0 !== FuelHedging) {
-        const fuelEff = FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1;
+        const fuelEff = FleetManager.hasEquipment(truck, "nav") ? 0.97 : 1;
         const driverFuelMul = void 0 !== DriverTraits ? DriverTraits.getFuelMul(driver) : 1;
         const liters = (dailyKm / 100) * truck.mpg * fuelEff * driverFuelMul * courseFuelMul * skillFuelMul;
         dailyFuel = FuelHedging.consumeFuel(liters).cost;
@@ -23548,7 +23548,7 @@ const JobManager = {
           (dailyKm / 100) *
           truck.mpg *
           LocationManager.fuelPrice() *
-          (FleetManager.hasEquipment(truck, "eco") ? 0.88 : 1) *
+          (FleetManager.hasEquipment(truck, "nav") ? 0.97 : 1) *
           courseFuelMul *
           skillFuelMul;
       dailyFuel *= State.co2TaxMul || 1;
@@ -23614,6 +23614,12 @@ const JobManager = {
           LocationSystem.recordBranchJob(j.from, finalPrice);
         driver.experience = Utils.clamp(driver.experience + 0.5, 0, 100);
         driver.motivation = Utils.clamp(driver.motivation + (onTime ? 3 : -8), 0, 100);
+        // Zubehoer-Effekte: Komfort-Paket gibt einen Motivations-Bonus pro Tour,
+        // Bordkuehlschrank zusaetzlich bei langen Touren (Fernverkehr).
+        if (FleetManager.hasEquipment(truck, "comfort"))
+          driver.motivation = Utils.clamp(driver.motivation + 1, 0, 100);
+        if (FleetManager.hasEquipment(truck, "fridge") && (j.km || 0) > 500)
+          driver.motivation = Utils.clamp(driver.motivation + 1, 0, 100);
         if (void 0 !== DriverSkills) {
           const xpBase = Math.round(5 + (j.km || 0) / 100);
           const xpBonus = onTime ? Math.round(0.3 * xpBase) : 0;
@@ -23885,17 +23891,18 @@ const EventManager = {
     const totalRisk =
       (0.02 + 0.05 * reliFactor + conditionFactor + driverFactor + styleFactor) *
       (FleetManager.hasEquipment(truck, "safety") ? 0.7 : 1) *
+      (FleetManager.hasAssistance(truck, "lane_assist") ? 0.85 : 1) *
       assistanceReduction *
       (State.badWeather && State.badWeather > State.day ? 1.5 : 1) *
       (1 - Math.min(0.6, (driver._accidentBonus || 0) + (void 0 !== DriverSkills ? DriverSkills.getAccidentReduction(driver) : 0)));
     if (Math.random() < totalRisk) {
       const reverseCam = FleetManager.hasAssistance(truck, "reverse_cam");
       const eventTypes = [
-        { type: "breakdown", weight: FleetManager.hasAssistance(truck, "tire_pressure") ? 18 : 30 },
-        { type: "accident", weight: 12 },
+        { type: "breakdown", weight: 30 },
+        { type: "accident", weight: FleetManager.hasAssistance(truck, "blind_spot") ? 6 : 12 },
         { type: "glass", weight: reverseCam ? 4 : 8 },
-        { type: "wildlife", weight: FleetManager.hasAssistance(truck, "night_vision") ? 2 : 5 },
-        { type: "theft", weight: FleetManager.hasAssistance(truck, "antitheft") ? 1 : 2 },
+        { type: "wildlife", weight: 5 },
+        { type: "theft", weight: 2 },
       ];
       const ev = Utils.weighted(eventTypes);
       this.eventVehicleIncident(truck, driver, job, ev.type);
@@ -23910,7 +23917,11 @@ const EventManager = {
       theft: { dmg: null, condDrop: 0, label: "🚓 Diebstahl" },
     }[type];
     const truckResale = "theft" === type ? Math.round(truck.purchasePrice * (truck.condition / 100) * 0.65) : 0;
-    const damage = "theft" === type ? Math.max(truckResale, 5e3) : d.dmg + Utils.randInt(-300, 800);
+    let damage = "theft" === type ? Math.max(truckResale, 5e3) : d.dmg + Utils.randInt(-300, 800);
+    // Zubehoer-Effekte: Dashkam reduziert Schadenshoehe insgesamt (Beweissicherung),
+    // Werkzeugkoffer reduziert speziell Panne-Folgekosten (Soforthilfe vor Ort).
+    if ("theft" !== type && FleetManager.hasEquipment(truck, "dashcam")) damage = Math.round(damage * 0.95);
+    if ("breakdown" === type && FleetManager.hasEquipment(truck, "toolbox")) damage = Math.round(damage * 0.75);
     const claim = InsuranceManager.handleClaim(truck, type, damage);
     truck.condition = Math.max(0, truck.condition - d.condDrop);
     if ("accident" === type) {
@@ -30590,13 +30601,13 @@ const UI = {
     if (!t) return;
     const installed = new Set(t.equipment || []);
     const effects = {
-      nav: "🗺️ Kraftstoff -3% · Route schneller",
-      safety: "🛡 Unfallrisiko -20% · Vers. günstiger",
-      comfort: "😊 Fahrer-Motivation +8/Mo. · Stress -5%",
-      paint: "📣 Reputation +0.5 pro Auftrag",
-      dashcam: "📹 Unfall-Nachweis · Versicherung -5%",
-      toolbox: "🔧 Pannenstillstand -30 Min.",
-      fridge: "🧊 Fahrer-Motivation +5/Mo. (Fernverkehr)",
+      nav: "🗺️ Kraftstoff -3%",
+      safety: "🛡 Unfallrisiko -30%",
+      comfort: "😊 Motivation +1 pro Auftrag",
+      paint: "📣 Reputation +0.5 · +50 € pro Tour",
+      dashcam: "📹 Schadenshöhe -5% bei Vorfällen",
+      toolbox: "🔧 Pannen-Folgekosten -25%",
+      fridge: "🧊 Motivation +1 pro Tour >500 km",
       adr: "☢️ Pflicht für Gefahrgut-Aufträge",
     };
     this.showModal({
