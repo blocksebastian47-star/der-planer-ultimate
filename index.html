@@ -15968,6 +15968,7 @@ const GFOffice = {
     Object.entries(this.DEFAULT_THRESHOLDS).forEach(([k, v]) => {
       if (void 0 === State.gfOffice.thresholds[k]) State.gfOffice.thresholds[k] = v.value;
     });
+    if (void 0 === State.gfOffice.cargoInsurancePolicy) State.gfOffice.cargoInsurancePolicy = "none";
   },
   threshold(key) {
     this.init();
@@ -15978,6 +15979,16 @@ const GFOffice = {
     const def = this.DEFAULT_THRESHOLDS[key];
     if (!def) return;
     State.gfOffice.thresholds[key] = Math.max(def.min, Math.min(def.max, value));
+  },
+  getCargoPolicy() {
+    this.init();
+    return State.gfOffice.cargoInsurancePolicy || "none";
+  },
+  setCargoPolicy(value) {
+    this.init();
+    const valid = value === "none" || (void 0 !== CargoInsurance && CargoInsurance.PRODUCTS[value]);
+    if (!valid) return;
+    State.gfOffice.cargoInsurancePolicy = value;
   },
   addMessage({
     from: from,
@@ -22706,9 +22717,9 @@ const CargoInsurance = {
   PRODUCTS: {
     cmr_basic: {
       id: "cmr_basic",
-      name: "CMR-Haftpflicht",
+      name: "Frachtführer-Haftpflicht (CMR)",
       icon: "📋",
-      desc: "Pflicht-Mindestdeckung nach CMR-Übereinkommen. Deckt Beschädigung/Verlust der Fracht bis 8,33 SZR/kg (~9€/kg). Verspätung nicht abgedeckt.",
+      desc: "Gesetzliche Mindestdeckung für internationale LKW-Transporte (CMR = UN-Abkommen von 1956). Deckt Beschädigung/Verlust bis ca. 9 €/kg Frachtgewicht. Verspätungsschäden nicht abgedeckt.",
       premiumPct: 0.008,
       coveragePct: 0.6,
       coversDelay: false,
@@ -24728,6 +24739,15 @@ const DispoManager = {
           if (!State.stats.dispoTodayAccepted) State.stats.dispoTodayAccepted = 0;
           State.stats.dispoAutoAccepted++;
           State.stats.dispoTodayAccepted++;
+          const policy = void 0 !== GFOffice ? GFOffice.getCargoPolicy() : "none";
+          if ("none" !== policy && void 0 !== CargoInsurance) {
+            const insResult = CargoInsurance.insure(job.id, policy);
+            if (!insResult.ok)
+              EventManager.addNews(
+                "warn",
+                `🛡 Disponent konnte ${job.fromName}→${job.toName} nicht versichern: ${insResult.reason}`,
+              );
+          }
           handled++;
         }
       }
@@ -25552,9 +25572,10 @@ const SelfDrive = {
         ? JobManager.totalDays(job, truck)
         : Math.ceil((job.km || 200) / 450);
     const insProducts = void 0 !== CargoInsurance ? Object.values(CargoInsurance.PRODUCTS) : [];
+    const defaultPolicy = void 0 !== GFOffice ? GFOffice.getCargoPolicy() : "none";
     const insHTML =
       insProducts.length > 0
-        ? `<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);"><div style="font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:700;">🛡 FRACHTVERSICHERUNG (optional)</div><select id="cargo-ins-select-selfdrive" style="width:100%; padding:7px; background:var(--bg2); color:var(--fg); border:1px solid var(--border); border-radius:6px; font-size:11px;"><option value="">Keine Versicherung</option>${insProducts.map((p) => `<option value="${p.id}">${p.icon} ${p.name} — ${Utils.euro(CargoInsurance.premium(job, p.id))} Prämie</option>`).join("")}</select><div style="font-size:10px; color:var(--muted2); margin-top:6px; line-height:1.6;">${insProducts.map((p) => `<div style="margin-bottom:3px;"><b style="color:var(--fg);">${p.icon} ${p.name}</b> — ${Utils.euro(CargoInsurance.premium(job, p.id))}: ${p.desc}</div>`).join("")}</div><div style="font-size:10px; color:var(--muted2); margin-top:4px;">Prämie wird sofort fällig.</div></div>`
+        ? `<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);"><div style="font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:700;">🛡 FRACHTVERSICHERUNG (optional)</div><select id="cargo-ins-select-selfdrive" style="width:100%; padding:7px; background:var(--bg2); color:var(--fg); border:1px solid var(--border); border-radius:6px; font-size:11px;"><option value="" ${"none" === defaultPolicy ? "selected" : ""}>Keine Versicherung</option>${insProducts.map((p) => `<option value="${p.id}" ${p.id === defaultPolicy ? "selected" : ""}>${p.icon} ${p.name} — ${Utils.euro(CargoInsurance.premium(job, p.id))} Prämie</option>`).join("")}</select><div style="font-size:10px; color:var(--muted2); margin-top:6px; line-height:1.6;">${insProducts.map((p) => `<div style="margin-bottom:3px;"><b style="color:var(--fg);">${p.icon} ${p.name}</b> — ${Utils.euro(CargoInsurance.premium(job, p.id))}: ${p.desc}</div>`).join("")}</div><div style="font-size:10px; color:var(--muted2); margin-top:4px;">Prämie wird sofort fällig.${"none" !== defaultPolicy ? ` Standard aus Arbeitsanweisung: <b>${CargoInsurance.PRODUCTS[defaultPolicy]?.name || defaultPolicy}</b>.` : ""}</div></div>`
         : "";
     const expressNote = job.isExpress
       ? `<div style="margin-top:8px;padding:6px 8px;background:rgba(248,113,113,0.10);border:1px solid rgba(248,113,113,0.35);border-radius:6px;font-size:10px;color:var(--warn);">⚡ Eilauftrag — Vertragsstrafe ${Utils.euro(job.expressPenalty || Math.round(0.5 * (job.price || 0)))} bei Verspätung. Frist: Tag ${job.deadline}.</div>`
@@ -29024,7 +29045,10 @@ const UI = {
     if (void 0 === GFOffice) return "";
     GFOffice.init();
     const thresholds = GFOffice.DEFAULT_THRESHOLDS;
-    return `\n      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">\n        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;">\n          <b>🔽 Niedrige Schwellwerte</b> = <span style="color:var(--accent2);">Mehr Kontrolle</span><br>\n          Sie werden bei mehr Entscheidungen gefragt. Mehr Einfluss, aber mehr Aufwand im Posteingang.\n        </div>\n        <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;">\n          <b>🔼 Hohe Schwellwerte</b> = <span style="color:var(--warn);">Mehr Delegation</span><br>\n          Mitarbeiter entscheiden selbstständiger. Weniger Micromanagement, aber mehr Vertrauen nötig.\n        </div>\n      </div>\n      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;">\n        ${Object.entries(
+    const currentPolicy = GFOffice.getCargoPolicy();
+    const insProducts = void 0 !== CargoInsurance ? Object.values(CargoInsurance.PRODUCTS) : [];
+    const policyCard = `\n      <div style="border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg2);margin-bottom:14px;">\n        <div style="font-size:12px;font-weight:700;margin-bottom:4px;">🛡 Frachtversicherung — Arbeitsanweisung an Disponenten</div>\n        <div style="font-size:10px;color:var(--muted2);margin-bottom:10px;line-height:1.5;">Der Disponent versichert jeden angenommenen Auftrag automatisch mit dem gewählten Produkt. Beim manuellen Annehmen ist dieses Produkt im Versicherungs-Dropdown vorausgewählt — du kannst pro Job überschreiben.</div>\n        <select id="cargo-policy-select" style="width:100%;padding:8px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="GFOffice.setCargoPolicy(this.value);UI.renderAll();">\n          <option value="none" ${"none" === currentPolicy ? "selected" : ""}>🚫 Keine Auto-Versicherung — Disponent versichert nicht (Standard)</option>\n          ${insProducts.map((p) => `<option value="${p.id}" ${p.id === currentPolicy ? "selected" : ""}>${p.icon} ${p.name} — Prämie ${(100 * p.premiumPct).toFixed(2)}% des Frachtwerts</option>`).join("")}\n        </select>\n        <div style="font-size:10px;color:var(--muted2);margin-top:8px;line-height:1.6;">${insProducts.map((p) => `<div style="margin-bottom:2px;"><b style="color:var(--fg);">${p.icon} ${p.name}</b> — ${p.desc}</div>`).join("")}</div>\n      </div>`;
+    return `\n      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">\n        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;">\n          <b>🔽 Niedrige Schwellwerte</b> = <span style="color:var(--accent2);">Mehr Kontrolle</span><br>\n          Sie werden bei mehr Entscheidungen gefragt. Mehr Einfluss, aber mehr Aufwand im Posteingang.\n        </div>\n        <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px;font-size:11px;line-height:1.7;">\n          <b>🔼 Hohe Schwellwerte</b> = <span style="color:var(--warn);">Mehr Delegation</span><br>\n          Mitarbeiter entscheiden selbstständiger. Weniger Micromanagement, aber mehr Vertrauen nötig.\n        </div>\n      </div>\n      ${policyCard}\n      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;">\n        ${Object.entries(
       thresholds,
     )
       .map(([key, def]) => {
@@ -30454,9 +30478,10 @@ const UI = {
       routes[b].totalCost < routes[a].totalCost ? b : a,
     );
     const insProducts = void 0 !== CargoInsurance ? Object.values(CargoInsurance.PRODUCTS) : [];
+    const defaultPolicy = void 0 !== GFOffice ? GFOffice.getCargoPolicy() : "none";
     const insHTML =
       insProducts.length > 0
-        ? `\n      <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">\n        <div style="font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:700;">🛡 FRACHTVERSICHERUNG (optional)</div>\n        <select id="cargo-ins-select" style="width:100%; padding:7px; background:var(--bg2); color:var(--fg); border:1px solid var(--border); border-radius:6px; font-size:11px;">\n          <option value="">Keine Versicherung</option>\n          ${insProducts.map((p) => `<option value="${p.id}">${p.icon} ${p.name} — ${Utils.euro(CargoInsurance.premium(job, p.id))} Prämie</option>`).join("")}\n        </select>\n        <div style="font-size:10px; color:var(--muted2); margin-top:6px; line-height:1.6;">\n          ${insProducts.map((p) => `<div style="margin-bottom:3px;"><b style="color:var(--fg);">${p.icon} ${p.name}</b> — ${Utils.euro(CargoInsurance.premium(job, p.id))}: ${p.desc}</div>`).join("")}\n        </div>\n        <div style="font-size:10px; color:var(--muted2); margin-top:4px;">Prämie wird sofort fällig.</div>\n      </div>`
+        ? `\n      <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">\n        <div style="font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:700;">🛡 FRACHTVERSICHERUNG (optional)</div>\n        <select id="cargo-ins-select" style="width:100%; padding:7px; background:var(--bg2); color:var(--fg); border:1px solid var(--border); border-radius:6px; font-size:11px;">\n          <option value="" ${"none" === defaultPolicy ? "selected" : ""}>Keine Versicherung</option>\n          ${insProducts.map((p) => `<option value="${p.id}" ${p.id === defaultPolicy ? "selected" : ""}>${p.icon} ${p.name} — ${Utils.euro(CargoInsurance.premium(job, p.id))} Prämie</option>`).join("")}\n        </select>\n        <div style="font-size:10px; color:var(--muted2); margin-top:6px; line-height:1.6;">\n          ${insProducts.map((p) => `<div style="margin-bottom:3px;"><b style="color:var(--fg);">${p.icon} ${p.name}</b> — ${Utils.euro(CargoInsurance.premium(job, p.id))}: ${p.desc}</div>`).join("")}\n        </div>\n        <div style="font-size:10px; color:var(--muted2); margin-top:4px;">Prämie wird sofort fällig.${"none" !== defaultPolicy ? ` Standard aus Arbeitsanweisung: <b>${CargoInsurance.PRODUCTS[defaultPolicy]?.name || defaultPolicy}</b>.` : ""}</div>\n      </div>`
         : "";
     this.showModal({
       title: "🛣 ROUTE WÄHLEN",
