@@ -23809,11 +23809,14 @@ const EventManager = {
   eventLiabilityClaim() {
     const damage = 1e3 * Utils.randInt(3, 15);
     const c = this._insuranceClaim("betriebshaftpflicht", damage);
-    const incident = Utils.pick([
+    // Mitarbeiter-Vorfall nur, wenn der Spieler ueberhaupt Personal hat (Solo-GF = aus).
+    const hasStaff = (State.staff || []).some((s) => "aktiv" === s.status);
+    const incidents = [
       "Beim Entladen hat ein Stapler die Ware eines Kunden beschädigt.",
-      "Ein Mitarbeiter hat auf dem Kundengelände ein parkendes Fahrzeug gerammt.",
       "Auslaufendes Hydrauliköl hat die Laderampe eines Kunden verschmutzt.",
-    ]);
+    ];
+    if (hasStaff) incidents.push("Ein Mitarbeiter hat auf dem Kundengelände ein parkendes Fahrzeug gerammt.");
+    const incident = Utils.pick(incidents);
     this.queueDecision({
       title: "⚖ HAFTPFLICHTSCHADEN",
       subtitle: "Schaden an Dritten",
@@ -23825,11 +23828,21 @@ const EventManager = {
   eventOfficeDamage() {
     const damage = 1e3 * Utils.randInt(2, 12);
     const c = this._insuranceClaim("inhaltsversicherung", damage);
-    const incident = Utils.pick([
+    // Werkstatt-Variante des Einbruchs nur erwaehnen, wenn der Spieler eine Werkstatt hat;
+    // sonst die generische Buero-Variante.
+    const hasWorkshop = (State.locations || []).some((l) =>
+      (l.infrastructure || []).some((b) => b.startsWith("workshop")),
+    );
+    const incidents = [
       "Ein Wasserrohrbruch hat Büroausstattung und Akten durchnässt.",
-      "Einbrecher haben Laptops und Werkzeug aus der Werkstatt gestohlen.",
       "Ein Schwelbrand in der Technik hat IT und Mobiliar beschädigt.",
-    ]);
+    ];
+    incidents.push(
+      hasWorkshop
+        ? "Einbrecher haben Laptops und Werkzeug aus der Werkstatt gestohlen."
+        : "Einbrecher haben Laptops und Akten aus dem Büro gestohlen.",
+    );
+    const incident = Utils.pick(incidents);
     this.queueDecision({
       title: "🏢 SCHADEN IM BÜRO",
       subtitle: "Betriebsausstattung betroffen",
@@ -23855,11 +23868,14 @@ const EventManager = {
   eventLawsuit() {
     const damage = 1e3 * Utils.randInt(2, 10);
     const c = this._insuranceClaim("rechtsschutz", damage);
-    const incident = Utils.pick([
+    // Subunternehmer-Streit nur, wenn schon eine Sub-Beziehung im State existiert.
+    const hasSubs = (State.subcontractors || []).length > 0;
+    const incidents = [
       "Ein Kunde verklagt Sie wegen einer angeblich verspäteten Lieferung.",
-      "Ein Streit mit einem Subunternehmer landet vor Gericht.",
       "Eine Behörde leitet ein Verfahren wegen einer Betriebsauflage ein.",
-    ]);
+    ];
+    if (hasSubs) incidents.push("Ein Streit mit einem Subunternehmer landet vor Gericht.");
+    const incident = Utils.pick(incidents);
     this.queueDecision({
       title: "⚖ RECHTSSTREIT",
       subtitle: "Anwalts- und Gerichtskosten",
