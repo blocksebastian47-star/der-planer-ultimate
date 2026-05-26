@@ -25540,6 +25540,14 @@ const SelfDrive = {
       truck && void 0 !== JobManager && JobManager.totalDays
         ? JobManager.totalDays(job, truck)
         : Math.ceil((job.km || 200) / 450);
+    const insProducts = void 0 !== CargoInsurance ? Object.values(CargoInsurance.PRODUCTS) : [];
+    const insHTML =
+      insProducts.length > 0
+        ? `<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);"><div style="font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:700;">🛡 FRACHTVERSICHERUNG (optional)</div><select id="cargo-ins-select-selfdrive" style="width:100%; padding:7px; background:var(--bg2); color:var(--fg); border:1px solid var(--border); border-radius:6px; font-size:11px;"><option value="">Keine Versicherung</option>${insProducts.map((p) => `<option value="${p.id}">${p.icon} ${p.name} — ${Utils.euro(CargoInsurance.premium(job, p.id))} Prämie</option>`).join("")}</select><div style="font-size:10px; color:var(--muted2); margin-top:6px; line-height:1.6;">${insProducts.map((p) => `<div style="margin-bottom:3px;"><b style="color:var(--fg);">${p.icon} ${p.name}</b> — ${Utils.euro(CargoInsurance.premium(job, p.id))}: ${p.desc}</div>`).join("")}</div><div style="font-size:10px; color:var(--muted2); margin-top:4px;">Prämie wird sofort fällig.</div></div>`
+        : "";
+    const expressNote = job.isExpress
+      ? `<div style="margin-top:8px;padding:6px 8px;background:rgba(248,113,113,0.10);border:1px solid rgba(248,113,113,0.35);border-radius:6px;font-size:10px;color:var(--warn);">⚡ Eilauftrag — Vertragsstrafe ${Utils.euro(job.expressPenalty || Math.round(0.5 * (job.price || 0)))} bei Verspätung. Frist: Tag ${job.deadline}.</div>`
+      : "";
     UI.showModal({
       title: "🚛 Selbst fahren?",
       subtitle: job.fromName + " → " + job.toName,
@@ -25554,12 +25562,25 @@ const SelfDrive = {
         Utils.euro(job.price) +
         "<br>Dauer: ca. <b>" +
         days +
-        " Tag(e)</b> — solange sind Sie unterwegs, das Büro ist nur eingeschränkt erreichbar. Selbstfahren kostet Stress und Familienzeit, spart aber das Fahrergehalt.</div>",
+        " Tag(e)</b> — solange sind Sie unterwegs, das Büro ist nur eingeschränkt erreichbar. Selbstfahren kostet Stress und Familienzeit, spart aber das Fahrergehalt.</div>" +
+        expressNote +
+        insHTML,
       actions: [
         {
           label: "🚛 Losfahren",
           primary: true,
           onclick: () => {
+            const insSelect = document.getElementById("cargo-ins-select-selfdrive");
+            const insProduct = insSelect?.value;
+            if (insProduct && void 0 !== CargoInsurance) {
+              const insResult = CargoInsurance.insure(jobId, insProduct);
+              if (!insResult.ok) UI.toast(`Versicherung: ${insResult.reason}`, "warn");
+              else
+                UI.toast(
+                  `${CargoInsurance.PRODUCTS[insProduct].icon} Versichert für ${Utils.euro(insResult.premium)}`,
+                  "good",
+                );
+            }
             UI.closeModal();
             SelfDrive.start(jobId);
           },
@@ -30325,7 +30346,13 @@ const UI = {
                       '<div style="font-size:9px;color:var(--warn);margin-top:1px;">⛴️ Fähre zur Leerfahrt</div>';
                 }
               }
-              return `<tr>\n            <td>${j.customerName}</td>\n            <td>${j.fromName}</td>\n            <td>${j.toName}${borderInfo ? `<div style="font-size:9px;color:var(--info);margin-top:1px;">${borderInfo}</div>` : ""}</td>\n            <td>${j.cargo}${j.hazard ? ' <span style="color:var(--danger)">⚠</span>' : ""}${j.urgency >= 3 ? ' <span style="color:var(--warn)">⚡</span>' : ""}${skillBadge}${restrIcons}</td>\n            <td style="font-size:9px; color:var(--muted2);">${reqTrailer}</td>\n            <td class="num">${j.km}</td>\n            <td class="num">${j.weight}t</td>\n            <td class="num" style="color:${tight ? "var(--warn)" : "var(--accent2)"}" title="Fahrdauer inkl. Leerfahrt">${days}T${deadheadBadge}${ferrybadge}</td>\n            <td class="num" style="color:var(--accent2)">${Utils.euro(j.price)}</td>\n            <td class="num">${perKm}</td>\n            <td style="color:${daysLeft <= 2 ? "var(--danger)" : daysLeft <= 4 ? "var(--warn)" : ""}" title="Deadline: Tag ${j.deadline} · noch ${daysLeft} Tag${1 !== daysLeft ? "e" : ""} Zeit">\n              ${daysLeft <= 2 ? "⚠ " : ""}${daysLeft}T noch</td>\n            <td>\n              ${truck ? `<div style="display:flex;flex-direction:column;gap:3px;">\n                <button class="btn small primary" onclick="UI.openRouteSelector('${j.id}')">Annehmen ${compInterest}</button>\n                ${j.negotiable && !j.negotiated ? `<button class="btn small" onclick="UI.showNegotiateModal('${j.id}')" style="font-size:9px;">💬 Verhandeln</button>` : ""}\n                ${void 0 !== SubcontractorSystem && State.reputation >= 60 && State.trucks.length >= 3 ? `<button class="btn small" onclick="UI.showSubcontractModal('${j.id}')" style="font-size:9px; color:var(--muted);">📤 Sub</button>` : ""}\n                <button class="btn small" onclick="UI.showView('map');setTimeout(()=>{if(typeof MapRender!=='undefined')MapRender.highlightJobRoute('${j.id}');},300);" style="font-size:9px;color:var(--muted);">🗺 Karte</button>${SelfDrive.canStart(j) ? `<button class="btn small" onclick="SelfDrive.promptStart('${j.id}')" style="font-size:9px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#22c55e;">🚛 Selbst fahren</button>` : ""}\n                ${compDeadline}\n              </div>` : `<button class="btn small" onclick="UI.showJobUnsuitable('${j.id}')" style="font-size:10px">Warum nicht?</button>${SelfDrive.canStart(j) ? `<button class="btn small" onclick="SelfDrive.promptStart('${j.id}')" style="display:block;margin-top:3px;font-size:9px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#22c55e;">🚛 Selbst fahren</button>` : ""}${compInterest}${compDeadline}`}\n            </td>\n          </tr>`;
+              const expressBadge = j.isExpress
+                ? `<span title="Eilauftrag — Vertragsstrafe ${Utils.euro(j.expressPenalty || Math.round(0.5 * j.price))} bei Verspätung oder Verfall" style="display:inline-block;background:#cc1a1a;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:900;margin-left:3px;">EIL</span>`
+                : "";
+              const insBadge = j.cargoInsurance
+                ? `<div style="font-size:9px;color:var(--accent2);margin-top:1px;" title="${CargoInsurance.PRODUCTS[j.cargoInsurance.productId]?.name || "versichert"} · Prämie ${Utils.euro(j.cargoInsurance.premium || 0)}">🛡 versichert</div>`
+                : "";
+              return `<tr>\n            <td>${j.customerName}</td>\n            <td>${j.fromName}</td>\n            <td>${j.toName}${borderInfo ? `<div style="font-size:9px;color:var(--info);margin-top:1px;">${borderInfo}</div>` : ""}</td>\n            <td>${j.cargo}${j.hazard ? ' <span style="color:var(--danger)">⚠</span>' : ""}${j.urgency >= 3 ? ' <span style="color:var(--warn)">⚡</span>' : ""}${expressBadge}${skillBadge}${restrIcons}</td>\n            <td style="font-size:9px; color:var(--muted2);">${reqTrailer}</td>\n            <td class="num">${j.km}</td>\n            <td class="num">${j.weight}t</td>\n            <td class="num" style="color:${tight ? "var(--warn)" : "var(--accent2)"}" title="Fahrdauer inkl. Leerfahrt">${days}T${deadheadBadge}${ferrybadge}</td>\n            <td class="num" style="color:var(--accent2)">${Utils.euro(j.price)}${insBadge}</td>\n            <td class="num">${perKm}</td>\n            <td style="color:${daysLeft <= 2 ? "var(--danger)" : daysLeft <= 4 ? "var(--warn)" : ""}" title="Deadline: Tag ${j.deadline} · noch ${daysLeft} Tag${1 !== daysLeft ? "e" : ""} Zeit">\n              ${daysLeft <= 2 ? "⚠ " : ""}${daysLeft}T noch</td>\n            <td>\n              ${truck ? `<div style="display:flex;flex-direction:column;gap:3px;">\n                <button class="btn small primary" onclick="UI.openRouteSelector('${j.id}')">Annehmen ${compInterest}</button>\n                ${j.negotiable && !j.negotiated ? `<button class="btn small" onclick="UI.showNegotiateModal('${j.id}')" style="font-size:9px;">💬 Verhandeln</button>` : ""}\n                ${void 0 !== SubcontractorSystem && State.reputation >= 60 && State.trucks.length >= 3 ? `<button class="btn small" onclick="UI.showSubcontractModal('${j.id}')" style="font-size:9px; color:var(--muted);">📤 Sub</button>` : ""}\n                <button class="btn small" onclick="UI.showView('map');setTimeout(()=>{if(typeof MapRender!=='undefined')MapRender.highlightJobRoute('${j.id}');},300);" style="font-size:9px;color:var(--muted);">🗺 Karte</button>${SelfDrive.canStart(j) ? `<button class="btn small" onclick="SelfDrive.promptStart('${j.id}')" style="font-size:9px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#22c55e;">🚛 Selbst fahren</button>` : ""}\n                ${compDeadline}\n              </div>` : `<button class="btn small" onclick="UI.showJobUnsuitable('${j.id}')" style="font-size:10px">Warum nicht?</button>${SelfDrive.canStart(j) ? `<button class="btn small" onclick="SelfDrive.promptStart('${j.id}')" style="display:block;margin-top:3px;font-size:9px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#22c55e;">🚛 Selbst fahren</button>` : ""}${compInterest}${compDeadline}`}\n            </td>\n          </tr>`;
             })
             .join("");
     const activeRows =
@@ -30336,7 +30363,13 @@ const UI = {
               const t = (State.trucks || []).find((x) => x.id === j.truckId);
               const d = State.staff.find((x) => x.id === j.driverId);
               const progColor = j.progress > 66 ? "var(--accent2)" : j.progress > 33 ? "var(--warn)" : "var(--info)";
-              return `<tr>\n            <td>${j.customerName}</td>\n            <td>${j.fromName} → ${j.toName}</td>\n            <td>${t?.plate || "-"} / ${d?.name || "-"}</td>\n            <td>${j.route?.icon || ""} ${j.route?.name || ""}</td>\n            <td class="num">\n              <div style="display:flex;align-items:center;gap:6px;">\n                <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:2px;height:4px;">\n                  <div style="background:${progColor};border-radius:2px;height:4px;width:${j.progress}%;"></div>\n                </div>\n                <span style="font-size:10px;color:${progColor};">${j.progress}%</span>\n              </div>\n              <div style="font-size:9px;color:var(--muted2);margin-top:1px;">noch ${j.daysRemaining} Tag${1 !== j.daysRemaining ? "e" : ""}</div>\n            </td>\n            <td class="num" style="color:var(--accent2);">${Utils.euro(j.price)}</td>\n          </tr>`;
+              const activeExpressBadge = j.isExpress
+                ? `<span title="Eilauftrag — Vertragsstrafe ${Utils.euro(j.expressPenalty || Math.round(0.5 * (j.price || 0)))} bei Verspätung" style="display:inline-block;background:#cc1a1a;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:900;margin-left:4px;">EIL</span>`
+                : "";
+              const activeInsBadge = j.cargoInsurance
+                ? `<div style="font-size:9px;color:var(--accent2);margin-top:1px;" title="${CargoInsurance.PRODUCTS[j.cargoInsurance.productId]?.name || "versichert"} · Prämie ${Utils.euro(j.cargoInsurance.premium || 0)}">🛡 versichert</div>`
+                : `<div style="font-size:9px;color:var(--muted2);margin-top:1px;">— unversichert</div>`;
+              return `<tr>\n            <td>${j.customerName}${activeExpressBadge}</td>\n            <td>${j.fromName} → ${j.toName}</td>\n            <td>${t?.plate || "-"} / ${d?.name || "-"}</td>\n            <td>${j.route?.icon || ""} ${j.route?.name || ""}</td>\n            <td class="num">\n              <div style="display:flex;align-items:center;gap:6px;">\n                <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:2px;height:4px;">\n                  <div style="background:${progColor};border-radius:2px;height:4px;width:${j.progress}%;"></div>\n                </div>\n                <span style="font-size:10px;color:${progColor};">${j.progress}%</span>\n              </div>\n              <div style="font-size:9px;color:var(--muted2);margin-top:1px;">noch ${j.daysRemaining} Tag${1 !== j.daysRemaining ? "e" : ""}</div>\n            </td>\n            <td class="num" style="color:var(--accent2);">${Utils.euro(j.price)}${activeInsBadge}</td>\n          </tr>`;
             })
             .join("");
     const queuedJobs = State.scheduledJobs || [];
