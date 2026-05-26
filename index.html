@@ -16151,34 +16151,89 @@ const GFOffice = {
     if (1 === new Date(State.date).getDate()) this._monthlyReports();
   },
   _callBigCustomer() {
-    const cities = ["München", "Hamburg", "Berlin", "Frankfurt", "Köln", "Stuttgart"];
+    const cityNames = ["München", "Hamburg", "Berlin", "Frankfurt a.M.", "Köln", "Stuttgart"];
     const names = ["Schreiber Logistik", "Wagner Industrie", "Bauer & Partner", "Klein Automotive", "Hoffmann Handel"];
-    const from = Utils.pick(cities) + " → " + Utils.pick(cities);
+    const pickMapCity = () => {
+      const n = Utils.pick(cityNames);
+      return MAP_DATA.cities.find((c) => c.name === n) || Utils.pick(MAP_DATA.cities);
+    };
+    const fromC = pickMapCity();
+    let toC = pickMapCity();
+    let tries = 0;
+    while (toC.id === fromC.id && tries++ < 8) toC = pickMapCity();
     const price = 1e3 * Utils.randInt(8, 25);
     const hours = Utils.pick([24, 36, 48, 72]);
     const caller = Utils.pick(names);
+    const penaltyPreview = Math.round(0.5 * price);
+    // Eilauftrag wird als echter Job in die Joblist eingestellt; Cash gibt's erst bei Lieferung.
+    // Verfall ODER Verspätung -> harte Vertragsstrafe (50% Preis abgezogen, -10 Reputation).
+    const createExpressJob = (finalPrice) => {
+      const ownedTrailerTypes = State.trailers ? [...new Set(State.trailers.map((tr) => tr.typeId))] : [];
+      let cargoPool = DATA.cargoTypes;
+      if (ownedTrailerTypes.length > 0) {
+        const matches = DATA.cargoTypes.filter(
+          (c) =>
+            !c.requiresTrailer ||
+            0 === c.requiresTrailer.length ||
+            c.requiresTrailer.some((rt) => ownedTrailerTypes.includes(rt)),
+        );
+        if (matches.length > 0) cargoPool = matches;
+      }
+      const cargo = Utils.pick(cargoPool);
+      const weight = Math.round(10 * (cargo.minWeight + Math.random() * (cargo.maxWeight - cargo.minWeight))) / 10;
+      const km = Utils.dist(fromC, toC);
+      const deadline = State.day + Math.max(1, Math.ceil(hours / 24));
+      const job = {
+        id: Utils.uid("EXP"),
+        customerName: caller,
+        customerId: "express",
+        from: fromC.id,
+        to: toC.id,
+        fromName: fromC.name,
+        toName: toC.name,
+        cargo: cargo.name,
+        cargoType: cargo,
+        hazard: cargo.hazard,
+        urgency: 3,
+        requiresTrailer: cargo.requiresTrailer || [],
+        requiresAssist: cargo.requiresAssist || [],
+        skillRequired: cargo.skill || 2,
+        restrictions: cargo.restrictions || [],
+        weight: weight,
+        km: km,
+        price: finalPrice,
+        deadline: deadline,
+        postedDay: State.day,
+        negotiable: false,
+        negotiated: true,
+        isExpress: true,
+        expressPenalty: Math.round(0.5 * finalPrice),
+      };
+      if (!State.jobs) State.jobs = [];
+      State.jobs.push(job);
+      State.reputation = Math.min(100, State.reputation + 1);
+      EventManager.addNews(
+        "good",
+        `📞 Eilauftrag ${caller}: ${fromC.name} → ${toC.name} (${Utils.euro(finalPrice)}) — Frist Tag ${deadline}, jetzt disponieren!`,
+      );
+    };
     this.queueCall({
       caller: caller,
       role: "Großkunde",
       subject: `Eilauftrag ${Utils.euro(price)} — ${hours}h Lieferfenster`,
-      body: `"Guten Tag, hier ${caller}. Wir haben kurzfristig einen Eilauftrag ${from}, ${hours}-Stunden-Lieferfenster, ${Utils.euro(price)} Pauschalpreis. Haben Sie Kapazität?"`,
+      body: `"Guten Tag, hier ${caller}. Wir haben kurzfristig einen Eilauftrag ${fromC.name} → ${toC.name}, ${hours}-Stunden-Lieferfenster, ${Utils.euro(price)} Pauschalpreis bei Lieferung. Vertragsstrafe ${Utils.euro(penaltyPreview)} bei Verspätung oder Nichterfüllung. Haben Sie Kapazität?"`,
       urgent: hours <= 24,
       options: [
         {
           label: `✓ Annehmen (${Utils.euro(price)})`,
-          action: () => {
-            State.cash += price;
-            if (void 0 !== BankAccount) BankAccount.hookJobRevenue({ id: "bigcall", from: "?", to: "?" }, price);
-            State.reputation = Math.min(100, State.reputation + 1);
-            EventManager.addNews("good", `📞 Großauftrag ${caller}: ${Utils.euro(price)} angenommen`);
-          },
+          action: () => createExpressJob(price),
         },
         {
           label: "💬 Verhandeln (+15%)",
           action: () => {
             const newPrice = Math.round(1.15 * price);
             if (Math.random() < 0.6) {
-              State.cash += newPrice;
+              createExpressJob(newPrice);
               EventManager.addNews("good", `📞 Verhandlung erfolgreich: ${Utils.euro(newPrice)}`);
             } else EventManager.addNews("warn", `📞 ${caller} lehnte Preiserhöhung ab — Auftrag verloren`);
           },
@@ -23576,6 +23631,15 @@ const JobManager = {
         j._daysLate = onTime ? 0 : Math.max(0, State.day - (j.deadline || State.day));
         j._earlyBonus = State.day < (j.deadline || State.day);
         let finalPrice = onTime ? j.price : Math.round(0.6 * j.price);
+        if (!onTime && j.isExpress) {
+          finalPrice = 0;
+          const penalty = j.expressPenalty || Math.round(0.5 * (j.price || 0));
+          State.cash -= penalty;
+          EventManager.addNews(
+            "bad",
+            `🚨 Eilauftrag VERSPÄTET — ${j.customerName}: Vertragsstrafe ${Utils.euro(penalty)}`,
+          );
+        }
         if (!onTime && j.cargoInsurance && void 0 !== CargoInsurance) {
           const delayDamage = Math.round(0.4 * j.price);
           const cargoResult = CargoInsurance.handleCargoClaim(j, "delay", delayDamage);
@@ -23639,9 +23703,10 @@ const JobManager = {
           cust.relationship = Utils.clamp(cust.relationship + (onTime ? 2 : -8), 0, 100);
           cust.jobsCompleted = (cust.jobsCompleted || 0) + 1;
         }
+        const _repBase = onTime ? 0.5 : j.isExpress ? -10 : -2;
         State.reputation = Utils.clamp(
           State.reputation +
-            (onTime ? 0.5 : -2) +
+            _repBase +
             (FleetManager.hasEquipment(truck, "paint") ? 0.5 : 0) +
             (onTime && void 0 !== DriverSkills ? DriverSkills.getCustomerBonus(driver) : 0),
           0,
@@ -23659,7 +23724,23 @@ const JobManager = {
     }
   },
   expireJobs() {
-    State.jobs = (State.jobs || []).filter((j) => j.deadline >= State.day);
+    const remaining = [];
+    for (const j of State.jobs || []) {
+      if (j.deadline >= State.day) {
+        remaining.push(j);
+        continue;
+      }
+      if (j.isExpress) {
+        const penalty = j.expressPenalty || Math.round(0.5 * (j.price || 0));
+        State.cash -= penalty;
+        State.reputation = Utils.clamp((State.reputation || 50) - 10, 0, 100);
+        EventManager.addNews(
+          "bad",
+          `🚨 Eilauftrag VERFALLEN — ${j.customerName}: ${j.fromName} → ${j.toName} · Vertragsstrafe ${Utils.euro(penalty)} · Reputation −10`,
+        );
+      }
+    }
+    State.jobs = remaining;
   },
 };
 const TrailerManager = {
