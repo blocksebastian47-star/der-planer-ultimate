@@ -25681,10 +25681,10 @@ const SelfDrive = {
           },
         ],
       },
-      {
-        title: "🔧 Panne unterwegs",
-        content: "Eine Warnleuchte im Cockpit — am LKW stimmt etwas nicht. Was tun?",
-        choices: [
+      (() => {
+        // "Selbst flicken" nur, wenn der LKW einen Werkzeugkoffer (toolbox) an Bord hat.
+        const hasToolbox = truck && FleetManager.hasEquipment(truck, "toolbox");
+        const choices = [
           {
             label: "📞 Pannendienst rufen",
             effect: () => {
@@ -25692,16 +25692,24 @@ const SelfDrive = {
               EventManager.addNews("info", "🔧 Pannendienst war da — 600 € Soforthilfe");
             },
           },
-          {
+        ];
+        if (hasToolbox)
+          choices.push({
             label: "🔧 Selbst provisorisch flicken",
             effect: () => {
               if (truck) truck.condition = Math.max(0, (truck.condition || 100) - 12);
               State.stress = Utils.clamp((State.stress || 0) + 6, 0, 100);
               EventManager.addNews("warn", "🔧 Notdürftig geflickt — der LKW hat gelitten");
             },
-          },
-        ],
-      },
+          });
+        return {
+          title: "🔧 Panne unterwegs",
+          content: hasToolbox
+            ? "Eine Warnleuchte im Cockpit — am LKW stimmt etwas nicht. Der Werkzeugkoffer ist an Bord. Was tun?"
+            : "Eine Warnleuchte im Cockpit — am LKW stimmt etwas nicht. Ohne Werkzeugkoffer bleibt nur der Pannendienst. Was tun?",
+          choices: choices,
+        };
+      })(),
     ];
     // "Anruf aus dem Buero" nur, wenn es aktives Werkstatt-Personal gibt, das anrufen kann.
     const workshopStaff = (State.staff || []).filter(
