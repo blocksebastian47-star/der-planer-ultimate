@@ -24670,7 +24670,18 @@ const DispoManager = {
     this.assignIdleDrivers();
     this.restExhaustedDrivers();
     const totalCapacity = dispos.reduce((s, d) => s + 2 + Math.floor(d.experience / 30), 0);
-    const sortedJobs = State.jobs.slice().sort((a, b) => b.price / (b.km || 1) - a.price / (a.km || 1));
+    const activeContracts = (State.contracts || []).filter((c) => c.endDay > State.day);
+    const dispoTier = (j) => {
+      if (j.isExpress) return 0;
+      if (j.customerId && activeContracts.some((c) => c.customerId === j.customerId)) return 1;
+      return 2;
+    };
+    const sortedJobs = State.jobs.slice().sort((a, b) => {
+      const ta = dispoTier(a),
+        tb = dispoTier(b);
+      if (ta !== tb) return ta - tb;
+      return b.price / (b.km || 1) - a.price / (a.km || 1);
+    });
     let handled = 0;
     for (const job of sortedJobs) {
       if (handled >= totalCapacity) break;
