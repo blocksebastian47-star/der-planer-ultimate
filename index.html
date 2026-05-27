@@ -1146,6 +1146,7 @@ footer {
 <!-- ═══ NAV ═══════════════════════════════════════ -->
 <nav>
   <button class="nav-btn" data-view="zentrale"><span><span class="icon">🏢</span>Büro</span><span class="badge" id="badge-zentrale"></span></button>
+  <button class="nav-btn" data-view="events"><span><span class="icon">⚠</span>Ereignisse</span><span class="badge" id="badge-decisions"></span></button>
   <div class="nav-divider"></div>
   <button class="nav-btn" data-view="finanzen"><span><span class="icon">💼</span>Finanzen</span></button>
   <button class="nav-btn" data-view="fuhrpark"><span><span class="icon">🚛</span>Fuhrpark</span><span class="badge" id="badge-fuhrpark"></span></button>
@@ -1154,7 +1155,6 @@ footer {
   <button class="nav-btn" data-view="markt"><span><span class="icon">🤝</span>Kunden & Markt</span></button>
   <button class="nav-btn" data-view="strategie"><span><span class="icon">📈</span>Strategie</span></button>
   <div class="nav-divider"></div>
-  <button class="nav-btn" data-view="events"><span><span class="icon">⚠</span>Ereignisse</span><span class="badge" id="badge-decisions"></span></button>
   <button class="nav-btn" data-view="help"><span><span class="icon">❓</span>Hilfe</span></button>
 </nav>
 
@@ -1416,14 +1416,15 @@ footer {
 <div class="view" id="view-events">
   <div class="view-header">
     <div>
-      <div class="view-title">EREIGNISSE</div>
-      <div class="view-subtitle">Offene Entscheidungen und Meldungen</div>
+      <div class="view-title">⚠ EREIGNISSE</div>
+      <div class="view-subtitle">Offene Entscheidungen und Nachrichten-Historie</div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">Offene Entscheidungen</div>
-    <div id="events-list"></div>
+  <div style="display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid var(--border); padding-bottom:8px;">
+    <button class="btn" id="events-tab-decisions" onclick="UI._eventsTab('decisions')" style="font-size:11px; padding:6px 14px; background:var(--accent); color:#000;">🔴 Entscheidungen</button>
+    <button class="btn" id="events-tab-news" onclick="UI._eventsTab('news')" style="font-size:11px; padding:6px 14px;">📰 Nachrichten</button>
   </div>
+  <div id="events-content"></div>
 </div>
 
 <!-- HELP -->
@@ -15969,6 +15970,7 @@ const GFOffice = {
       if (void 0 === State.gfOffice.thresholds[k]) State.gfOffice.thresholds[k] = v.value;
     });
     if (void 0 === State.gfOffice.cargoInsurancePolicy) State.gfOffice.cargoInsurancePolicy = "none";
+    if (void 0 === State.gfOffice._lastReadNewsDay) State.gfOffice._lastReadNewsDay = State.day || 0;
   },
   threshold(key) {
     this.init();
@@ -30163,7 +30165,19 @@ const UI = {
       }
     };
     badge("badge-jobs", (State.jobs || []).length);
-    badge("badge-decisions", State.pendingDecisions.length + State.consultations.length);
+    const decisionCount = State.pendingDecisions.length + State.consultations.length;
+    const lastRead = (State.gfOffice && State.gfOffice._lastReadNewsDay) ?? -1;
+    const unreadCritical = (State.news || []).filter((n) => "bad" === n.type && n.day > lastRead).length;
+    const decisionsEl = document.getElementById("badge-decisions");
+    if (decisionsEl) {
+      const total = decisionCount + unreadCritical;
+      decisionsEl.style.display = total > 0 ? "" : "none";
+      decisionsEl.textContent = total;
+      const parts = [];
+      if (decisionCount > 0) parts.push(`${decisionCount} offene Entscheidung${1 === decisionCount ? "" : "en"}`);
+      if (unreadCritical > 0) parts.push(`${unreadCritical} ungelesene kritische Nachricht${1 === unreadCritical ? "" : "en"}`);
+      decisionsEl.title = parts.join(" · ");
+    }
     badge("badge-private", (State.familyMessages || []).filter((m) => !m.read).length);
   },
   drawChart(svgId, data, color) {
@@ -32194,18 +32208,95 @@ const UI = {
     this.renderPrivate();
     this.renderHeader();
   },
+  _eventsTab(tab) {
+    this._eventsActiveTab = tab;
+    if (State.gfOffice) State.gfOffice._lastReadNewsDay = State.day;
+    ["decisions", "news"].forEach((t) => {
+      const btn = document.getElementById("events-tab-" + t);
+      if (btn) {
+        btn.style.background = t === tab ? "var(--accent)" : "";
+        btn.style.color = t === tab ? "#000" : "";
+      }
+    });
+    this.renderEvents();
+  },
   renderEvents() {
-    const el = document.getElementById("events-list");
+    const el = document.getElementById("events-content");
     if (!el) return;
-    if (0 === State.pendingDecisions.length)
-      el.innerHTML = '<i style="color:var(--muted)">Keine offenen Entscheidungen</i>';
-    else
-      el.innerHTML = State.pendingDecisions
-        .map(
-          (d) =>
-            `\n        <div class="alert-banner warn">\n          <b>${d.title}</b><br>\n          <span style="font-size:10px; color:var(--muted2)">${d.subtitle || ""}</span>\n          <button class="btn small primary" style="margin-left:8px;" onclick="UI.showNextDecision()">Bearbeiten</button>\n        </div>\n      `,
-        )
-        .join("");
+    if (State.gfOffice) State.gfOffice._lastReadNewsDay = State.day;
+    const tab = this._eventsActiveTab || "decisions";
+    if ("decisions" === tab) {
+      const decisions = State.pendingDecisions || [];
+      el.innerHTML =
+        0 === decisions.length
+          ? '<div class="card"><i style="color:var(--muted)">Keine offenen Entscheidungen</i></div>'
+          : '<div class="card"><div class="card-title">Offene Entscheidungen (' +
+            decisions.length +
+            ")</div>" +
+            decisions
+              .map(
+                (d) =>
+                  `\n        <div class="alert-banner warn">\n          <b>${d.title}</b><br>\n          <span style="font-size:10px; color:var(--muted2)">${d.subtitle || ""}</span>\n          <button class="btn small primary" style="margin-left:8px;" onclick="UI.showNextDecision()">Bearbeiten</button>\n        </div>\n      `,
+              )
+              .join("") +
+            "</div>";
+    } else if ("news" === tab) {
+      const filter = this._newsFilter || "all";
+      const search = this._newsSearch || "";
+      const btn = (val, label, color) =>
+        `<button class="btn small" id="news-filter-${val}" onclick="UI._setNewsFilter('${val}')" style="font-size:10px;padding:4px 10px;${filter === val ? `background:${color};color:#000;` : ""}">${label}</button>`;
+      el.innerHTML =
+        `<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">` +
+        btn("all", "Alle", "var(--accent)") +
+        btn("good", "🟢 Gut", "var(--accent2)") +
+        btn("warn", "🟡 Warnung", "var(--warn)") +
+        btn("bad", "🔴 Schlecht", "var(--danger)") +
+        btn("info", "ℹ Info", "var(--info)") +
+        `<input type="text" id="news-search" placeholder="Volltext suchen..." value="${search.replace(/"/g, "&quot;")}" oninput="UI._setNewsSearch(this.value)" style="flex:1;min-width:140px;padding:5px 8px;background:var(--bg2);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:11px;" />` +
+        `<span id="news-count" style="font-size:10px;color:var(--muted);"></span></div>` +
+        `<div id="events-news-list" style="max-height:65vh;overflow-y:auto;"></div>`;
+      this._refreshNewsList();
+    }
+  },
+  _setNewsFilter(val) {
+    this._newsFilter = val;
+    ["all", "good", "warn", "bad", "info"].forEach((t) => {
+      const b = document.getElementById("news-filter-" + t);
+      if (!b) return;
+      const colors = { all: "var(--accent)", good: "var(--accent2)", warn: "var(--warn)", bad: "var(--danger)", info: "var(--info)" };
+      if (t === val) {
+        b.style.background = colors[t];
+        b.style.color = "#000";
+      } else {
+        b.style.background = "";
+        b.style.color = "";
+      }
+    });
+    this._refreshNewsList();
+  },
+  _setNewsSearch(val) {
+    this._newsSearch = val;
+    this._refreshNewsList();
+  },
+  _refreshNewsList() {
+    const list = document.getElementById("events-news-list");
+    if (!list) return;
+    const filter = this._newsFilter || "all";
+    const search = (this._newsSearch || "").toLowerCase();
+    let news = (State.news || []).slice();
+    if ("all" !== filter) news = news.filter((n) => n.type === filter);
+    if (search) news = news.filter((n) => (n.text || "").toLowerCase().includes(search));
+    list.innerHTML =
+      0 === news.length
+        ? '<i style="color:var(--muted);font-size:11px;">Keine Nachrichten entsprechen den Filtern</i>'
+        : news
+            .map(
+              (n) =>
+                `\n        <div class="news-item ${n.type}" style="margin-bottom:4px;">\n          <div class="news-date">Tag ${n.day}</div>${n.text}\n        </div>\n      `,
+            )
+            .join("");
+    const count = document.getElementById("news-count");
+    if (count) count.textContent = `${news.length} ${1 === news.length ? "Eintrag" : "Einträge"}`;
   },
   renderNewsPanel() {
     const el = document.getElementById("news-list");
