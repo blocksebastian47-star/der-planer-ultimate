@@ -16209,6 +16209,7 @@ const GFOffice = {
     };
     State.gfOffice.callQueue.unshift(call);
     if (void 0 !== Notifier) Notifier.add(`📞 Eingehender Anruf: ${caller}`, urgent ? "error" : "warn");
+    if ("undefined" !== typeof UI && UI._refreshZentraleIfActive) UI._refreshZentraleIfActive();
     return call.id;
   },
   dismissCall(id) {
@@ -23937,6 +23938,8 @@ const JobManager = {
         if (State.activeRoutes) State.activeRoutes = (State.activeRoutes || []).filter((r) => r.truckId !== truck.id);
       }
     }
+    // Live-Refresh: Truck wurde gerade frei → vorher unmachbare Jobs sind jetzt evtl. machbar.
+    if ("undefined" !== typeof UI && UI._refreshJobsIfActive) UI._refreshJobsIfActive();
   },
   expireJobs() {
     const remaining = [];
@@ -23956,6 +23959,7 @@ const JobManager = {
       }
     }
     State.jobs = remaining;
+    if ("undefined" !== typeof UI && UI._refreshJobsIfActive) UI._refreshJobsIfActive();
   },
 };
 const TrailerManager = {
@@ -24071,12 +24075,16 @@ const EventManager = {
   addNews(type, text) {
     State.news.unshift({ day: State.day, date: State.date, type: type, text: text });
     if (State.news.length > 200) State.news.pop();
+    // Cockpit live aktualisieren — wenn bad/warn dazukommt, soll Spieler es sofort sehen.
+    if (("bad" === type || "warn" === type) && "undefined" !== typeof UI && UI._refreshZentraleIfActive)
+      UI._refreshZentraleIfActive();
   },
   queueDecision(decision) {
     decision.id = Utils.uid("D");
     decision.queuedDay = State.day;
     decision.expiresDay = decision.expiresDay || State.day + 1;
     State.pendingDecisions.push(decision);
+    if ("undefined" !== typeof UI && UI._refreshZentraleIfActive) UI._refreshZentraleIfActive();
   },
   checkRandomEvents() {
     const r = Math.random();
@@ -30618,6 +30626,45 @@ const UI = {
           `<div style="display:flex; justify-content:space-between; padding:2px 0; ${id === mc.phase ? "font-weight:700;" : "opacity:0.7;"}">\n                <span><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${p.color}; margin-right:6px;"></span>${p.label}</span>\n                <span style="color:var(--muted2);">×${p.jobMul.toFixed(2)} Jobs</span>\n              </div>`,
       )
       .join("")}\n            </div>\n          </div>\n        </div>\n      </div>`;
+  },
+  _isModalOpen() {
+    const overlay = document.getElementById("modal-overlay");
+    return !!(overlay && overlay.classList.contains("show"));
+  },
+  _isZentraleActive() {
+    const view = document.getElementById("view-zentrale");
+    return !!(view && view.classList.contains("active"));
+  },
+  _refreshZentraleIfActive() {
+    if (!this._isZentraleActive() || this._isModalOpen()) return;
+    const scrollEl = document.getElementById("zentrale-content") || document.querySelector(".view.active");
+    const oldScroll = scrollEl ? scrollEl.scrollTop : 0;
+    try {
+      this.renderZentrale();
+    } catch (e) {}
+    if (scrollEl) scrollEl.scrollTop = oldScroll;
+  },
+  _isJobsActive() {
+    const view = document.getElementById("view-markt");
+    if (!view || !view.classList.contains("active")) return false;
+    return this._sectionTabs && "auftraege" === this._sectionTabs.markt;
+  },
+  _refreshJobsIfActive() {
+    if (!this._isJobsActive() || this._isModalOpen()) return;
+    const scrollEl = document.getElementById("markt-content") || document.querySelector(".view.active");
+    const oldScroll = scrollEl ? scrollEl.scrollTop : 0;
+    const sortEl = document.getElementById("job-sort");
+    const oldSort = sortEl ? sortEl.value : null;
+    const filterEl = document.getElementById("job-filter");
+    const oldFilter = filterEl ? filterEl.value : null;
+    try {
+      this.renderJobs();
+    } catch (e) {}
+    if (scrollEl) scrollEl.scrollTop = oldScroll;
+    const newSort = document.getElementById("job-sort");
+    if (newSort && oldSort) newSort.value = oldSort;
+    const newFilter = document.getElementById("job-filter");
+    if (newFilter && oldFilter) newFilter.value = oldFilter;
   },
   _isSpotMarketActive() {
     const marktView = document.getElementById("view-markt");
