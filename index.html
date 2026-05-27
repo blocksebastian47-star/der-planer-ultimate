@@ -28306,6 +28306,86 @@ const UI = {
     } else this.toast(r.reason, "error");
   },
   _officeTab: "overview",
+  _renderTodayCockpit() {
+    const items = [];
+    const decisionCount = (State.pendingDecisions || []).length + (State.consultations || []).length;
+    if (decisionCount > 0)
+      items.push({
+        icon: "🚨",
+        color: "var(--danger)",
+        text: `<b>${decisionCount}</b> offene Entscheidung${1 === decisionCount ? "" : "en"} warten auf dich`,
+        action: { label: "Bearbeiten", click: "UI.showNextDecision()" },
+      });
+    const expressTight = (State.jobs || []).filter((j) => j.isExpress && j.deadline - State.day <= 1);
+    if (expressTight.length > 0)
+      items.push({
+        icon: "⚡",
+        color: "var(--danger)",
+        text: `<b>${expressTight.length}</b> Eilauftrag${1 === expressTight.length ? "" : "äge"} mit Frist heute/morgen — Vertragsstrafe droht`,
+        action: { label: "Aufträge", click: "UI.showView('markt')" },
+      });
+    const activeExpressTight = (State.activeJobs || []).filter(
+      (j) => j.isExpress && (j.daysRemaining || 0) > j.deadline - State.day,
+    );
+    if (activeExpressTight.length > 0)
+      items.push({
+        icon: "⏱",
+        color: "var(--warn)",
+        text: `<b>${activeExpressTight.length}</b> laufende${1 === activeExpressTight.length ? "r" : ""} Eilauftrag wird voraussichtlich verspätet`,
+        action: null,
+      });
+    const expiringContracts = (State.contracts || []).filter((c) => {
+      const daysLeft = (c.endDay || 0) - State.day;
+      return daysLeft > 0 && daysLeft <= 7;
+    });
+    if (expiringContracts.length > 0)
+      items.push({
+        icon: "📄",
+        color: "var(--warn)",
+        text: `<b>${expiringContracts.length}</b> Rahmenvertrag/äge laufen in ≤ 7 Tagen aus`,
+        action: { label: "Kunden", click: "UI.showView('markt')" },
+      });
+    const warnings =
+      "undefined" !== typeof FinanceManager && FinanceManager.warnings ? FinanceManager.warnings() : [];
+    if (warnings.length > 0)
+      items.push({
+        icon: "💰",
+        color: "var(--danger)",
+        text: warnings.join(" · "),
+        action: { label: "Finanzen", click: "UI.showView('finanzen')" },
+      });
+    const orphanTrucks = (State.trucks || []).filter((t) => !t.driverId && "repair" !== t.status).length;
+    if (orphanTrucks > 0)
+      items.push({
+        icon: "🚛",
+        color: "var(--warn)",
+        text: `<b>${orphanTrucks}</b> LKW ohne Fahrer`,
+        action: { label: "Fuhrpark", click: "UI.showView('fuhrpark')" },
+      });
+    const lastRead = (State.gfOffice && State.gfOffice._lastReadNewsDay) ?? -1;
+    const recentBad = (State.news || []).filter((n) => "bad" === n.type && n.day > lastRead).length;
+    if (recentBad > 0)
+      items.push({
+        icon: "📰",
+        color: "var(--danger)",
+        text: `<b>${recentBad}</b> ungelesene kritische Nachricht${1 === recentBad ? "" : "en"}`,
+        action: { label: "Lesen", click: "UI.showView('events');UI._eventsTab('news')" },
+      });
+    const header = `<div style="font-family:'Bebas Neue';font-size:14px;letter-spacing:1.5px;color:var(--accent2);margin-bottom:6px;">🎯 HEUTE — TAG ${State.day || 0}</div>`;
+    if (0 === items.length)
+      return `${header}<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--accent2);">✓ Alles unter Kontrolle — keine offenen Punkte.</div>`;
+    return (
+      header +
+      `<div style="background:rgba(248,113,113,0.05);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:4px 12px;margin-bottom:14px;">` +
+      items
+        .map(
+          (it) =>
+            `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="font-size:16px;flex-shrink:0;">${it.icon}</span><span style="flex:1;color:${it.color};">${it.text}</span>${it.action ? `<button class="btn small" onclick="${it.action.click}" style="font-size:10px;padding:3px 10px;flex-shrink:0;">${it.action.label} →</button>` : ""}</div>`,
+        )
+        .join("") +
+      `</div>`
+    );
+  },
   renderZentrale() {
     const el = document.getElementById("zentrale-content");
     if (!el) return;
@@ -28337,6 +28417,7 @@ const UI = {
       return `<button onclick="UI._zentraleTab='${id}';UI.renderZentrale();" style="padding:8px 16px;border-radius:6px;border:1px solid ${active ? "var(--accent)" : "var(--border)"};background:${active ? "rgba(99,102,241,0.15)" : "var(--bg2)"};color:${active ? "var(--accent)" : "var(--muted)"};cursor:pointer;font-size:12px;font-weight:${active ? 700 : 400};white-space:nowrap;">${icon} ${label}</button>`;
     };
     el.innerHTML = `
+      ${this._renderTodayCockpit()}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:14px;">
         ${kpi("💰", "Kasse", Utils.euro(State.cash), State.cash >= 0 ? "var(--accent2)" : "var(--danger)")}
         ${kpi("📦", "Umsatz heute", Utils.euro(todayRev), "var(--accent2)", "7T-Ø " + Utils.euro(avg7))}
