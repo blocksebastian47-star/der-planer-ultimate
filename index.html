@@ -1155,7 +1155,7 @@ footer {
       <button class="speed-btn" id="btn-speed-3" onclick="GameClock.setSpeed(3)" title="4× — 3 Min. pro Spieltag">4×</button>
       <button class="speed-btn" id="btn-speed-4" onclick="GameClock.setSpeed(4)" title="16× — 45 Sek. pro Spieltag">16×</button>
       <button class="speed-btn" id="btn-speed-5" onclick="GameClock.setSpeed(5)" title="32× — 30 Sek. pro Spieltag">32×</button>
-      <button class="speed-btn" onclick="UI.showView('private')" title="Nach Hause — ins Privatleben wechseln (Tag beendest du dort mit 'Schlafen gehen')" style="background:rgba(74,222,128,0.1); color:var(--accent2); border-color:var(--accent2); font-family:'Bebas Neue'; letter-spacing:1px;">🏠 Nach Hause</button>
+      <button class="speed-btn" id="btn-go-home" onclick="UI.showView('private')" title="Nach Hause — ins Privatleben wechseln (Tag beendest du dort mit 'Schlafen gehen')" style="background:rgba(74,222,128,0.1); color:var(--accent2); border-color:var(--accent2); font-family:'Bebas Neue'; letter-spacing:1px;">🏠 Nach Hause</button>
     </div>
   </div>
 </header>
@@ -27629,6 +27629,9 @@ const UI = {
     if (containerEl) containerEl.style.gridTemplateColumns = atHome ? "1fr" : "";
     const hintEl = document.getElementById("tutorial-hint");
     if (hintEl) hintEl.style.display = atHome ? "none" : "";
+    // "Nach Hause"-Button im Header verstecken, wenn man bereits zu Hause ist.
+    const homeBtn = document.getElementById("btn-go-home");
+    if (homeBtn) homeBtn.style.display = atHome ? "none" : "";
     const btn = document.querySelector(`.nav-btn[data-view="${name}"]`);
     if (btn) btn.classList.add("active");
     if (this.SECTIONS[name]) {
