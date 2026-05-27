@@ -30167,15 +30167,17 @@ const UI = {
     badge("badge-jobs", (State.jobs || []).length);
     const decisionCount = State.pendingDecisions.length + State.consultations.length;
     const lastRead = (State.gfOffice && State.gfOffice._lastReadNewsDay) ?? -1;
-    const unreadCritical = (State.news || []).filter((n) => "bad" === n.type && n.day > lastRead).length;
+    const unreadBad = (State.news || []).filter((n) => "bad" === n.type && n.day > lastRead).length;
+    const unreadWarn = (State.news || []).filter((n) => "warn" === n.type && n.day > lastRead).length;
     const decisionsEl = document.getElementById("badge-decisions");
     if (decisionsEl) {
-      const total = decisionCount + unreadCritical;
+      const total = decisionCount + unreadBad + unreadWarn;
       decisionsEl.style.display = total > 0 ? "" : "none";
       decisionsEl.textContent = total;
       const parts = [];
       if (decisionCount > 0) parts.push(`${decisionCount} offene Entscheidung${1 === decisionCount ? "" : "en"}`);
-      if (unreadCritical > 0) parts.push(`${unreadCritical} ungelesene kritische Nachricht${1 === unreadCritical ? "" : "en"}`);
+      if (unreadBad > 0) parts.push(`${unreadBad} kritische Nachricht${1 === unreadBad ? "" : "en"}`);
+      if (unreadWarn > 0) parts.push(`${unreadWarn} Warnung${1 === unreadWarn ? "" : "en"}`);
       decisionsEl.title = parts.join(" · ");
     }
     badge("badge-private", (State.familyMessages || []).filter((m) => !m.read).length);
