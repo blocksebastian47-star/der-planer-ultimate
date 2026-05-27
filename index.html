@@ -24543,6 +24543,9 @@ const PlayerManager = {
       0.1 * State.activeJobs.length;
     State.stress = Utils.clamp(State.stress + stressGain - 0.5, 0, 100);
     if (State.stress > 70) State.familyHappiness = Utils.clamp(State.familyHappiness - 0.3, 0, 100);
+    // Burnout-Wirkung: chronisch hoher Stress (>80) erodiert langsam die Reputation —
+    // überarbeiteter Chef trifft schlechtere Entscheidungen, die der Markt mitbekommt.
+    if (State.stress > 80) State.reputation = Utils.clamp((State.reputation || 50) - 0.2, 0, 100);
     if (State.stress >= 85 && State.day - (State._lastBurnoutWarn || -999) >= 20) {
       State._lastBurnoutWarn = State.day;
       State.burnoutWarnings = (State.burnoutWarnings || 0) + 1;
@@ -28659,7 +28662,7 @@ const UI = {
         ${kpi("🚛", "Auslastung", util + "%", "var(--accent)", activeTrucks + "/" + trucks.length + " aktiv")}
         ${kpi("👷", "Personal", staffActive, "var(--fg)", sick > 0 ? sick + " krank" : "alle fit")}
         ${kpi("🏆", "Reputation", rep + "%", rep > 60 ? "var(--accent2)" : rep > 30 ? "var(--warn)" : "var(--danger)")}
-        ${compliance != null ? kpi("🛡", "Compliance", compliance + "%", compliance >= 80 ? "var(--accent2)" : compliance >= 60 ? "var(--warn)" : "var(--danger)") : ""}
+        ${compliance != null ? kpi("🛡", "Compliance" + UI._glossaryIcon("BAG"), compliance + "%", compliance >= 80 ? "var(--accent2)" : compliance >= 60 ? "var(--warn)" : "var(--danger)") : ""}
         ${rating != null ? kpi("⭐", "Bewertung", rating.toFixed(1) + "/5", rating >= 4 ? "var(--accent2)" : rating >= 3 ? "var(--warn)" : "var(--danger)") : ""}
         ${kpi("📄", "Verträge", contracts, "var(--fg)", "aktiv")}
       </div>
@@ -30782,12 +30785,19 @@ const UI = {
               const daysLeft = j.deadline - State.day + 1;
               const tight = days >= daysLeft;
               const perKm = (j.price / j.km).toFixed(2);
-              const reqTrailer =
+              const reqTrailerList =
                 j.requiresTrailer && j.requiresTrailer.length > 0
                   ? j.requiresTrailer
                       .map((rt) => DATA.trailers.find((t) => t.id === rt)?.name.split(" ")[0] || rt)
                       .join(" / ")
                   : "—";
+              const needsTrailer = j.requiresTrailer && j.requiresTrailer.length > 0;
+              const ownsCompatibleTrailer = needsTrailer
+                ? (State.trailers || []).some((t) => j.requiresTrailer.includes(t.typeId))
+                : true;
+              const reqTrailer = needsTrailer
+                ? `<span style="color:${ownsCompatibleTrailer ? "var(--accent2)" : "var(--warn)"};" title="${ownsCompatibleTrailer ? "Du hast einen passenden Anhänger im Bestand" : "Du hast keinen passenden Anhänger — Kauf/Leasing nötig"}">${ownsCompatibleTrailer ? "✓" : "⚠"} ${reqTrailerList}</span>`
+                : reqTrailerList;
               const skill = j.skillRequired || j.cargoType?.skill || 2;
               const skillBadge = `<span title="Erforderlicher Fahrer-Skill: ${skill}/5" style="display:inline-block;background:${skill >= 4 ? "#cc1a1a" : skill >= 3 ? "#cc6a00" : "#3a8aff"};color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:900;margin-left:3px;">SK${skill}</span>`;
               const restrIcons = (j.restrictions || [])
