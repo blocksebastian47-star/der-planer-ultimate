@@ -1489,6 +1489,7 @@ footer {
     <button class="btn" id="help-tab-systems" onclick="UI._helpTab('systems')" style="font-size:11px; padding:6px 14px;">⚙️ Systeme</button>
     <button class="btn" id="help-tab-tips"   onclick="UI._helpTab('tips')"     style="font-size:11px; padding:6px 14px;">💡 Tipps</button>
     <button class="btn" id="help-tab-glossary" onclick="UI._helpTab('glossary')" style="font-size:11px; padding:6px 14px;">📚 Glossar</button>
+    <button class="btn" id="help-tab-achievements" onclick="UI._helpTab('achievements')" style="font-size:11px; padding:6px 14px;">🏅 Errungenschaften</button>
     <button class="btn" id="help-tab-log"    onclick="UI._helpTab('log')"      style="font-size:11px; padding:6px 14px;">📋 Changelog</button>
   </div>
 
@@ -4480,6 +4481,66 @@ const Glossary = {
     return this.TERMS[key] || null;
   },
 };
+const Achievements = {
+  CATALOG: [
+    // Kernspiel
+    { id: "first_job", group: "Kernspiel", icon: "📦", name: "Erste Tour", desc: "Schließe deinen ersten Auftrag erfolgreich ab.", check: () => (State.stats?.totalJobs || 0) >= 1 },
+    { id: "jobs_100", group: "Kernspiel", icon: "🚛", name: "Hundert Touren", desc: "100 abgeschlossene Aufträge.", check: () => (State.stats?.totalJobs || 0) >= 100 },
+    { id: "jobs_1000", group: "Kernspiel", icon: "🏆", name: "Tausend Touren", desc: "1.000 abgeschlossene Aufträge.", check: () => (State.stats?.totalJobs || 0) >= 1000 },
+    { id: "fleet_5", group: "Kernspiel", icon: "🚛", name: "Kleine Flotte", desc: "5 LKW im Bestand.", check: () => (State.trucks || []).length >= 5 },
+    { id: "fleet_20", group: "Kernspiel", icon: "🚛🚛", name: "Großflotte", desc: "20 LKW im Bestand.", check: () => (State.trucks || []).length >= 20 },
+    { id: "staff_10", group: "Kernspiel", icon: "👥", name: "Teamleiter", desc: "10 Mitarbeiter im Team.", check: () => (State.staff || []).length >= 10 },
+    // Wohlstand
+    { id: "first_million", group: "Wohlstand", icon: "💰", name: "Erste Million", desc: "1 Mio. € Kassenstand erreicht.", check: () => (State.cash || 0) >= 1e6 },
+    { id: "rep_80", group: "Wohlstand", icon: "⭐⭐", name: "Top-Spedition", desc: "80% Reputation erreicht.", check: () => (State.reputation || 0) >= 80 },
+    { id: "rep_100", group: "Wohlstand", icon: "🌟", name: "Branchenführer", desc: "Maximale Reputation (100%).", check: () => (State.reputation || 0) >= 100 },
+    { id: "fame_100", group: "Wohlstand", icon: "🏅", name: "Spielziel erreicht", desc: "100% Bekanntheit — das Hauptziel ist erfüllt.", check: () => (State.fame || 0) >= 100 },
+    // Strategien
+    { id: "spot_first", group: "Strategien", icon: "📈", name: "Frachtenbörse genutzt", desc: "Mindestens einen Spot-Job angenommen.", check: () => (State.spotMarket?.totalAccepted || 0) >= 1 },
+    { id: "contract_first", group: "Strategien", icon: "📋", name: "Erster Rahmenvertrag", desc: "Mindestens einen Stammkundenvertrag abgeschlossen.", check: () => (State.contracts || []).length >= 1 },
+    { id: "contracts_5", group: "Strategien", icon: "📋", name: "Vertragskunde", desc: "5 aktive Rahmenverträge gleichzeitig.", check: () => (State.contracts || []).filter((c) => c.endDay > State.day).length >= 5 },
+    { id: "gmbh", group: "Strategien", icon: "⚖️", name: "GmbH-Gründer", desc: "Rechtsform auf GmbH (oder höher) umgewandelt.", check: () => State.legal && State.legal.formId && "ek" !== State.legal.formId && "gbr" !== State.legal.formId && "kg" !== State.legal.formId },
+    { id: "hedge_first", group: "Strategien", icon: "⛽", name: "Diesel-Hedger", desc: "Erster Hedge-Kontrakt oder Tankvorrat abgeschlossen.", check: () => (State.fuelHedge?.contracts || []).length >= 1 || (State.fuelHedge?.storage || 0) > 0 },
+    { id: "tuning_first", group: "Strategien", icon: "🔩", name: "Tüftler", desc: "Erstes Tuning-Upgrade installiert.", check: () => (State.trucks || []).some((t) => (t.upgrades || []).length > 0) },
+    { id: "branch_2", group: "Strategien", icon: "🏢", name: "Expansion", desc: "Eine zweite Niederlassung eröffnet.", check: () => (State.locations || []).length >= 2 },
+    { id: "qual_first", group: "Strategien", icon: "🎓", name: "Ausbilder", desc: "Erste Fahrer-Qualifikation gekauft.", check: () => (State.staff || []).some((s) => (s.qualifications || []).length > 0) },
+    // Risiko & Krisen
+    { id: "burnout", group: "Risiko", icon: "🤒", name: "Burnout-Warnung", desc: "Vom Arzt zur Pause gemahnt worden (Stress ≥ 85%).", check: () => (State.burnoutWarnings || 0) >= 1 },
+    { id: "breakdown_first", group: "Risiko", icon: "🔧", name: "Erste Panne", desc: "Ein LKW hatte eine Panne.", check: () => (State.stats?.breakdowns || 0) >= 1 },
+    // Privatleben
+    { id: "married", group: "Privatleben", icon: "💍", name: "Verheiratet", desc: "Hochzeit gefeiert.", check: () => State.family && "verheiratet" === State.family.status },
+    { id: "kids_2", group: "Privatleben", icon: "👨‍👩‍👧", name: "Familienleben", desc: "Zwei oder mehr Kinder.", check: () => (State.family?.children || []).length >= 2 },
+    { id: "luxury_3", group: "Privatleben", icon: "💎", name: "Luxus-Lifestyle", desc: "Drei oder mehr Statussymbole gekauft.", check: () => (State.luxuryItems || []).length >= 3 },
+  ],
+  checkAll() {
+    if (!State.achievements) State.achievements = [];
+    const newly = [];
+    for (const a of this.CATALOG) {
+      if (State.achievements.includes(a.id)) continue;
+      try {
+        if (a.check()) {
+          State.achievements.push(a.id);
+          newly.push(a);
+        }
+      } catch (e) {}
+    }
+    if (newly.length > 0 && "undefined" !== typeof EventManager) {
+      newly.forEach((a) => {
+        EventManager.addNews("good", `🏅 Errungenschaft: ${a.icon} ${a.name} — ${a.desc}`);
+        if ("undefined" !== typeof UI && UI.toast) UI.toast(`🏅 ${a.name}`, "good");
+      });
+    }
+    return newly;
+  },
+  isUnlocked(id) {
+    return ((State.achievements || []).includes(id));
+  },
+  progress() {
+    const total = this.CATALOG.length;
+    const done = (State.achievements || []).length;
+    return { done, total, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
+  },
+};
 const Utils = {
   rand: (min, max) => Math.random() * (max - min) + min,
   randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
@@ -4658,6 +4719,8 @@ function _planerDefaultState() {
     morningActionDay: null,
     eveningActionDay: null,
     socialActionDay: null,
+    // Errungenschaften — Liste freigeschalteter Achievement-IDs
+    achievements: [],
   };
 }
 const State = _planerDefaultState();
@@ -26499,6 +26562,7 @@ const Game = {
       }
       State.hour = MorningRoutine.wakeup();
       DayCycle.start();
+      if ("undefined" !== typeof Achievements) Achievements.checkAll();
       if ("undefined" != typeof GameClock) {
         GameClock.setArrival(MorningRoutine.baselineArrival());
         if (!GameClock._frame) GameClock._startLoop();
@@ -30331,7 +30395,7 @@ const UI = {
   _helpCurrentTab: "faq",
   _helpTab(tab) {
     this._helpCurrentTab = tab;
-    ["faq", "start", "systems", "tips", "glossary", "log"].forEach((t) => {
+    ["faq", "start", "systems", "tips", "glossary", "achievements", "log"].forEach((t) => {
       const btn = document.getElementById("help-tab-" + t);
       if (btn) {
         btn.style.background = t === tab ? "var(--accent)" : "";
@@ -30456,6 +30520,43 @@ const UI = {
         "📚",
         `<div style="font-size:11px;color:var(--muted2);margin-bottom:10px;">Die Speditions- und Logistikbranche steckt voller Abkürzungen. Hier eine Übersicht der wichtigsten Begriffe, die im Spiel auftauchen. Wo das ?-Symbol erscheint, kannst du auch direkt zur Erklärung springen.</div>${entries || '<i style="color:var(--muted);">Glossar leer</i>'}`,
       );
+    } else if ("achievements" === tab) {
+      if ("undefined" !== typeof Achievements) Achievements.checkAll();
+      const p = Achievements.progress();
+      const groups = {};
+      Achievements.CATALOG.forEach((a) => {
+        if (!groups[a.group]) groups[a.group] = [];
+        groups[a.group].push(a);
+      });
+      const progressBar = `<div style="background:linear-gradient(135deg,rgba(74,222,128,0.10),rgba(251,191,36,0.06));border:1px solid rgba(74,222,128,0.3);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <b style="font-size:13px;color:var(--accent2);">🏅 Errungenschaften: ${p.done} / ${p.total}</b>
+          <span style="font-size:12px;font-weight:700;color:var(--accent2);">${p.pct}%</span>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${p.pct}%;background:linear-gradient(90deg,var(--accent2),#fbbf24);border-radius:3px;transition:width .3s;"></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:6px;">Werden automatisch beim Tageswechsel geprüft — keine Aktion deinerseits nötig.</div>
+      </div>`;
+      const groupHTML = Object.entries(groups)
+        .map(([groupName, items]) => {
+          const groupDone = items.filter((a) => Achievements.isUnlocked(a.id)).length;
+          const itemsHTML = items
+            .map((a) => {
+              const unlocked = Achievements.isUnlocked(a.id);
+              return `<div style="display:flex;gap:10px;padding:8px;border-radius:6px;background:${unlocked ? "rgba(74,222,128,0.06)" : "var(--bg)"};border:1px solid ${unlocked ? "rgba(74,222,128,0.25)" : "var(--border)"};margin-bottom:6px;opacity:${unlocked ? 1 : 0.6};">
+                <span style="font-size:22px;width:32px;flex-shrink:0;text-align:center;">${unlocked ? a.icon : "🔒"}</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:12px;font-weight:700;color:${unlocked ? "var(--accent2)" : "var(--muted)"};">${a.name}${unlocked ? ' <span style="font-size:9px;background:rgba(74,222,128,0.18);color:var(--accent2);border-radius:3px;padding:1px 5px;margin-left:4px;">FREIGESCHALTET</span>' : ""}</div>
+                  <div style="font-size:10px;color:var(--muted2);margin-top:2px;line-height:1.5;">${a.desc}</div>
+                </div>
+              </div>`;
+            })
+            .join("");
+          return section(`${groupName} (${groupDone}/${items.length})`, "🏷", itemsHTML);
+        })
+        .join("");
+      el.innerHTML = progressBar + groupHTML;
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
