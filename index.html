@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.12.1 · Build 27.05.2026">
+<meta name="build" content="v2.13.0 · Build 27.05.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.12.1</title>
+<title>Der Planer Ultimate · v2.13.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -1477,7 +1477,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.12.1</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.13.0</div>
       <div style="font-size:10px; color:var(--muted);">Mai 2026</div>
     </div>
   </div>
@@ -1631,7 +1631,7 @@ footer {
 <div id="toast-container"></div>
 
 <script>
-const APP_VERSION = "v2.12.1";
+const APP_VERSION = "v2.13.0";
 const BUILD_DATE = "27.05.2026";
 const DATA = {
   locations: {
@@ -4729,6 +4729,10 @@ function _planerDefaultState() {
     socialActionDay: null,
     // Errungenschaften — Liste freigeschalteter Achievement-IDs
     achievements: [],
+    // GF-Selbstfahr-Skill — beginnt bei Stufe 1 (Standard LKW-Schein CE), waechst durch
+    // Selbstfahr-Touren (XP-Schema analog zu Fahrer-Skills). Wird in PlayerManager
+    // gepflegt; siehe PlayerManager.gfSkillLevel() / grantGfXP().
+    gfDriving: { skill: 1, xp: 0, tours: 0, kmTotal: 0 },
   };
 }
 const State = _planerDefaultState();
@@ -23552,11 +23556,59 @@ const JobManager = {
         : Math.max(1, Math.ceil(Utils.dist(truckC, fromC) / 600))) + Math.max(1, Math.ceil(job.km / 600))
     );
   },
+  // Sammelt fuer jeden Truck den konkreten Grund, warum er fuer einen Job nicht passt.
+  // Liefert eine kompakte summary (haeufigster Engpass) + Detail-Liste pro Truck +
+  // ob die Selbstfahr-Option als Fallback funktionieren wuerde.
+  _diagnoseNoTruck(job) {
+    const trucks = State.trucks || [];
+    if (0 === trucks.length) return { summary: "Du hast noch keine LKW im Fuhrpark.", perTruck: [], canSelfDrive: false };
+    const reqSkill = (job.cargoType && job.cargoType.skill) || job.skillRequired || 1;
+    const perTruck = trucks.map((t) => {
+      // Reihenfolge: das, was am haeufigsten der Killer ist, zuerst.
+      if ("undefined" !== typeof FleetManager && FleetManager.effectiveCapacity(t) < (job.weight || 0))
+        return { plate: t.plate || t.id, text: `Kapazität zu klein (${FleetManager.effectiveCapacity(t)}t < ${job.weight}t)` };
+      if (job.cargoType && "undefined" !== typeof FleetManager && !FleetManager.canHaul(t, job.cargoType))
+        return { plate: t.plate || t.id, text: `Anhänger passt nicht zur Fracht (${(job.cargoType.requiresTrailer || []).join(" oder ") || "Spezialanhänger"} nötig)` };
+      if (!t.driverId) return { plate: t.plate || t.id, text: "Kein Fahrer zugewiesen" };
+      const drv = (State.staff || []).find((s) => s.id === t.driverId);
+      if (!drv) return { plate: t.plate || t.id, text: "Fahrer nicht auffindbar" };
+      if ("krank" === drv.status) return { plate: t.plate || t.id, text: `Fahrer ${drv.name || ""} krank` };
+      if ("urlaub" === drv.status) return { plate: t.plate || t.id, text: `Fahrer ${drv.name || ""} im Urlaub` };
+      if ("schulung" === drv.status) return { plate: t.plate || t.id, text: `Fahrer ${drv.name || ""} in Schulung` };
+      if ("ruhetag" === drv.status) return { plate: t.plate || t.id, text: `Fahrer ${drv.name || ""} hat Ruhetag` };
+      if ("repair" === t.status) return { plate: t.plate || t.id, text: "LKW in Werkstatt" };
+      if (t._gfTour) return { plate: t.plate || t.id, text: "LKW gerade auf Selbstfahr-Tour" };
+      if (t.recalled && (t.recalledUntil || 0) > State.day) return { plate: t.plate || t.id, text: "LKW im Rückruf" };
+      if ((t.strikePauseUntil || 0) > State.day) return { plate: t.plate || t.id, text: "Fahrer im Streik" };
+      const skill = "undefined" !== typeof FleetManager ? FleetManager.getDriverSkillLevel(drv) : 0;
+      if (skill < reqSkill) return { plate: t.plate || t.id, text: `Fahrer-Skill zu niedrig (${skill}/${reqSkill})` };
+      const freeDay = "idle" === t.status ? State.day : this.truckFreeDay(t.id);
+      if (job.deadline && job.deadline - freeDay < this.totalDays(job, t) - 2)
+        return { plate: t.plate || t.id, text: `Deadline nicht zu schaffen (frei ab Tag ${freeDay})` };
+      return { plate: t.plate || t.id, text: "?" };
+    });
+    // Haeufigster Engpass als summary (gruppiert nach Text-Prefix)
+    const tally = {};
+    perTruck.forEach((r) => {
+      const key = r.text.split(" ")[0] + (r.text.includes("Skill") ? " Skill" : "") + (r.text.includes("Anhänger") ? " Anhänger" : "");
+      tally[r.text] = (tally[r.text] || 0) + 1;
+    });
+    const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+    const summary = top ? top[0] : "Kein passender LKW + Fahrer verfügbar";
+    // Kann der GF stattdessen selbst fahren?
+    const canSelfDrive = "undefined" !== typeof SelfDrive && SelfDrive.canStart && SelfDrive.canStart(job);
+    return { summary: summary + (canSelfDrive ? " — Selbstfahrt möglich" : ""), perTruck: perTruck, canSelfDrive: canSelfDrive };
+  },
   acceptJob(jobId, routeStrategy = "fastest") {
     const job = (State.jobs || []).find((j) => j.id === jobId);
     if (!job) return { ok: false, reason: "Auftrag nicht gefunden" };
     const truck = this.findBestTruck(job);
-    if (!truck) return { ok: false, reason: "Kein passender LKW + Fahrer verfügbar" };
+    if (!truck) {
+      // Detaillierte Begruendung: pro vorhandenem Truck den ersten Killer feststellen,
+      // damit der Spieler weiss WAS fehlt (Anhaenger, Skill, Fahrer ...).
+      const reasons = this._diagnoseNoTruck(job);
+      return { ok: false, reason: reasons.summary, details: reasons.perTruck, canSelfDrive: reasons.canSelfDrive };
+    }
     const driver = (State.staff || []).find((s) => s.id === truck.driverId);
     const route = RouteManager.chooseRoute(job.from, job.to, truck.id, routeStrategy);
     if (!route) return { ok: false, reason: `Routenberechnung fehlgeschlagen (${job.from}→${job.to})` };
@@ -24611,6 +24663,43 @@ const MarketingManager = {
   },
 };
 const PlayerManager = {
+  // ───── GF-Selbstfahr-Skill ─────────────────────────────────────────────
+  // Stufe ergibt sich aus XP (gleiche Schwellen wie Angestellten-Fahrer):
+  //   1 = 0-9 XP, 2 = 10-29, 3 = 30-59, 4 = 60-79, 5 = 80+
+  // Stufe 1 = Standard-LKW-Schein C/CE, Stufe 5 = erfahren genug fuer Schwerlast/Gefahrgut.
+  gfSkillLevel() {
+    const xp = (State.gfDriving && State.gfDriving.xp) || 0;
+    if (xp >= 80) return 5;
+    if (xp >= 60) return 4;
+    if (xp >= 30) return 3;
+    if (xp >= 10) return 2;
+    return 1;
+  },
+  gfNextLevelXp() {
+    const xp = (State.gfDriving && State.gfDriving.xp) || 0;
+    if (xp >= 80) return null; // Max
+    if (xp >= 60) return 80;
+    if (xp >= 30) return 60;
+    if (xp >= 10) return 30;
+    return 10;
+  },
+  // Vergibt XP nach einer Selbstfahr-Tour (km-basiert + Onzeit-Bonus). Triggert
+  // News bei Level-Up. Wird von SelfDrive nach Tour-Abschluss aufgerufen.
+  grantGfXP(km, onTime) {
+    if (!State.gfDriving) State.gfDriving = { skill: 1, xp: 0, tours: 0, kmTotal: 0 };
+    const before = this.gfSkillLevel();
+    const gained = 5 + Math.floor((km || 0) / 100);
+    const bonus = onTime ? Math.round(0.3 * gained) : 0;
+    State.gfDriving.xp = (State.gfDriving.xp || 0) + gained + bonus;
+    State.gfDriving.tours = (State.gfDriving.tours || 0) + 1;
+    State.gfDriving.kmTotal = (State.gfDriving.kmTotal || 0) + (km || 0);
+    const after = this.gfSkillLevel();
+    State.gfDriving.skill = after;
+    if (after > before && "undefined" !== typeof EventManager) {
+      EventManager.addNews("good", `🎓 GF-Fahrskill auf Stufe ${after} aufgestiegen (${after >= 4 ? "darfst jetzt anspruchsvollere Schwerlast-Touren fahren" : "mehr Routine am Steuer"})`);
+    }
+    return { gained: gained + bonus, levelUp: after > before };
+  },
   dailyTick() {
     // GF vacation entitlement refreshes each game year (365 days), mirroring
     // the staff vacation model. Without this the 14-day pool drained for good
@@ -25837,6 +25926,18 @@ const SelfDrive = {
       truck && void 0 !== JobManager && JobManager.totalDays
         ? JobManager.totalDays(job, truck)
         : Math.ceil((job.km || 200) / 450);
+    // Anhaenger-Check: passt der angekoppelte Anhaenger zur Fracht?
+    const trailerOk = !truck || !job.cargoType || ("undefined" !== typeof FleetManager && FleetManager.canHaul(truck, job.cargoType));
+    // GF-Skill-Check: reicht der Fahrskill des Chefs fuer diese Cargo-Stufe?
+    const gfSkill = "undefined" !== typeof PlayerManager && PlayerManager.gfSkillLevel ? PlayerManager.gfSkillLevel() : 1;
+    const skillRequired = (job.cargoType && job.cargoType.skill) || job.skillRequired || 1;
+    const skillShort = gfSkill < skillRequired;
+    const skillWarn = skillShort
+      ? `<div style="margin-top:8px;padding:6px 8px;background:rgba(248,113,113,0.10);border:1px solid rgba(248,113,113,0.35);border-radius:6px;font-size:10px;color:var(--warn);">⚠ Diese Fracht verlangt Fahr-Skill ${skillRequired}, du hast erst Stufe ${gfSkill}. Du darfst es trotzdem versuchen — aber das Unfallrisiko ist deutlich höher und Pünktlichkeit schwerer zu halten.</div>`
+      : "";
+    const trailerWarn = !trailerOk
+      ? `<div style="margin-top:8px;padding:6px 8px;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.45);border-radius:6px;font-size:10px;color:var(--danger);">⛔ Der angekoppelte Anhänger passt nicht zur Fracht (${job.cargo}). Du kannst die Tour zwar starten, aber wirst sie nicht abschließen können — wechsle vorher den Anhänger.</div>`
+      : "";
     const insProducts = void 0 !== CargoInsurance ? Object.values(CargoInsurance.PRODUCTS) : [];
     const defaultPolicy = void 0 !== GFOffice ? GFOffice.getCargoPolicy() : "none";
     const insHTML =
@@ -25861,6 +25962,8 @@ const SelfDrive = {
         "<br>Dauer: ca. <b>" +
         days +
         " Tag(e)</b> — solange sind Sie unterwegs, das Büro ist nur eingeschränkt erreichbar. Selbstfahren kostet Stress und Familienzeit, spart aber das Fahrergehalt.</div>" +
+        trailerWarn +
+        skillWarn +
         expressNote +
         insHTML,
       actions: [
@@ -26261,6 +26364,10 @@ const SelfDrive = {
     const repDelta = onTime ? 0.5 : job.isExpress ? -10 : -2;
     State.reputation = Utils.clamp((State.reputation || 50) + repDelta, 0, 100);
     State.stats.totalJobs = (State.stats.totalJobs || 0) + 1;
+    // GF sammelt Fahr-XP fuer jede Selbstfahr-Tour (km + Onzeit-Bonus).
+    if ("undefined" !== typeof PlayerManager && PlayerManager.grantGfXP) {
+      PlayerManager.grantGfXP(job.km || 0, onTime);
+    }
     State.gfTour = null;
     EventManager.addNews(
       onTime ? "good" : job.isExpress ? "bad" : "warn",
@@ -29035,6 +29142,41 @@ const UI = {
       `</div>`
     );
   },
+  // Cockpit-Box "Offene Auftraege" Annehmen-Button:
+  //  1) versucht normales acceptJob (mit Fahrer-Truck)
+  //  2) wenn das scheitert UND Selbstfahrt moeglich ist, oeffnet das Selbstfahr-Modal
+  //  3) sonst Toast mit detaillierter Begruendung (welcher Truck welchen Engpass hat)
+  _cockpitAcceptJob(jobId) {
+    if ("undefined" === typeof JobManager) return;
+    const r = JobManager.acceptJob(jobId);
+    if (r.ok) {
+      this.toast("✓ Auftrag angenommen", "good");
+      this.renderAll();
+      return;
+    }
+    if (r.canSelfDrive && "undefined" !== typeof SelfDrive && SelfDrive.promptStart) {
+      SelfDrive.promptStart(jobId);
+      return;
+    }
+    // Detaillierte Begruendung anzeigen: einen Toast mit Kern-Reason + optionalem Modal-Link.
+    this.toast(r.reason || "Annahme nicht möglich", "warn");
+    if (r.details && r.details.length > 0) this._showAcceptFailModal(jobId, r);
+  },
+  _showAcceptFailModal(jobId, result) {
+    const job = (State.jobs || []).find((j) => j.id === jobId);
+    if (!job) return;
+    const detailsHtml = (result.details || [])
+      .map((d) => `<li><b>${d.plate}</b>: ${d.text}</li>`)
+      .join("");
+    const selfDriveBtn = result.canSelfDrive
+      ? `<button class="btn primary" style="width:100%;margin-top:10px;" onclick="UI.closeModal();SelfDrive.promptStart('${jobId}');">🚛 Stattdessen selbst fahren</button>`
+      : "";
+    this.showModal({
+      title: `Auftrag nicht annehmbar: ${job.fromName} → ${job.toName}`,
+      maxWidth: "560px",
+      content: `\n        <div style="font-size:12px;line-height:1.7;">\n          <div><b>Fracht:</b> ${job.cargo} · ${job.weight || "?"}t · ${Utils.euro(job.price)}</div>\n          <div style="margin-top:10px;"><b>Status pro LKW:</b></div>\n          <ul style="margin:6px 0;padding-left:20px;font-size:11px;color:var(--muted2);">${detailsHtml || '<li>(keine LKW im Fuhrpark)</li>'}</ul>\n          <div style="margin-top:10px;font-size:11px;color:var(--muted2);">💡 Tipp: Anhänger im Fuhrpark wechseln, Fahrer einstellen oder Skill aufbauen (Fahrer-Schulungen unter „Personal").</div>\n        </div>\n        ${selfDriveBtn}`,
+    });
+  },
   renderZentrale() {
     const el = document.getElementById("zentrale-content");
     if (!el) return;
@@ -29184,7 +29326,7 @@ const UI = {
             <div style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.fromName} → ${j.toName}</div>
             <div style="font-size:9px;color:var(--muted2);">${j.cargo} · ${j.km}km · <span style="color:var(--accent2);">${Utils.euro(j.price)}</span></div>
           </div>
-          <button class="btn small primary" style="font-size:10px;flex-shrink:0;" onclick="(function(){var r=JobManager.acceptJob('${j.id}');UI.toast(r.ok?'✓ Auftrag angenommen':(r.reason||'Annahme nicht möglich'),r.ok?'good':'warn');UI.renderAll();})()">Annehmen</button>
+          <button class="btn small primary" style="font-size:10px;flex-shrink:0;" onclick="UI._cockpitAcceptJob('${j.id}')">Annehmen</button>
         </div>`,
           )
           .join("")
@@ -30753,7 +30895,7 @@ const UI = {
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
-      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.12.1", "Mai 2026", '\n          <span style="color:var(--warn);">FIX:</span> Leasing-Verträge-Tab zeigte „Keine aktiven Leasing-Verträge" obwohl Verträge bestanden — Render erkennt jetzt beide Leasing-Datenmodelle (klassisch <code>t.isLeased</code> sowie Dealer <code>t.leasing.active</code>).\n        ')}\n        ${v("v2.12.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Vollbild-Splash-Screen vor dem Start-Menü — SVG-Hero mit Skyline, Sattelzug, Studio-Branding „Dr. Block Games".<br>\n          <span style="color:var(--accent2);">NEU:</span> „Heute"-Cockpit im Büro — kuratierte Action-Item-Liste (Decisions, Calls, kritische News, freie Trucks) vor den KPIs, live-aktualisiert.<br>\n          <span style="color:var(--accent2);">NEU:</span> Achievement-System mit 23 Errungenschaften in 5 Gruppen plus eigenem Hilfe-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Glossar-Framework mit Inline-Tooltips für Fachbegriffe (CMR, ADR, ESG, GmbH, UG, Versicherungs-Policy …).<br>\n          <span style="color:var(--accent2);">NEU:</span> Tutorial-Index/Systeme-Tab mit dynamischem Entdeckungs-Fortschritt — zeigt welche Systeme der Spieler schon kennengelernt hat.<br>\n          <span style="color:var(--accent2);">NEU:</span> Konkurrenz-Marktübersicht als eigener Strategie-Tab — wer wächst, wer schrumpft, wer wäre kaufbar.<br>\n          <span style="color:var(--accent2);">NEU:</span> Konjunktur-Visualisierung — aktive Markt-Modifikatoren prominent im Büro statt versteckt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Massen-Disponieren in der Joblist — Checkbox-Spalte mit Bulk-Accept (nach Policy) und Bulk-Reject.<br>\n          <span style="color:var(--accent2);">NEU:</span> Dispo-Priorisierung: Express > Rahmenverträge > Spot/Frachtenbörse, plus automatische Versicherung nach Arbeitsanweisung.<br>\n          <span style="color:var(--accent2);">NEU:</span> Eilauftrag wird echter Auftrag — harte Vertragsstrafe bei Verfall oder Verspätung statt nur Reputations-Malus.<br>\n          <span style="color:var(--accent2);">NEU:</span> Frachtenbörse: stündliche Preis- und Gebots-Logik wirkt jetzt wirklich, Sortier-Funktionen freigeschaltet.<br>\n          <span style="color:var(--accent2);">NEU:</span> 6 Betriebsversicherungen an echte Ereignisse gekoppelt (Cyberangriff, D&O-Klage, Vertrauensschaden …) statt nur Monatsprämie.<br>\n          <span style="color:var(--accent2);">NEU:</span> Frachtversicherung mit realistischen Prämien (statt pauschal 50 €) und verständlicheren Bezeichnungen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Privatleben-Layout überarbeitet — HEUTE-Strip oben, volle Breite, responsive Grids, sticky Party-Modal.<br>\n          <span style="color:var(--accent2);">NEU:</span> Selbstfahren Etappe 2 — mehr Tour-Momente, Remote-Büro vom Tablet/Laptop, Cabin-Optionen ersetzen Heim-Routinen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Tour-Panne: Selbst-Flicken nur mit Werkzeugkoffer (Equipment wirkt jetzt echt).<br>\n          <span style="color:var(--accent2);">NEU:</span> Wartungsverträge übernehmen Pannen-Reparaturkosten (Komfort/Premium/Garantie).<br>\n          <span style="color:var(--accent2);">NEU:</span> Sub-Unternehmer-Übersicht für ausgelagerte Aufträge.<br>\n          <span style="color:var(--accent2);">NEU:</span> Save-Slots-UI — 5 Slots plus Auto-Save, Slot-Modal mit Strg+Shift+S.<br>\n          <span style="color:var(--accent2);">NEU:</span> Tastatur-Shortcuts (1–9 Tab-Wechsel, Space nächste Entscheidung, Strg+S Speichern, Esc Modal, ? Cheat-Sheet).<br>\n          <span style="color:var(--accent2);">NEU:</span> Ereignisse-View prominenter, mit Tabs und Ungelesen-Badge (Warnungen zählen mit).<br>\n          <span style="color:var(--accent2);">NEU:</span> Morgennachrichten geben jetzt echte Spielmechanik-Boni statt nur Posteingang-Hinweise.<br>\n          <span style="color:var(--accent2);">NEU:</span> Live-Refresh für Cockpit, Joblist, Frachtenbörse, Posteingang, Telefon und Ereignisse — kein manuelles Reloaden mehr.<br>\n          <span style="color:var(--warn);">FIX:</span> Verspätungs-Versicherung wurde doppelt gezählt — Schaden wird jetzt einmalig verbucht.<br>\n          <span style="color:var(--warn);">FIX:</span> State-Leak-Audit — zahlreiche Felder in _planerDefaultState() ergänzt, sauberer Reset bei neuem Spiel.<br>\n          <span style="color:var(--warn);">FIX:</span> Rabattverhandlung mit Neu-Kunden zeigt jetzt Aufklärungs-Modal statt sinnloser 0%-Verhandlung.<br>\n          <span style="color:var(--warn);">FIX:</span> SelfDrive-Express-Strafe, Cockpit-Inbox/Calls-Bugs, Cyber-Selbstbehalt, Versicherungspanel.\n        ')}\n        ${v("v2.11.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Leerfahrt-System — LKW fährt realistisch vom aktuellen Standort zum Auftragsort. Kosten und Zeit werden automatisch berechnet und abgerechnet.<br>\n          <span style="color:var(--accent2);">NEU:</span> Fähren — UK↔Kontinent (Eurotunnel, Dover-Calais) und Skandinavien (Kiel-Göteborg, Rostock-Trelleborg) als echte Route-Pflichtpunkte mit Kosten und Zeit.<br>\n          <span style="color:var(--accent2);">NEU:</span> Leasing für LKW und Anhänger (24/36/48 Monate, Restwert, automatische Monatsraten).<br>\n          <span style="color:var(--accent2);">NEU:</span> Wartungsverträge (Basis/Komfort/Premium/Gebraucht-Garantie) für Fuhrpark ohne eigene Werkstatt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Tanklager-Infrastruktur (20.000/50.000L) mit Volumenrabatten bis −6%.<br>\n          <span style="color:var(--accent2);">NEU:</span> Neu- und Gebrauchtanhänger im Händler. Einstellungs-Button direkt im Personal-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Ausgehende Anrufe (Büro) mit kontextbewussten Gesprächsthemen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Systemcheck (❓ Hilfe) — 30 automatische Tests, Claude-Bugbericht per Knopfdruck.<br>\n          <span style="color:var(--warn);">FIX:</span> Alle Tab-Render-Funktionen schreiben jetzt in den korrekten sichtbaren Container.\n        ')}\n        ${v("v2.10.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Direktiven-System — 7 Abteilungen mit je 4 Direktiven und echten messbaren Spieleffekten (Kraftstoff, Bußgelder, Auftragspreise, Personalkosten etc.)<br>\n          <span style="color:var(--accent2);">NEU:</span> Fahrer-Karriere — 5 XP-Stufen (Berufseinsteiger → Experten-Fahrer) mit Fortschrittsbalken, automatischer Gehaltsanpassung, Mentor-System<br>\n          <span style="color:var(--accent2);">NEU:</span> Mitarbeiter-Tiefe — Persönlichkeits-Effekte, Beziehungssystem zwischen MA, Karriere-Meilensteine<br>\n          <span style="color:var(--accent2);">NEU:</span> Kundengeschichten — Persönlichkeitstypen, Stammkunden-Entwicklung, Kettenaufträge, Exklusivpartnerschaften<br>\n          <span style="color:var(--accent2);">NEU:</span> Markt-Intelligenz — 12 Branchen-News als Vorzeichen, 3–6 Konkurrenten die wachsen/schrumpfen und Übernahmen anbieten<br>\n          <span style="color:var(--accent2);">NEU:</span> Krisen-System — Schwere Unfälle (mehrtägig), Insolvenzgefahr, Naturkatastrophen, Cyberangriff, Medienskandale<br>\n          <span style="color:var(--accent2);">NEU:</span> Lebens-Ereignisse — Kind Schulstart/Abitur, Partner verliert Job, GF-Gesundheit, 13 Langzeit-Meilensteine<br>\n          <span style="color:var(--accent2);">NEU:</span> Light/Dark Mode im Spielmenü, persistiert via localStorage<br>\n          <span style="color:var(--accent2);">NEU:</span> Firmenname + Logo-Emoji beim Spielstart individuell wählbar<br>\n          <span style="color:var(--warn);">FIX:</span> Doppelte render-Funktionen (renderCustomerPortal, renderBank, renderMaintenance) bereinigt\n        ')}\n        ${v("v2.9.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> KFZ-Meister als eigene Rolle (4.200€) — −50% Reparaturkosten mit Werkstatt, Meisterbetrieb-Badge, darf Azubis ausbilden.<br>\n          <span style="color:var(--accent2);">NEU:</span> Drei Azubi-Typen (Berufskraftfahrer 850€, KFZ-Mechatroniker 750€, Kaufm. Spedition 800€). Betreuer-System mit −15% Output-Malus. Nach 1095 Tagen automatisch Vollkraft.<br>\n          <span style="color:var(--accent2);">NEU:</span> 7 Abteilungsleiter-Rollen (ab Tag 60). Ab 5 Leitern: GF-Delegation aktiv — nur noch monatliche Reports.<br>\n          <span style="color:var(--accent2);">NEU:</span> Beförderung bestehender Mitarbeiter — 👑-Button auf Personal-Karte, +25% Gehalt, Modal mit Vorschau.<br>\n          <span style="color:var(--accent2);">NEU:</span> Standortverwaltung als eigener Tab (🏗️) — alle 22 Gebäude mit realistischen deutschen Marktpreisen kaufbar.<br>\n          <span style="color:var(--accent2);">NEU:</span> Realistische Gebäude-Kosten: Werkstatt 2 Stände 220k€/3.500€ mtl., Sicherheitsdienst 65k€/9.500€ mtl., Kantine 145k€/8.500€ mtl., Kühlhaus 620k€/9.800€ mtl.<br>\n          <span style="color:var(--accent2);">NEU:</span> Herstellergarantie 24 Monate bei Neuwagen und Leasing — Reparaturen kostenlos in dieser Zeit.<br>\n          <span style="color:var(--accent2);">NEU:</span> Anhänger-Leasing (1,4% Rate, 10% Anzahlung, 36 Monate) neben LKW-Leasing.<br>\n          <span style="color:var(--warn);">FIX:</span> Kredit-Exploit geschlossen — Mikro/Standard je 2×, Groß/Invest je 1× nutzbar. Dynamisches Gesamtlimit (3× Monatsumsatz).<br>\n          <span style="color:var(--warn);">FIX:</span> Azubi-Alter realistisch (15–21 Jahre), Abteilungsleiter 30–58 Jahre, KFZ-Meister 27–52 Jahre. Kein 41-jähriger Azubi für 850€ mehr.\n        ')}\n        ${v("v2.8.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Spielgeschwindigkeit komplett überarbeitet — ein kontinuierlicher Loop mit korrekter Echtzeit-Basis (1× = 3 Echtmin./Spielstunde, nahtloser Speedwechsel ohne Zurückspringen).<br>\n          <span style="color:var(--accent2);">NEU:</span> Hilfe & Handbuch vollständig ausgebaut — FAQ, Einstiegs-Guide, Systemübersicht, Tipps, Changelog.<br>\n          <span style="color:var(--accent2);">NEU:</span> Versionsnummern im Hilfe-Bereich sichtbar.<br>\n          <span style="color:var(--warn);">FIX:</span> Doppelte Buttons (+1T / ▶1T) zu einem zusammengeführt.\n        ')}\n        ${v("v2.7.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Uhrzeit im Header (06:00–22:00, flüssige Animation). Geschwindigkeitssteuerung 1×/2×/4×/16×/32× mit Pause-Button.<br>\n          <span style="color:var(--accent2);">NEU:</span> Rechtsformen nach deutschem Recht (e.K. → UG → GmbH → GmbH & Co. KG → AG → SE) mit Steuersätzen, Haftung und GF-Gehalt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Gewinnentnahme für e.K./GbR/KG direkt im Rechtsform-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Iveco Daily / Vans können jetzt leichte Kastenanhänger (3,5t) ziehen. Neue Anhängertypen im Hänger-Markt.<br>\n          <span style="color:var(--warn);">FIX:</span> Englische Fachbegriffe (Curtainsider/Tautliner) durch deutsche Bezeichnungen ersetzt.\n        ')}\n        ${v("v2.6.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Niederlassungs-GF-Sicht: Finanz-KPIs, 6-Monats-Verlauf, Personal- und Fuhrpark-Übersicht pro Filiale, GF kann direkt eingreifen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Niederlassungsleiter handeln autonom: stellen Fahrer ein, organisieren Krankheitsvertretungen, senden monatliche Berichte.<br>\n          <span style="color:var(--warn);">FIX:</span> View-Routing-Bug: Tuning/ESG/Hedging/Lobbying/M&A/Fahrerschule/Konjunktur wurden nie gerendert (classList vs. style-Fehler).\n        ')}\n        ${v("v2.5.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Bewerber-Pool beim Einstellen: 3 Kandidaten mit vollem Profil (Alter, Fahrstil, Vorarbeitgeber, Hobbies, Fun-Fact, Charakter).<br>\n          <span style="color:var(--accent2);">NEU:</span> Hover-Tooltips auf Personal (Persönlichkeit, Familie, Qualifikationen) und LKW (Lebenszeit-KPIs, Restwert, letzter Unfall).<br>\n          <span style="color:var(--accent2);">NEU:</span> Urlaubs-Anzeige auf Personal-Karte mit Fortschrittsbalken und Urlaub-Schicken-Button.<br>\n          <span style="color:var(--accent2);">NEU:</span> Frachtenversicherung (CMR, Waren-Vollkasko, Totalverlust-Police) beim Routenwahl-Dialog buchbar.\n        ')}\n        ${v("v2.4.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Disponent weist bei Fahrerkrankheit automatisch Ersatzfahrer zu (mit/ohne Disponent im Team unterschiedlich gut).<br>\n          <span style="color:var(--accent2);">NEU:</span> Diebstahl-Logik: Schaden = echter Fahrzeugrestwert (nicht mehr fix 8.000€). Teilkasko erstattet ~65%, Vollkasko ~90%.<br>\n          <span style="color:var(--accent2);">NEU:</span> Entscheidungs-Event nach Diebstahl: Versicherung akzeptieren, Anwalt einschalten (+15%), Polizei-Report (20% Wiederfund-Chance).<br>\n          <span style="color:var(--warn);">FIX:</span> Fahrer-Skills Button hatte keine Reaktion (XP wurde nie vergeben). XP-System jetzt aktiv bei Auftragsabschluss.\n        ')}\n        ${v("v2.3.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Lobby-Maßnahmen laufen jetzt korrekt ab (Bug: expiresDay=0 wurde als "kein Ablauf" gewertet).<br>\n          <span style="color:var(--accent2);">NEU:</span> 100 cargoTypes erhalten slug-basierte IDs (paletten_mehl, tiefkuhlkost etc.).<br>\n          <span style="color:var(--warn);">FIX:</span> Job-Preis-Cap: Multiplikatoren geclampt, absoluter Deckel bei 80.000€.<br>\n          <span style="color:var(--warn);">FIX:</span> Truck-Status-Leak nach Fahrerkündigung während aktiver Tour behoben.<br>\n          <span style="color:var(--warn);">FIX:</span> Trucks im Umbau und Fahrer in Schulung werden nicht mehr disponiert.\n        ')}\n        ${v("v2.2.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Module 22–33 implementiert: Frachtenbörse, Fahrer-Karriere, SLA-Verträge, BAG-Compliance, Fahrzeug-Tuning, CO₂/ESG, Fuel-Hedging, Bonussystem, Lobbying, Marktzyklen, M&A, Fahrerschule, Politische Events.<br>\n          <span style="color:var(--accent2);">NEU:</span> 21 Startorte (Hamburg, Berlin, München, Frankfurt, Köln, Dortmund, Dresden, Kiel u.a.).<br>\n          <span style="color:var(--warn);">FIX:</span> Frankfurt, Köln, Dortmund crashten beim Spielstart (fehlten in DATA.locations).\n        ')}\n        ${v("v2.1.0", "April 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Europa-Karte mit 110 Städten, Live-Truck-Positionen, Routenanimation.<br>\n          <span style="color:var(--accent2);">NEU:</span> Abteilungssystem (8 Departments), Rechnungssystem mit Zahlungszielen, Rahmenverträge.<br>\n          <span style="color:var(--accent2);">NEU:</span> Mitarbeiter-Interaktionen: Persönlichkeitstypen, Gehaltsverhandlungen, Abmahnungen, Kündigung.<br>\n          <span style="color:var(--accent2);">NEU:</span> Privatleben: Familie, Burnout, Luxusgüter, GF-Stress-System.\n        ')}\n        ${v("v2.0.0", "April 2026", '\n          <span style="color:var(--accent2);">RELEASE:</span> Erster spielbarer Stand. Fuhrpark, Aufträge, Personal, Finanzen, Versicherungen, Kunden, Marketing, Dashboard.\n        ')}\n      `;
+      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.13.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> GF-Fahr-Skill — der Chef startet bei Stufe 1 (Standard-LKW-Schein) und sammelt XP für jede abgeschlossene Selbstfahr-Tour (5 Basis + 1/100 km + 30% bei Pünktlichkeit). 5 Stufen wie beim Angestellten-Fahrer.<br>\n          <span style="color:var(--accent2);">NEU:</span> Selbstfahr-Modal zeigt jetzt Warnung, wenn der GF-Skill für die Fracht nicht reicht oder der angekoppelte Anhänger nicht passt — die Tour kann trotzdem gestartet werden (auf eigenes Risiko).<br>\n          <span style="color:var(--accent2);">NEU:</span> Cockpit-Annehmen-Button fällt automatisch auf das Selbstfahr-Modal zurück, wenn kein angestellter Fahrer den Auftrag annehmen kann, der GF ihn aber selbst fahren könnte. Ein Klick statt zwei.<br>\n          <span style="color:var(--accent2);">NEU:</span> Detaillierte Fehlerbegründung bei „Annehmen nicht möglich" — statt „Kein passender LKW + Fahrer" sieht man jetzt pro LKW den konkreten Engpass (Anhänger fehlt, Skill zu niedrig, Fahrer krank, Werkstatt, …) plus „Stattdessen selbst fahren"-Button im Modal.\n        ')}\n        ${v("v2.12.1", "Mai 2026", '\n          <span style="color:var(--warn);">FIX:</span> Leasing-Verträge-Tab zeigte „Keine aktiven Leasing-Verträge" obwohl Verträge bestanden — Render erkennt jetzt beide Leasing-Datenmodelle (klassisch <code>t.isLeased</code> sowie Dealer <code>t.leasing.active</code>).\n        ')}\n        ${v("v2.12.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Vollbild-Splash-Screen vor dem Start-Menü — SVG-Hero mit Skyline, Sattelzug, Studio-Branding „Dr. Block Games".<br>\n          <span style="color:var(--accent2);">NEU:</span> „Heute"-Cockpit im Büro — kuratierte Action-Item-Liste (Decisions, Calls, kritische News, freie Trucks) vor den KPIs, live-aktualisiert.<br>\n          <span style="color:var(--accent2);">NEU:</span> Achievement-System mit 23 Errungenschaften in 5 Gruppen plus eigenem Hilfe-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Glossar-Framework mit Inline-Tooltips für Fachbegriffe (CMR, ADR, ESG, GmbH, UG, Versicherungs-Policy …).<br>\n          <span style="color:var(--accent2);">NEU:</span> Tutorial-Index/Systeme-Tab mit dynamischem Entdeckungs-Fortschritt — zeigt welche Systeme der Spieler schon kennengelernt hat.<br>\n          <span style="color:var(--accent2);">NEU:</span> Konkurrenz-Marktübersicht als eigener Strategie-Tab — wer wächst, wer schrumpft, wer wäre kaufbar.<br>\n          <span style="color:var(--accent2);">NEU:</span> Konjunktur-Visualisierung — aktive Markt-Modifikatoren prominent im Büro statt versteckt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Massen-Disponieren in der Joblist — Checkbox-Spalte mit Bulk-Accept (nach Policy) und Bulk-Reject.<br>\n          <span style="color:var(--accent2);">NEU:</span> Dispo-Priorisierung: Express > Rahmenverträge > Spot/Frachtenbörse, plus automatische Versicherung nach Arbeitsanweisung.<br>\n          <span style="color:var(--accent2);">NEU:</span> Eilauftrag wird echter Auftrag — harte Vertragsstrafe bei Verfall oder Verspätung statt nur Reputations-Malus.<br>\n          <span style="color:var(--accent2);">NEU:</span> Frachtenbörse: stündliche Preis- und Gebots-Logik wirkt jetzt wirklich, Sortier-Funktionen freigeschaltet.<br>\n          <span style="color:var(--accent2);">NEU:</span> 6 Betriebsversicherungen an echte Ereignisse gekoppelt (Cyberangriff, D&O-Klage, Vertrauensschaden …) statt nur Monatsprämie.<br>\n          <span style="color:var(--accent2);">NEU:</span> Frachtversicherung mit realistischen Prämien (statt pauschal 50 €) und verständlicheren Bezeichnungen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Privatleben-Layout überarbeitet — HEUTE-Strip oben, volle Breite, responsive Grids, sticky Party-Modal.<br>\n          <span style="color:var(--accent2);">NEU:</span> Selbstfahren Etappe 2 — mehr Tour-Momente, Remote-Büro vom Tablet/Laptop, Cabin-Optionen ersetzen Heim-Routinen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Tour-Panne: Selbst-Flicken nur mit Werkzeugkoffer (Equipment wirkt jetzt echt).<br>\n          <span style="color:var(--accent2);">NEU:</span> Wartungsverträge übernehmen Pannen-Reparaturkosten (Komfort/Premium/Garantie).<br>\n          <span style="color:var(--accent2);">NEU:</span> Sub-Unternehmer-Übersicht für ausgelagerte Aufträge.<br>\n          <span style="color:var(--accent2);">NEU:</span> Save-Slots-UI — 5 Slots plus Auto-Save, Slot-Modal mit Strg+Shift+S.<br>\n          <span style="color:var(--accent2);">NEU:</span> Tastatur-Shortcuts (1–9 Tab-Wechsel, Space nächste Entscheidung, Strg+S Speichern, Esc Modal, ? Cheat-Sheet).<br>\n          <span style="color:var(--accent2);">NEU:</span> Ereignisse-View prominenter, mit Tabs und Ungelesen-Badge (Warnungen zählen mit).<br>\n          <span style="color:var(--accent2);">NEU:</span> Morgennachrichten geben jetzt echte Spielmechanik-Boni statt nur Posteingang-Hinweise.<br>\n          <span style="color:var(--accent2);">NEU:</span> Live-Refresh für Cockpit, Joblist, Frachtenbörse, Posteingang, Telefon und Ereignisse — kein manuelles Reloaden mehr.<br>\n          <span style="color:var(--warn);">FIX:</span> Verspätungs-Versicherung wurde doppelt gezählt — Schaden wird jetzt einmalig verbucht.<br>\n          <span style="color:var(--warn);">FIX:</span> State-Leak-Audit — zahlreiche Felder in _planerDefaultState() ergänzt, sauberer Reset bei neuem Spiel.<br>\n          <span style="color:var(--warn);">FIX:</span> Rabattverhandlung mit Neu-Kunden zeigt jetzt Aufklärungs-Modal statt sinnloser 0%-Verhandlung.<br>\n          <span style="color:var(--warn);">FIX:</span> SelfDrive-Express-Strafe, Cockpit-Inbox/Calls-Bugs, Cyber-Selbstbehalt, Versicherungspanel.\n        ')}\n        ${v("v2.11.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Leerfahrt-System — LKW fährt realistisch vom aktuellen Standort zum Auftragsort. Kosten und Zeit werden automatisch berechnet und abgerechnet.<br>\n          <span style="color:var(--accent2);">NEU:</span> Fähren — UK↔Kontinent (Eurotunnel, Dover-Calais) und Skandinavien (Kiel-Göteborg, Rostock-Trelleborg) als echte Route-Pflichtpunkte mit Kosten und Zeit.<br>\n          <span style="color:var(--accent2);">NEU:</span> Leasing für LKW und Anhänger (24/36/48 Monate, Restwert, automatische Monatsraten).<br>\n          <span style="color:var(--accent2);">NEU:</span> Wartungsverträge (Basis/Komfort/Premium/Gebraucht-Garantie) für Fuhrpark ohne eigene Werkstatt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Tanklager-Infrastruktur (20.000/50.000L) mit Volumenrabatten bis −6%.<br>\n          <span style="color:var(--accent2);">NEU:</span> Neu- und Gebrauchtanhänger im Händler. Einstellungs-Button direkt im Personal-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Ausgehende Anrufe (Büro) mit kontextbewussten Gesprächsthemen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Systemcheck (❓ Hilfe) — 30 automatische Tests, Claude-Bugbericht per Knopfdruck.<br>\n          <span style="color:var(--warn);">FIX:</span> Alle Tab-Render-Funktionen schreiben jetzt in den korrekten sichtbaren Container.\n        ')}\n        ${v("v2.10.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Direktiven-System — 7 Abteilungen mit je 4 Direktiven und echten messbaren Spieleffekten (Kraftstoff, Bußgelder, Auftragspreise, Personalkosten etc.)<br>\n          <span style="color:var(--accent2);">NEU:</span> Fahrer-Karriere — 5 XP-Stufen (Berufseinsteiger → Experten-Fahrer) mit Fortschrittsbalken, automatischer Gehaltsanpassung, Mentor-System<br>\n          <span style="color:var(--accent2);">NEU:</span> Mitarbeiter-Tiefe — Persönlichkeits-Effekte, Beziehungssystem zwischen MA, Karriere-Meilensteine<br>\n          <span style="color:var(--accent2);">NEU:</span> Kundengeschichten — Persönlichkeitstypen, Stammkunden-Entwicklung, Kettenaufträge, Exklusivpartnerschaften<br>\n          <span style="color:var(--accent2);">NEU:</span> Markt-Intelligenz — 12 Branchen-News als Vorzeichen, 3–6 Konkurrenten die wachsen/schrumpfen und Übernahmen anbieten<br>\n          <span style="color:var(--accent2);">NEU:</span> Krisen-System — Schwere Unfälle (mehrtägig), Insolvenzgefahr, Naturkatastrophen, Cyberangriff, Medienskandale<br>\n          <span style="color:var(--accent2);">NEU:</span> Lebens-Ereignisse — Kind Schulstart/Abitur, Partner verliert Job, GF-Gesundheit, 13 Langzeit-Meilensteine<br>\n          <span style="color:var(--accent2);">NEU:</span> Light/Dark Mode im Spielmenü, persistiert via localStorage<br>\n          <span style="color:var(--accent2);">NEU:</span> Firmenname + Logo-Emoji beim Spielstart individuell wählbar<br>\n          <span style="color:var(--warn);">FIX:</span> Doppelte render-Funktionen (renderCustomerPortal, renderBank, renderMaintenance) bereinigt\n        ')}\n        ${v("v2.9.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> KFZ-Meister als eigene Rolle (4.200€) — −50% Reparaturkosten mit Werkstatt, Meisterbetrieb-Badge, darf Azubis ausbilden.<br>\n          <span style="color:var(--accent2);">NEU:</span> Drei Azubi-Typen (Berufskraftfahrer 850€, KFZ-Mechatroniker 750€, Kaufm. Spedition 800€). Betreuer-System mit −15% Output-Malus. Nach 1095 Tagen automatisch Vollkraft.<br>\n          <span style="color:var(--accent2);">NEU:</span> 7 Abteilungsleiter-Rollen (ab Tag 60). Ab 5 Leitern: GF-Delegation aktiv — nur noch monatliche Reports.<br>\n          <span style="color:var(--accent2);">NEU:</span> Beförderung bestehender Mitarbeiter — 👑-Button auf Personal-Karte, +25% Gehalt, Modal mit Vorschau.<br>\n          <span style="color:var(--accent2);">NEU:</span> Standortverwaltung als eigener Tab (🏗️) — alle 22 Gebäude mit realistischen deutschen Marktpreisen kaufbar.<br>\n          <span style="color:var(--accent2);">NEU:</span> Realistische Gebäude-Kosten: Werkstatt 2 Stände 220k€/3.500€ mtl., Sicherheitsdienst 65k€/9.500€ mtl., Kantine 145k€/8.500€ mtl., Kühlhaus 620k€/9.800€ mtl.<br>\n          <span style="color:var(--accent2);">NEU:</span> Herstellergarantie 24 Monate bei Neuwagen und Leasing — Reparaturen kostenlos in dieser Zeit.<br>\n          <span style="color:var(--accent2);">NEU:</span> Anhänger-Leasing (1,4% Rate, 10% Anzahlung, 36 Monate) neben LKW-Leasing.<br>\n          <span style="color:var(--warn);">FIX:</span> Kredit-Exploit geschlossen — Mikro/Standard je 2×, Groß/Invest je 1× nutzbar. Dynamisches Gesamtlimit (3× Monatsumsatz).<br>\n          <span style="color:var(--warn);">FIX:</span> Azubi-Alter realistisch (15–21 Jahre), Abteilungsleiter 30–58 Jahre, KFZ-Meister 27–52 Jahre. Kein 41-jähriger Azubi für 850€ mehr.\n        ')}\n        ${v("v2.8.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Spielgeschwindigkeit komplett überarbeitet — ein kontinuierlicher Loop mit korrekter Echtzeit-Basis (1× = 3 Echtmin./Spielstunde, nahtloser Speedwechsel ohne Zurückspringen).<br>\n          <span style="color:var(--accent2);">NEU:</span> Hilfe & Handbuch vollständig ausgebaut — FAQ, Einstiegs-Guide, Systemübersicht, Tipps, Changelog.<br>\n          <span style="color:var(--accent2);">NEU:</span> Versionsnummern im Hilfe-Bereich sichtbar.<br>\n          <span style="color:var(--warn);">FIX:</span> Doppelte Buttons (+1T / ▶1T) zu einem zusammengeführt.\n        ')}\n        ${v("v2.7.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Uhrzeit im Header (06:00–22:00, flüssige Animation). Geschwindigkeitssteuerung 1×/2×/4×/16×/32× mit Pause-Button.<br>\n          <span style="color:var(--accent2);">NEU:</span> Rechtsformen nach deutschem Recht (e.K. → UG → GmbH → GmbH & Co. KG → AG → SE) mit Steuersätzen, Haftung und GF-Gehalt.<br>\n          <span style="color:var(--accent2);">NEU:</span> Gewinnentnahme für e.K./GbR/KG direkt im Rechtsform-Tab.<br>\n          <span style="color:var(--accent2);">NEU:</span> Iveco Daily / Vans können jetzt leichte Kastenanhänger (3,5t) ziehen. Neue Anhängertypen im Hänger-Markt.<br>\n          <span style="color:var(--warn);">FIX:</span> Englische Fachbegriffe (Curtainsider/Tautliner) durch deutsche Bezeichnungen ersetzt.\n        ')}\n        ${v("v2.6.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Niederlassungs-GF-Sicht: Finanz-KPIs, 6-Monats-Verlauf, Personal- und Fuhrpark-Übersicht pro Filiale, GF kann direkt eingreifen.<br>\n          <span style="color:var(--accent2);">NEU:</span> Niederlassungsleiter handeln autonom: stellen Fahrer ein, organisieren Krankheitsvertretungen, senden monatliche Berichte.<br>\n          <span style="color:var(--warn);">FIX:</span> View-Routing-Bug: Tuning/ESG/Hedging/Lobbying/M&A/Fahrerschule/Konjunktur wurden nie gerendert (classList vs. style-Fehler).\n        ')}\n        ${v("v2.5.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Bewerber-Pool beim Einstellen: 3 Kandidaten mit vollem Profil (Alter, Fahrstil, Vorarbeitgeber, Hobbies, Fun-Fact, Charakter).<br>\n          <span style="color:var(--accent2);">NEU:</span> Hover-Tooltips auf Personal (Persönlichkeit, Familie, Qualifikationen) und LKW (Lebenszeit-KPIs, Restwert, letzter Unfall).<br>\n          <span style="color:var(--accent2);">NEU:</span> Urlaubs-Anzeige auf Personal-Karte mit Fortschrittsbalken und Urlaub-Schicken-Button.<br>\n          <span style="color:var(--accent2);">NEU:</span> Frachtenversicherung (CMR, Waren-Vollkasko, Totalverlust-Police) beim Routenwahl-Dialog buchbar.\n        ')}\n        ${v("v2.4.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Disponent weist bei Fahrerkrankheit automatisch Ersatzfahrer zu (mit/ohne Disponent im Team unterschiedlich gut).<br>\n          <span style="color:var(--accent2);">NEU:</span> Diebstahl-Logik: Schaden = echter Fahrzeugrestwert (nicht mehr fix 8.000€). Teilkasko erstattet ~65%, Vollkasko ~90%.<br>\n          <span style="color:var(--accent2);">NEU:</span> Entscheidungs-Event nach Diebstahl: Versicherung akzeptieren, Anwalt einschalten (+15%), Polizei-Report (20% Wiederfund-Chance).<br>\n          <span style="color:var(--warn);">FIX:</span> Fahrer-Skills Button hatte keine Reaktion (XP wurde nie vergeben). XP-System jetzt aktiv bei Auftragsabschluss.\n        ')}\n        ${v("v2.3.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Lobby-Maßnahmen laufen jetzt korrekt ab (Bug: expiresDay=0 wurde als "kein Ablauf" gewertet).<br>\n          <span style="color:var(--accent2);">NEU:</span> 100 cargoTypes erhalten slug-basierte IDs (paletten_mehl, tiefkuhlkost etc.).<br>\n          <span style="color:var(--warn);">FIX:</span> Job-Preis-Cap: Multiplikatoren geclampt, absoluter Deckel bei 80.000€.<br>\n          <span style="color:var(--warn);">FIX:</span> Truck-Status-Leak nach Fahrerkündigung während aktiver Tour behoben.<br>\n          <span style="color:var(--warn);">FIX:</span> Trucks im Umbau und Fahrer in Schulung werden nicht mehr disponiert.\n        ')}\n        ${v("v2.2.0", "Mai 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Module 22–33 implementiert: Frachtenbörse, Fahrer-Karriere, SLA-Verträge, BAG-Compliance, Fahrzeug-Tuning, CO₂/ESG, Fuel-Hedging, Bonussystem, Lobbying, Marktzyklen, M&A, Fahrerschule, Politische Events.<br>\n          <span style="color:var(--accent2);">NEU:</span> 21 Startorte (Hamburg, Berlin, München, Frankfurt, Köln, Dortmund, Dresden, Kiel u.a.).<br>\n          <span style="color:var(--warn);">FIX:</span> Frankfurt, Köln, Dortmund crashten beim Spielstart (fehlten in DATA.locations).\n        ')}\n        ${v("v2.1.0", "April 2026", '\n          <span style="color:var(--accent2);">NEU:</span> Europa-Karte mit 110 Städten, Live-Truck-Positionen, Routenanimation.<br>\n          <span style="color:var(--accent2);">NEU:</span> Abteilungssystem (8 Departments), Rechnungssystem mit Zahlungszielen, Rahmenverträge.<br>\n          <span style="color:var(--accent2);">NEU:</span> Mitarbeiter-Interaktionen: Persönlichkeitstypen, Gehaltsverhandlungen, Abmahnungen, Kündigung.<br>\n          <span style="color:var(--accent2);">NEU:</span> Privatleben: Familie, Burnout, Luxusgüter, GF-Stress-System.\n        ')}\n        ${v("v2.0.0", "April 2026", '\n          <span style="color:var(--accent2);">RELEASE:</span> Erster spielbarer Stand. Fuhrpark, Aufträge, Personal, Finanzen, Versicherungen, Kunden, Marketing, Dashboard.\n        ')}\n      `;
     }
   },
   renderMarketCycle() {
