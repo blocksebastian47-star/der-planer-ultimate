@@ -761,6 +761,7 @@ footer {
         (this._paused = !1),
         (this._dayMs = 0),
         (this._lastReal = null),
+        (this._lastHour = null),
         "undefined" != typeof State && (State.hour = this.DAY_START),
         this._updateButtons(),
         this._updateClock(this.DAY_START),
@@ -779,9 +780,26 @@ footer {
           s = this.DAY_START + this._dayMs / n;
         ((State.hour = Math.min(s, this.DAY_END)),
           this._updateClock(State.hour),
+          this._checkHourlyTick(State.hour),
           this._dayMs >= a && ((this._dayMs -= a), this.skipOneDay()));
       };
       this._frame = requestAnimationFrame(e);
+    },
+    _checkHourlyTick(hour) {
+      if ("undefined" == typeof State) return;
+      const cur = Math.floor(hour);
+      if (this._lastHour === cur) return;
+      const prev = this._lastHour;
+      this._lastHour = cur;
+      if (typeof prev !== "number") return; // erster Tick — keine Stunde übersprungen
+      // Jede überschrittene Stunde einzeln triggern
+      for (let h = prev + 1; h <= cur; h++) {
+        if ("undefined" != typeof SpotMarket && SpotMarket.hourlyTick) {
+          try {
+            SpotMarket.hourlyTick();
+          } catch (e) {}
+        }
+      }
     },
     _updateClock(e) {
       if ("undefined" == typeof State || !State.date) return;
