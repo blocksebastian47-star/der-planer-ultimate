@@ -28567,6 +28567,124 @@ const UI = {
     } else this.toast(r.reason, "error");
   },
   _officeTab: "overview",
+  _renderActiveModifiers() {
+    const items = [];
+    const pctLabel = (mul) => {
+      const pct = Math.round(100 * (mul - 1));
+      return `${pct >= 0 ? "+" : ""}${pct}%`;
+    };
+    // Konjunktur — immer anzeigen wenn Modul aktiv
+    if ("undefined" !== typeof MarketCycles) {
+      MarketCycles.init?.();
+      const phase = MarketCycles.currentPhase();
+      const jobMul = MarketCycles.jobMultiplier();
+      const payMul = MarketCycles.payMultiplier();
+      const isNeutral = 1 === jobMul && 1 === payMul;
+      items.push({
+        icon: phase.icon || "📊",
+        label: `Konjunktur: ${phase.label || "Plateau"}`,
+        effect: isNeutral ? "Neutral — keine Marktverzerrung" : `Aufträge ${pctLabel(jobMul)} · Preise ${pctLabel(payMul)}`,
+        positive: payMul > 1,
+        neutral: isNeutral,
+      });
+    }
+    // Saison — nur wenn nicht neutral
+    if ("undefined" !== typeof SeasonCalendar) {
+      const season = SeasonCalendar.currentSeason();
+      const jobMul = SeasonCalendar.jobMultiplier();
+      if (season && (Math.abs(jobMul - 1) > 0.01 || Math.abs((season.fuelMul || 1) - 1) > 0.01)) {
+        const parts = [];
+        if (Math.abs(jobMul - 1) > 0.01) parts.push(`Aufträge ${pctLabel(jobMul)}`);
+        if (Math.abs((season.fuelMul || 1) - 1) > 0.01) parts.push(`Diesel ${pctLabel(season.fuelMul)}`);
+        items.push({
+          icon: "📅",
+          label: `Saison: ${season.name}`,
+          effect: parts.join(" · "),
+          positive: jobMul > 1,
+        });
+      }
+    }
+    // Streik aktiv oder in der ±2-Tage-Phase
+    if (State.strike && State.strike > State.day) {
+      items.push({
+        icon: "⚠",
+        label: "Streik aktiv",
+        effect: `Aufträge −70% · noch ${State.strike - State.day} Tage`,
+        positive: false,
+      });
+    } else if (State._strikeWarning && Math.abs(State._strikeWarning - State.day) <= 2) {
+      items.push({
+        icon: "⚠",
+        label: "Streikphase",
+        effect: `Aufträge −70% rund um Tag ${State._strikeWarning}`,
+        positive: false,
+      });
+    } else if (State._strikeWarning && State._strikeWarning > State.day) {
+      items.push({
+        icon: "📢",
+        label: "Streik angekündigt",
+        effect: `Beginnt Tag ${State._strikeWarning} (in ${State._strikeWarning - State.day} Tagen)`,
+        positive: false,
+        neutral: true,
+      });
+    }
+    // Boom-Phase aus Morgennachrichten
+    if (State._boomBonus && State._boomBonus > State.day) {
+      items.push({
+        icon: "📈",
+        label: "Konjunktur-Boom",
+        effect: `Aufträge +30% · noch ${State._boomBonus - State.day} Tage`,
+        positive: true,
+      });
+    }
+    // Boom-Marge (Morgennews "aufmerksam geschaut")
+    if (State._boomMarginActive && State._boomMarginActive > State.day) {
+      items.push({
+        icon: "💰",
+        label: "Boom-Marge",
+        effect: `+5% auf neue Job-Preise (Morgennews)`,
+        positive: true,
+      });
+    }
+    // Diesel-Hedge-Rabatt aus Morgennachrichten
+    if (State._dieselHedgeDiscountUntil && State._dieselHedgeDiscountUntil > State.day) {
+      items.push({
+        icon: "⛽",
+        label: "Diesel-Hedge-Rabatt",
+        effect: `−10% auf Hedge-Kontrakte/Tankvorrat bis Tag ${State._dieselHedgeDiscountUntil}`,
+        positive: true,
+      });
+    }
+    // Wirtschafts-Boost / Drop (klassische Crisis-Effekte)
+    if (State.economyBoost && State.economyBoost > State.day) {
+      items.push({
+        icon: "📈",
+        label: "Wirtschafts-Aufschwung",
+        effect: `+15% Aufträge bis Tag ${State.economyBoost}`,
+        positive: true,
+      });
+    }
+    if (State.economyDrop && State.economyDrop > State.day) {
+      items.push({
+        icon: "📉",
+        label: "Wirtschafts-Abschwung",
+        effect: `−15% Aufträge bis Tag ${State.economyDrop}`,
+        positive: false,
+      });
+    }
+    if (0 === items.length) return "";
+    const header = `<div style="font-family:'Bebas Neue';font-size:14px;letter-spacing:1.5px;color:var(--accent2);margin-bottom:6px;">🎚 AKTIVE MARKT-MODIFIKATOREN</div>`;
+    const body = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-bottom:14px;">` +
+      items
+        .map((it) => {
+          const bgCol = it.neutral ? "rgba(255,255,255,0.04)" : it.positive ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.06)";
+          const borderCol = it.neutral ? "var(--border)" : it.positive ? "var(--accent2)" : "var(--warn)";
+          return `<div style="background:${bgCol};border:1px solid ${borderCol};border-radius:8px;padding:8px 10px;font-size:11px;display:flex;align-items:center;gap:8px;"><span style="font-size:18px;flex-shrink:0;">${it.icon}</span><div style="flex:1;min-width:0;"><b>${it.label}</b><div style="font-size:10px;color:var(--muted2);margin-top:1px;">${it.effect}</div></div></div>`;
+        })
+        .join("") +
+      `</div>`;
+    return header + body;
+  },
   _renderTodayCockpit() {
     const items = [];
     const decisionCount = (State.pendingDecisions || []).length + (State.consultations || []).length;
@@ -28697,6 +28815,7 @@ const UI = {
     };
     el.innerHTML = `
       ${this._renderTodayCockpit()}
+      ${this._renderActiveModifiers()}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:14px;">
         ${kpi("💰", "Kasse", Utils.euro(State.cash), State.cash >= 0 ? "var(--accent2)" : "var(--danger)")}
         ${kpi("📦", "Umsatz heute", Utils.euro(todayRev), "var(--accent2)", "7T-Ø " + Utils.euro(avg7))}
