@@ -14468,7 +14468,8 @@ const FuelHedging = {
     if (!ct) return { ok: false, reason: "Unbekannter Kontrakttyp" };
     if (liters < 100) return { ok: false, reason: "Mindestmenge: 100 Liter" };
     const currentPrice = State.fuelPriceCurrent;
-    const contractPrice = currentPrice * (1 + ct.premiumPct);
+    const newsDiscount = State._dieselHedgeDiscountUntil && State._dieselHedgeDiscountUntil > State.day ? 0.9 : 1;
+    const contractPrice = currentPrice * (1 + ct.premiumPct) * newsDiscount;
     const totalCost = Math.round(liters * contractPrice);
     if (State.cash < totalCost) return { ok: false, reason: "Nicht genug Kapital" };
     if ("storage" === typeId) {
@@ -17879,6 +17880,8 @@ const MorningRoutine = {
       {
         headline: '"Mauterhöhung für LKW ab nächstem Quartal geplant" — +12%.',
         watchBonus: () => {
+          State.cash += 800;
+          EventManager.addNews("good", "💰 Mautstrategie früh angepasst: +800 € nachverhandelte Angebote");
           if (void 0 !== GFOffice)
             GFOffice.addMessage({
               from: "Marktanalyst",
@@ -17889,23 +17892,24 @@ const MorningRoutine = {
               urgent: false,
             });
         },
-        watchNews: "📺 Informiert: Mauterhöhung kommt — Zeit für Gegenmaßnahmen",
+        watchNews: "📺 Informiert: Mauterhöhung kommt — Zeit für Gegenmaßnahmen (+800 € Sofortbonus)",
         phoneNews: "📱 Mauterhöhung-Meldung verpasst",
       },
       {
         headline: '"Dieselpreis steigt weiter" — Experten rechnen mit 1,85 €/L bis Jahresende.',
         watchBonus: () => {
+          State._dieselHedgeDiscountUntil = State.day + 7;
           if (!State.fuelHedge?.contracts?.length && void 0 !== GFOffice)
             GFOffice.addMessage({
               from: "Marktanalyst",
               fromRole: "Energie-Desk",
               subject: "⛽ Diesel-Preisprognose: jetzt absichern?",
-              body: "Börsenbericht: Dieselpreise steigen auf 1,85 €/L.\nEmpfehlung: Terminkontrakt unter Diesel-Hedging abschließen.",
+              body: "Börsenbericht: Dieselpreise steigen auf 1,85 €/L.\nWichtig: Du hast die News rechtzeitig gesehen — Hedge-Kontrakte und Tankvorrat in den nächsten 7 Tagen sind 10% günstiger.",
               type: "info",
               urgent: false,
             });
         },
-        watchNews: "📺 Diesel-Warnung rechtzeitig gesehen",
+        watchNews: "📺 Diesel-Warnung rechtzeitig gesehen — Hedges 7 Tage lang −10%",
         phoneNews: "📱 Diesel-Bericht verpasst",
       },
       {
@@ -17914,17 +17918,18 @@ const MorningRoutine = {
           State._strikeWarning = State.day + Utils.randInt(7, 14);
         },
         watchBonus: () => {
+          State._strikeWarning = (State._strikeWarning || State.day) + 1;
           if (void 0 !== GFOffice)
             GFOffice.addMessage({
               from: "Ver.di Pressestelle",
               fromRole: "Gewerkschaft",
               subject: "⚠️ Streikwarnung — möglicher Arbeitsausfall ab Tag " + State._strikeWarning,
-              body: "Ver.di kündigt Streikmaßnahmen an.\n\nEmpfehlung:\n• Zeitkritische Aufträge jetzt vergeben\n• Puffer einplanen",
+              body: "Ver.di kündigt Streikmaßnahmen an.\n\nDu hast die Pressemitteilung früh gesehen und konntest mit Branchenvertretern reden — der Streik wird voraussichtlich 1 Tag später beginnen.\n\nEmpfehlung:\n• Zeitkritische Aufträge jetzt vergeben\n• Puffer einplanen",
               type: "info",
               urgent: true,
             });
         },
-        watchNews: "📺 Streikwarnung rechtzeitig mitbekommen — Vorbereitungen möglich",
+        watchNews: "📺 Streikwarnung rechtzeitig mitbekommen — Streik um 1 Tag verschoben",
         phoneNews: "📱 Streikwarnung verpasst — kein Vorsprung",
       },
       {
@@ -17933,37 +17938,47 @@ const MorningRoutine = {
           State._boomBonus = State.day + 14;
         },
         watchBonus: () => {
+          State._boomMarginActive = State._boomBonus || State.day + 14;
           if (void 0 !== GFOffice)
             GFOffice.addMessage({
               from: "Marktanalyst",
               fromRole: "Vertrieb",
               subject: "📈 Konjunktur-Boom — Kapazität hochfahren",
-              body: "Aktuelle Lage: spürbar mehr Aufträge für rund 14 Tage.\nEmpfehlung: freie Trucks disponieren, ggf. Aushilfen einplanen.",
+              body: "Aktuelle Lage: spürbar mehr Aufträge für rund 14 Tage.\nDu hast deine Angebotsstrategie früh angepasst — bis zum Ende des Booms erhältst du +5% auf neue Job-Preise.\n\nEmpfehlung: freie Trucks disponieren, ggf. Aushilfen einplanen.",
               type: "info",
               urgent: false,
             });
         },
-        watchNews: "📈 Boom erkannt — rechtzeitig Kapazität vorbereiten",
+        watchNews: "📈 Boom erkannt — +5% Marge auf neue Aufträge bis zum Ende des Booms",
         phoneNews: "📱 Konjunktur-Meldung verpasst",
       },
       {
         headline: '"Fahrermangel verschärft sich" — 80.000 LKW-Fahrer fehlen bundesweit.',
         watchBonus: () => {
           const atRisk = (State.staff || []).filter((s) => "driver" === s.roleId && s.salary < 2800);
-          if (atRisk.length > 0 && void 0 !== GFOffice)
-            GFOffice.addMessage({
-              from: "HR-Analyse",
-              fromRole: "Personalmanagement",
-              subject: "👨‍✈️ " + atRisk.length + " Fahrer könnten abwandern",
-              body:
-                "Fahrermangel treibt Gehälter hoch.\n" +
-                atRisk.map((s) => "• " + s.name + ": " + Utils.euro(s.salary) + "/Mon.").join("\n") +
-                "\n\nEmpfehlung: Gehaltserhöhung 10-15%",
-              type: "info",
-              urgent: atRisk.length >= 2,
-            });
+          atRisk.forEach((s) => {
+            s.motivation = Utils.clamp((s.motivation || 50) + 10, 0, 100);
+          });
+          if (atRisk.length > 0) {
+            EventManager.addNews(
+              "good",
+              `👨‍✈️ Loyalitäts-Gespräch mit ${atRisk.length} Fahrer${1 === atRisk.length ? "" : "n"}: Motivation +10`,
+            );
+            if (void 0 !== GFOffice)
+              GFOffice.addMessage({
+                from: "HR-Analyse",
+                fromRole: "Personalmanagement",
+                subject: "👨‍✈️ " + atRisk.length + " Fahrer könnten abwandern",
+                body:
+                  "Fahrermangel treibt Gehälter hoch.\n" +
+                  atRisk.map((s) => "• " + s.name + ": " + Utils.euro(s.salary) + "/Mon.").join("\n") +
+                  "\n\nDu hast früh reagiert und kurzen Smalltalk mit den gefährdeten Fahrern geführt: Motivation +10. Empfehlung: trotzdem Gehaltserhöhung 10-15%.",
+                type: "info",
+                urgent: atRisk.length >= 2,
+              });
+          }
         },
-        watchNews: "👨‍✈️ Fahrermangel-Bericht gesehen — Personal-Check sinnvoll",
+        watchNews: "👨‍✈️ Fahrermangel-Bericht gesehen — gefährdete Fahrer: Motivation +10",
         phoneNews: "📱 Fahrermangel-Warnung verpasst",
       },
       {
@@ -17985,17 +18000,22 @@ const MorningRoutine = {
           }
         },
         watchBonus: () => {
+          State.cash += 500;
+          EventManager.addNews(
+            "good",
+            "🛃 Routen-Umplanung früh angestoßen: 500 € durch Reroute eingespart",
+          );
           if (void 0 !== GFOffice)
             GFOffice.addMessage({
               from: "Disposition",
               fromRole: "Routenplanung",
               subject: "🛃 Grenzkontrollen DE/AT verschärft",
-              body: "Verschärfte Kontrollen an der Grenze DE/AT, Wartezeiten bis 3h.\nEmpfehlung: Österreich-Routen meiden oder Puffer einplanen.",
+              body: "Verschärfte Kontrollen an der Grenze DE/AT, Wartezeiten bis 3h.\nDu hast den Reroute-Auftrag früh erteilt — 500 € weniger Diesel- und Stehzeitenkosten.\nEmpfehlung: Österreich-Routen weiterhin meiden.",
               type: "info",
               urgent: false,
             });
         },
-        watchNews: "🛃 Grenzwarnung gesehen — Österreich-Routen meiden",
+        watchNews: "🛃 Grenzwarnung gesehen — Reroute spart 500 €",
         phoneNews: "📱 Grenzwarnung verpasst",
       },
     ];
@@ -23297,6 +23317,7 @@ const JobManager = {
     const restrictionsBonus = Utils.clamp(1 + 0.08 * (cargo.restrictions ? cargo.restrictions.length : 0), 1, 1.32);
     const seasonMul = void 0 !== GameDepth ? GameDepth.getCurrentSeason().priceMul : 1;
     const cyclePayMul = void 0 !== MarketCycles ? MarketCycles.payMultiplier() : 1;
+    const boomMarginMul = State._boomMarginActive && State._boomMarginActive > State.day ? 1.05 : 1;
     const variability = 0.85 + 0.4 * Math.random();
     const sizeScale = rep < 20 ? 0.75 : rep < 40 ? 0.9 : 1;
     let price = Math.round(
@@ -23311,6 +23332,7 @@ const JobManager = {
         dieselFactor *
         seasonMul *
         cyclePayMul *
+        boomMarginMul *
         variability *
         sizeScale *
         (State.priceMultiplier || 1),
