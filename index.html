@@ -27406,7 +27406,7 @@ const UI = {
         { id: "kontoauszug", icon: "🏦", label: "Kontoauszug", render: () => UI.renderBank() },
         { id: "kredite", icon: "💳", label: "Kredite", render: () => UI.renderLoans() },
         { id: "versicherung", icon: "🛡", label: "Versicherungen", render: () => UI.renderInsurance() },
-        { id: "leasing", icon: "📋", label: "Leasing", render: () => UI.renderLeasingOffers() },
+        { id: "leasing", icon: "📋", label: "Leasing-Verträge", render: () => UI.renderLeasingOffers() },
         { id: "diesel", icon: "⛽", label: "Diesel-Hedging", render: () => UI.renderFuelHedge() },
       ],
       contentId: "finanzen-content",
@@ -33137,19 +33137,51 @@ const UI = {
   renderLeasingOffers() {
     const el = document.getElementById("logistik-leasing");
     if (!el) return;
-    if (void 0 !== LeasingManager) LeasingManager.generateOffers();
-    const offers = State.leasingOffers || [];
-    const truckOffers = offers.filter((o) => "truck" === o.type);
-    const trailerOffers = offers.filter((o) => "trailer" === o.type);
     const activeTrucks = (State.trucks || []).filter((t) => t.isLeased);
     const activeTrailers = (State.trailers || []).filter((tr) => tr.isLeased);
-    const activeHTML =
-      [...activeTrucks, ...activeTrailers].length > 0
-        ? `\n      <div style="background:rgba(74,222,128,0.08); border:1px solid var(--accent2); border-radius:8px; padding:10px; margin-bottom:12px;">\n        <div style="font-size:11px; font-weight:700; color:var(--accent2); margin-bottom:6px;">📋 AKTIVE LEASING-VERTRÄGE</div>\n        ${activeTrucks.map((t) => `\n          <div style="font-size:10px; display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid rgba(255,255,255,0.06);">\n            <span>🚛 ${t.plate} ${t.model}</span>\n            <span style="color:var(--accent);">${Utils.euro(t.leaseMonthlyRate)}/Mon. · endet Tag ${t.leaseEndDay}</span>\n          </div>`).join("")}\n        ${activeTrailers.map((tr) => `\n          <div style="font-size:10px; display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid rgba(255,255,255,0.06);">\n            <span>🚚 ${tr.name}</span>\n            <span style="color:var(--accent);">${Utils.euro(tr.leaseMonthlyRate)}/Mon. · endet Tag ${tr.leaseEndDay}</span>\n          </div>`).join("")}\n      </div>`
-        : "";
-    const makeCard = (o) =>
-      `\n      <div style="border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px;">\n        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:6px;">\n          <div>\n            <div style="font-weight:700; font-size:12px;">${o.icon || ""} ${o.modelName}</div>\n            ${o.capacity ? `<div style="font-size:10px; color:var(--muted);">${o.capacity}t · ${UI._trailerCat(o.category)}</div>` : ""}\n          </div>\n          <span style="font-size:14px; font-weight:800; color:var(--accent);">${Utils.euro(o.monthlyRate)}/Mon.</span>\n        </div>\n        <div style="font-size:10px; color:var(--muted2); margin-bottom:6px; display:grid; grid-template-columns:1fr 1fr; gap:2px;">\n          <div>Laufzeit: <b>${o.durationMonths} Monate</b></div>\n          <div>Anzahlung: <b>${Utils.euro(o.downPayment)}</b></div>\n          <div>km-Limit: <b>${(o.kmLimitPerYear / 1e3).toFixed(0)}tkm/Jahr</b></div>\n          <div>Restwert: <b>${Utils.euro(o.residualValue)}</b></div>\n        </div>\n        ${"truck" === o.type ? '<div style="font-size:9px; color:var(--accent2); margin-bottom:6px;">✓ Herstellergarantie 24 Monate inklusive</div>' : ""}\n        <button class="btn primary" style="width:100%; font-size:11px; padding:5px;"\n          onclick="LeasingManager.signLease('${o.id}'); UI.renderLeasingOffers(); UI.renderAll();">\n          Vertrag abschließen (${Utils.euro(o.downPayment)} Anzahlung)\n        </button>\n      </div>`;
-    el.innerHTML = `\n      ${activeHTML}\n      <div style="font-size:11px; font-weight:700; color:var(--accent2); margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--border);">🚛 LKW LEASING (${truckOffers.length} Modelle)</div>\n      ${truckOffers.map(makeCard).join("")}\n      <div style="font-size:11px; font-weight:700; color:var(--accent2); margin:12px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border);">🚚 ANHÄNGER LEASING (${trailerOffers.length} Typen)</div>\n      ${trailerOffers.map(makeCard).join("")}\n    `;
+    const totalActive = activeTrucks.length + activeTrailers.length;
+    if (0 === totalActive) {
+      el.innerHTML = `\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;text-align:center;">\n          <div style="font-size:36px;margin-bottom:10px;">📋</div>\n          <div style="font-size:14px;font-weight:700;margin-bottom:8px;">Keine aktiven Leasing-Verträge</div>\n          <div style="font-size:11px;color:var(--muted2);line-height:1.7;max-width:380px;margin:0 auto;">Neue Leasing-Verträge schließt du beim Fahrzeug-Kauf ab:<br><b style="color:var(--accent);">Fuhrpark → LKW kaufen</b> oder <b style="color:var(--accent);">Fuhrpark → Anhänger kaufen</b><br><br>Hier siehst du dann deine laufenden Verträge mit Restlaufzeit, monatlicher Belastung und km-Stand.</div>\n        </div>`;
+      return;
+    }
+    const totalMonthly =
+      activeTrucks.reduce((s, t) => s + (t.leaseMonthlyRate || 0), 0) +
+      activeTrailers.reduce((s, tr) => s + (tr.leaseMonthlyRate || 0), 0);
+    const makeCard = (item, isTruck) => {
+      const name = isTruck ? `${item.plate} · ${item.model || ""}` : item.name || `Anhänger #${item.id}`;
+      const remainDays = Math.max(0, (item.leaseEndDay || 0) - State.day);
+      const remainMonths = Math.round(remainDays / 30);
+      const kmStand = item.km || 0;
+      const kmLimit = item.leaseKmLimit || 0;
+      const kmPct = kmLimit > 0 ? Math.round((kmStand / kmLimit) * 100) : 0;
+      const overLimit = kmPct > 100;
+      return (
+        `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--bg2);">` +
+        `<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;gap:8px;">` +
+        `<div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:700;">${isTruck ? "🚛" : "🚚"} ${name}</div>` +
+        `<div style="font-size:10px;color:var(--muted);margin-top:2px;">Vertrag Tag ${item.leaseStartDay || "?"} → Tag ${item.leaseEndDay || "?"} · noch ${remainMonths} Mon. (${remainDays} Tage)</div></div>` +
+        `<div style="text-align:right;flex-shrink:0;"><div style="font-size:14px;font-weight:800;color:var(--accent);">${Utils.euro(item.leaseMonthlyRate || 0)}/Mon.</div>` +
+        `<div style="font-size:9px;color:var(--muted);">Restwert: ${Utils.euro(item.leaseResidual || 0)}</div></div></div>` +
+        (kmLimit > 0
+          ? `<div style="font-size:10px;color:var(--muted2);margin-top:4px;">km-Limit: ${kmStand.toLocaleString("de-DE")} / ${kmLimit.toLocaleString("de-DE")} (${kmPct}%)${overLimit ? ` <span style="color:var(--warn);">⚠ Überschreitung: ${(item.leaseKmOverage || 0).toFixed(2)} €/km</span>` : ""}</div>` +
+            `<div style="height:4px;background:var(--bg);border-radius:2px;margin-top:3px;overflow:hidden;"><div style="height:100%;width:${Math.min(100, kmPct)}%;background:${overLimit ? "var(--danger)" : kmPct > 80 ? "var(--warn)" : "var(--accent2)"};"></div></div>`
+          : "") +
+        `</div>`
+      );
+    };
+    el.innerHTML =
+      `<div style="background:rgba(74,222,128,0.06);border:1px solid var(--accent2);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">` +
+      `<div><div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);">📋 ${totalActive} aktive${1 === totalActive ? "r" : ""} Leasing-Vertr${1 === totalActive ? "ag" : "äge"}</div>` +
+      `<div style="font-size:11px;color:var(--muted2);margin-top:2px;">Monatliche Gesamtbelastung: <b style="color:var(--fg);">${Utils.euro(totalMonthly)}</b></div></div>` +
+      `<div style="font-size:10px;color:var(--muted2);max-width:280px;text-align:right;line-height:1.5;">💡 Neue Verträge:<br><b>Fuhrpark → LKW kaufen / Anhänger kaufen</b></div></div>` +
+      (activeTrucks.length > 0
+        ? `<div style="font-family:'Bebas Neue';font-size:14px;letter-spacing:1px;color:var(--accent);margin-bottom:6px;">🚛 LKW-LEASING (${activeTrucks.length})</div>` +
+          activeTrucks.map((t) => makeCard(t, true)).join("")
+        : "") +
+      (activeTrailers.length > 0
+        ? `<div style="font-family:'Bebas Neue';font-size:14px;letter-spacing:1px;color:var(--accent);margin:14px 0 6px;">🚚 ANHÄNGER-LEASING (${activeTrailers.length})</div>` +
+          activeTrailers.map((tr) => makeCard(tr, false)).join("")
+        : "");
   },
   renderTrailerUpgrades() {
     const el = document.getElementById("logistik-trailer-upgrades");
