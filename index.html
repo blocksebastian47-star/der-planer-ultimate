@@ -16180,6 +16180,7 @@ const GFOffice = {
     State.gfOffice.inbox.unshift(msg);
     if (State.gfOffice.inbox.length > 50) State.gfOffice.inbox.pop();
     if (urgent && void 0 !== Notifier) Notifier.add(`📧 ${from}: ${subject}`, "warn");
+    if ("undefined" !== typeof UI && UI._refreshZentraleIfActive) UI._refreshZentraleIfActive();
     return msg.id;
   },
   archiveMessage(id) {
@@ -24078,6 +24079,8 @@ const EventManager = {
     // Cockpit live aktualisieren — wenn bad/warn dazukommt, soll Spieler es sofort sehen.
     if (("bad" === type || "warn" === type) && "undefined" !== typeof UI && UI._refreshZentraleIfActive)
       UI._refreshZentraleIfActive();
+    // Ereignisse → Nachrichten-Tab live (jeder Typ — auch good/info)
+    if ("undefined" !== typeof UI && UI._refreshEventsIfActive) UI._refreshEventsIfActive();
   },
   queueDecision(decision) {
     decision.id = Utils.uid("D");
@@ -30665,6 +30668,32 @@ const UI = {
     if (newSort && oldSort) newSort.value = oldSort;
     const newFilter = document.getElementById("job-filter");
     if (newFilter && oldFilter) newFilter.value = oldFilter;
+  },
+  _isEventsViewActive() {
+    const view = document.getElementById("view-events");
+    return !!(view && view.classList.contains("active"));
+  },
+  _refreshEventsIfActive() {
+    if (!this._isEventsViewActive() || this._isModalOpen()) return;
+    const tab = this._eventsActiveTab || "decisions";
+    if ("decisions" === tab) {
+      // Decisions-Tab: kompletter Re-Render ist OK (kein Eingabefeld)
+      try {
+        this.renderEvents();
+      } catch (e) {}
+    } else if ("news" === tab) {
+      // News-Tab: nur die Liste aktualisieren, damit Filter-Buttons und Suchfeld nicht zurückgesetzt werden
+      const list = document.getElementById("events-news-list");
+      if (list) {
+        try {
+          this._refreshNewsList();
+        } catch (e) {}
+      } else {
+        try {
+          this.renderEvents();
+        } catch (e) {}
+      }
+    }
   },
   _isSpotMarketActive() {
     const marktView = document.getElementById("view-markt");
