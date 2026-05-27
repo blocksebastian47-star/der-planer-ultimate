@@ -23860,7 +23860,10 @@ const JobManager = {
         if (!onTime && j.cargoInsurance && void 0 !== CargoInsurance) {
           const delayDamage = Math.round(0.4 * j.price);
           const cargoResult = CargoInsurance.handleCargoClaim(j, "delay", delayDamage);
-          if (cargoResult.covered && cargoResult.payout > 0) finalPrice += cargoResult.payout;
+          // handleCargoClaim hat State.cash bereits direkt gutgeschrieben — nur als Versicherungs-Revenue
+          // für die Buchhaltung verbuchen, NICHT noch einmal in finalPrice (würde Forderung duplizieren).
+          if (cargoResult.covered && cargoResult.payout > 0 && void 0 !== FinanceManager)
+            FinanceManager.recordRevenue("insurance", cargoResult.payout);
         }
         if (FleetManager.hasEquipment(truck, "paint")) finalPrice += 50;
         const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
@@ -27612,6 +27615,7 @@ const UI = {
         { id: "frachtboerse", icon: "📈", label: "Frachtenbörse", render: () => UI.renderSpotMarket() },
         { id: "kunden", icon: "⭐", label: "Kundenportal", render: () => UI.renderCustomerPortal() },
         { id: "marketing", icon: "📢", label: "Marketing", render: () => UI.renderMarketing() },
+        { id: "subunternehmer", icon: "📤", label: "Subunternehmer", render: () => UI.renderSubcontractors() },
       ],
       contentId: "markt-content",
       tabsId: "markt-tabs",
@@ -32676,6 +32680,66 @@ const UI = {
               .join("")}\n        </div>`,
       actions: [{ label: "Schließen", onclick: () => this.closeModal() }],
     });
+  },
+  renderSubcontractors() {
+    const host = UI._getContentEl("markt-content");
+    if (!host || "undefined" === typeof SubcontractorSystem) return;
+    const pool = SubcontractorSystem.POOL;
+    const active = (State.activeJobs || []).filter((j) => j.outsourced);
+    const specialtyLabel = (s) =>
+      ({ express: "🔴 Eilauftrag-Spezialist", heavy: "🏋 Schwerlast", cooling: "❄ Kühlfracht", general: "📦 Allgemein", international: "🌍 International" }[s] || s);
+    const reliabilityColor = (r) => (r >= 0.9 ? "var(--accent2)" : r >= 0.85 ? "var(--warn)" : "var(--danger)");
+    const reliabilityLabel = (r) =>
+      r >= 0.92 ? "Sehr zuverlässig" : r >= 0.88 ? "Zuverlässig" : r >= 0.85 ? "Akzeptabel" : "Riskant";
+    const poolHTML = pool
+      .map(
+        (s) =>
+          `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2);margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:700;">📦 ${s.name}</div>
+                <div style="font-size:10px;color:var(--muted2);margin-top:2px;">${specialtyLabel(s.specialty)}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:14px;font-weight:800;color:var(--accent);">${Utils.euro(s.costPer100km)}<span style="font-size:9px;color:var(--muted);">/100km</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:10px;">
+              <span style="color:var(--muted);">Zuverlässigkeit:</span>
+              <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:2px;height:5px;overflow:hidden;"><div style="height:100%;width:${Math.round(100 * s.reliability)}%;background:${reliabilityColor(s.reliability)};"></div></div>
+              <b style="color:${reliabilityColor(s.reliability)};">${Math.round(100 * s.reliability)}%</b>
+              <span style="color:var(--muted2);">${reliabilityLabel(s.reliability)}</span>
+            </div>
+          </div>`,
+      )
+      .join("");
+    const activeHTML =
+      0 === active.length
+        ? '<div style="color:var(--muted);font-size:11px;padding:12px;font-style:italic;">Aktuell keine vergebenen Aufträge an Subunternehmer.</div>'
+        : active
+            .map(
+              (j) =>
+                `<div style="border:1px solid var(--accent);border-radius:8px;padding:10px;background:rgba(99,102,241,0.06);margin-bottom:6px;">
+                  <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;">
+                    <span><b>${j.subcontractorName || "Subunternehmer"}</b> · ${j.fromName} → ${j.toName}</span>
+                    <span style="color:var(--accent2);">Marge ${Utils.euro(j.margin || 0)}</span>
+                  </div>
+                  <div style="font-size:10px;color:var(--muted2);margin-top:3px;">${j.cargo} · ${j.km} km · Vergütung an Sub: ${Utils.euro(j.subCost || 0)} · noch ${j.daysRemaining || 0} Tag${1 === j.daysRemaining ? "" : "e"}</div>
+                  <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:5px;overflow:hidden;"><div style="height:100%;width:${j.progress || 0}%;background:var(--accent);"></div></div>
+                </div>`,
+            )
+            .join("");
+    const usableJobs = (State.jobs || []).filter((j) => {
+      const analyze = SubcontractorSystem.analyzeJob(j.id);
+      return analyze && analyze.length > 0;
+    });
+    host.innerHTML =
+      `<div style="font-size:11px;color:var(--muted2);margin-bottom:12px;line-height:1.6;">Aufträge an externe Speditionen weitergeben — du sparst LKW + Fahrer, gibst aber Marge ab. Geeignet, wenn deine Flotte voll ausgelastet ist oder die Strecke nicht zu deinen Fahrzeugen passt. Vergabe direkt in der Auftragsliste über den <b>📤 Sub</b>-Button (ab Reputation 60% + 3 LKW).</div>` +
+      `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">` +
+      `<div><div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:8px;">🚛 LAUFENDE VERGABEN (${active.length})</div>${activeHTML}</div>` +
+      `<div><div style="font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;color:var(--accent2);margin-bottom:8px;">📋 VERFÜGBARE PARTNER (${pool.length})</div>${poolHTML}</div>` +
+      `</div>` +
+      `<div style="font-size:10px;color:var(--muted);margin-top:14px;padding:8px;background:var(--bg2);border-radius:6px;border:1px solid var(--border);">💡 ${usableJobs.length} aktuelle Aufträge in deiner Liste könnten profitabel weitergegeben werden (positive Marge bei mindestens einem Partner).</div>`;
   },
   renderMarketing() {
     const host = UI._getContentEl("markt-content");
