@@ -4649,6 +4649,15 @@ function _planerDefaultState() {
     serviceContracts: [],
     weatherRoads: null,
     competition: null,
+    // Morgennachrichten-Trigger und Boni (gesetzt in MorningRoutine / ausgewertet in DayCycle / JobManager / FuelHedging)
+    _strikeWarning: null,
+    _boomBonus: null,
+    _boomMarginActive: null,
+    _dieselHedgeDiscountUntil: null,
+    // Markierungen für tagesgebundene Aktionen (Privatleben / Anrufe / Heimcheck)
+    morningActionDay: null,
+    eveningActionDay: null,
+    socialActionDay: null,
   };
 }
 const State = _planerDefaultState();
@@ -26140,17 +26149,35 @@ const SelfDrive = {
       truck.jobId = null;
       truck._gfTour = false;
     }
-    const price = job.price || 0;
+    const onTime = State.day <= (job.deadline || State.day);
+    const basePrice = job.price || 0;
+    let finalPrice = onTime ? basePrice : Math.round(0.6 * basePrice);
+    // Express-Sonderbehandlung: bei Verspätung greift die harte Vertragsstrafe wie bei Disponenten-Touren.
+    if (!onTime && job.isExpress) {
+      finalPrice = 0;
+      const penalty = job.expressPenalty || Math.round(0.5 * basePrice);
+      State.cash -= penalty;
+      EventManager.addNews(
+        "bad",
+        `🚨 Eilauftrag VERSPÄTET (Selbstfahrt) — ${job.customerName || job.fromName + "→" + job.toName}: Vertragsstrafe ${Utils.euro(penalty)}`,
+      );
+    }
     if (void 0 !== CashflowSystem) {
-      CashflowSystem.createReceivable(job, price);
-      if (State.subRevenue) State.subRevenue.jobs += price;
-    } else FinanceManager.recordRevenue("fleet", price);
+      CashflowSystem.createReceivable(job, finalPrice);
+      if (State.subRevenue) State.subRevenue.jobs += finalPrice;
+    } else FinanceManager.recordRevenue("fleet", finalPrice);
+    // Reputation: voll +0.5 / Express verspätet -10 / sonst verspätet -2.
+    const repDelta = onTime ? 0.5 : job.isExpress ? -10 : -2;
+    State.reputation = Utils.clamp((State.reputation || 50) + repDelta, 0, 100);
     State.stats.totalJobs = (State.stats.totalJobs || 0) + 1;
     State.gfTour = null;
-    EventManager.addNews("good", `✅ Selbstfahr-Tour abgeschlossen: ${job.fromName} → ${job.toName} — Forderung ${Utils.euro(price)}`);
+    EventManager.addNews(
+      onTime ? "good" : job.isExpress ? "bad" : "warn",
+      `${onTime ? "✅" : "⚠ Verspätet:"} Selbstfahr-Tour ${job.fromName} → ${job.toName} — Forderung ${Utils.euro(finalPrice)}`,
+    );
     UI.closeModal();
     UI.renderAll();
-    UI.toast("Tour abgeschlossen — willkommen zurück im Büro.", "good");
+    UI.toast("Tour abgeschlossen — willkommen zurück im Büro.", onTime ? "good" : "warn");
   },
 };
 const Game = {
@@ -26164,6 +26191,14 @@ const Game = {
     // (e.g. invoices, contracts, hrQueue, bankLedger that get added by various modules).
     Object.keys(State).forEach((k) => delete State[k]);
     Object.assign(State, _planerDefaultState());
+    // UI-State (Selektionen, Caches) ebenfalls zurücksetzen — leakt sonst zwischen Spielen.
+    if ("undefined" !== typeof UI) {
+      UI._selectedJobIds = new Set();
+      UI._lastVisibleJobs = null;
+      UI._eventsActiveTab = "decisions";
+      UI._newsFilter = "all";
+      UI._newsSearch = "";
+    }
     LocationManager.selectLocation(locationId);
     const loc = LocationManager.current();
     const finalName = companyName || "Meine Spedition e.K.";
@@ -28551,6 +28586,24 @@ const UI = {
         color: "var(--danger)",
         text: `<b>${recentBad}</b> ungelesene kritische Nachricht${1 === recentBad ? "" : "en"}`,
         action: { label: "Lesen", click: "UI.showView('events');UI._eventsTab('news')" },
+      });
+    // Posteingang im Büro: ungelesene Briefe
+    const inboxUnread = ((State.gfOffice && State.gfOffice.inbox) || []).filter((m) => !m.read).length;
+    if (inboxUnread > 0)
+      items.push({
+        icon: "📥",
+        color: "var(--warn)",
+        text: `<b>${inboxUnread}</b> ungelesene Nachricht${1 === inboxUnread ? "" : "en"} im Posteingang`,
+        action: { label: "Posteingang", click: "UI.showView('zentrale');UI._zentraleTab='posteingang';UI.renderZentrale()" },
+      });
+    // Telefonanrufe in der Warteschlange
+    const callQueueCount = ((State.gfOffice && State.gfOffice.callQueue) || []).length;
+    if (callQueueCount > 0)
+      items.push({
+        icon: "📞",
+        color: "var(--danger)",
+        text: `<b>${callQueueCount}</b> wartende${1 === callQueueCount ? "r" : ""} Telefonanruf${1 === callQueueCount ? "" : "e"}`,
+        action: { label: "Anrufen", click: "UI.showView('zentrale');UI._zentraleTab='posteingang';UI.renderZentrale()" },
       });
     const header = `<div style="font-family:'Bebas Neue';font-size:14px;letter-spacing:1.5px;color:var(--accent2);margin-bottom:6px;">🎯 HEUTE — TAG ${State.day || 0}</div>`;
     if (0 === items.length)
