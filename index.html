@@ -26423,6 +26423,14 @@ const Game = {
     });
     if (custFixed > 0) console.warn(`Backfilled ${custFixed} missing customer id(s)`);
     if (State.cashflow && State.cashflow.skontoAgreements) delete State.cashflow.skontoAgreements["undefined"];
+    // Veraltete Rabattverhandlung-Decisions für Neu-Kunden (vor Bugfix vom 2026-05-26)
+    // automatisch entfernen — sie hatten den nutzlosen 0%-Content.
+    if ((State.pendingDecisions || []).length > 0) {
+      const cleaned = State.pendingDecisions.filter(
+        (d) => !(d && /Rabattverhandlung/.test(d.title || "") && /Stammkunde\s+Neu/.test(d.subtitle || "")),
+      );
+      if (cleaned.length < State.pendingDecisions.length) State.pendingDecisions = cleaned;
+    }
   },
   slotMeta(slotKey) {
     try {
@@ -26571,6 +26579,20 @@ const Game = {
       State.hour = MorningRoutine.wakeup();
       DayCycle.start();
       if ("undefined" !== typeof Achievements) Achievements.checkAll();
+      // Cleanup: bereinige veraltete Rabattverhandlung-Decisions für Neu-Kunden,
+      // die mit dem alten 0%-Content im pendingDecisions-Stack feststecken könnten.
+      if ((State.pendingDecisions || []).length > 0) {
+        const before = State.pendingDecisions.length;
+        State.pendingDecisions = State.pendingDecisions.filter(
+          (d) => !(d && /Rabattverhandlung/.test(d.title || "") && /Stammkunde\s+Neu/.test(d.subtitle || "")),
+        );
+        if (State.pendingDecisions.length < before && "undefined" !== typeof EventManager) {
+          EventManager.addNews(
+            "info",
+            "🧹 Veraltete Rabattverhandlung für Neu-Kunden automatisch entfernt — kein Anspruch auf Stammkundenrabatt unter 3 Aufträgen.",
+          );
+        }
+      }
       if ("undefined" != typeof GameClock) {
         GameClock.setArrival(MorningRoutine.baselineArrival());
         if (!GameClock._frame) GameClock._startLoop();
