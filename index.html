@@ -17243,8 +17243,26 @@ const CustomerPortal = {
     const entry = State.customerPortal.loyaltyProgram.find((l) => l.customerId === customerId);
     const customer = (State.customers || []).find((c) => c.id === customerId);
     if (!entry || !customer) return;
+    const avgStars = entry.orders > 0 ? entry.totalStars / entry.orders : 0;
+    // Neu-Kunden: noch kein Tier — Aufklärungs-Modal statt sinnloser 0%-Verhandlung.
+    if ("Neu" === entry.tier) {
+      const missingOrders = Math.max(0, 3 - entry.orders);
+      EventManager.queueDecision({
+        title: `🤝 Rabattverhandlung: ${customer.name}`,
+        subtitle: `Neukunde · ${entry.orders} Auftrag${1 === entry.orders ? "" : "äge"} · ⭐ ${avgStars.toFixed(1)}`,
+        content:
+          `${customer.name} ist erst seit kurzem Kunde — noch zu früh für einen Stammkundenrabatt.\n\n` +
+          `Stammkunden-Tiers:\n` +
+          `• Bronze (ab 3 Aufträgen): bis 2 %\n` +
+          `• Silber (ab 10 Aufträgen, ⭐ ≥ 3.5): bis 5 %\n` +
+          `• Gold (ab 20 Aufträgen, ⭐ ≥ 4.0): bis 8 %\n` +
+          `• Platin (ab 50 Aufträgen, ⭐ ≥ 4.5): bis 12 %\n\n` +
+          `Noch ${missingOrders} Auftr${1 === missingOrders ? "ag" : "äge"} bis Bronze.`,
+        choices: [{ text: "Verstanden — später wieder verhandeln", action: () => {} }],
+      });
+      return;
+    }
     const maxDiscount = { Bronze: 0.02, Silber: 0.05, Gold: 0.08, Platin: 0.12 }[entry.tier] || 0;
-    const avgStars = entry.totalStars / entry.orders;
     EventManager.queueDecision({
       title: `🤝 Rabattverhandlung: ${customer.name}`,
       subtitle: `Stammkunde ${entry.tier} · ${entry.orders} Aufträge · ⭐ ${avgStars.toFixed(1)}`,
