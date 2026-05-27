@@ -13438,6 +13438,8 @@ const SpotMarket = {
       }
     });
     sm.listings = sm.listings.filter((l) => "expired" !== l.status);
+    // Live-Refresh wenn Frachtenbörse gerade offen ist — Spieler sieht Preise/Gebote in Echtzeit.
+    if ("undefined" !== typeof UI && UI._refreshSpotMarketIfActive) UI._refreshSpotMarketIfActive();
   },
   accept(listingId, routeStrategy = "fastest") {
     this.init();
@@ -30616,6 +30618,27 @@ const UI = {
           `<div style="display:flex; justify-content:space-between; padding:2px 0; ${id === mc.phase ? "font-weight:700;" : "opacity:0.7;"}">\n                <span><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${p.color}; margin-right:6px;"></span>${p.label}</span>\n                <span style="color:var(--muted2);">×${p.jobMul.toFixed(2)} Jobs</span>\n              </div>`,
       )
       .join("")}\n            </div>\n          </div>\n        </div>\n      </div>`;
+  },
+  _isSpotMarketActive() {
+    const marktView = document.getElementById("view-markt");
+    if (!marktView || !marktView.classList.contains("active")) return false;
+    // Sub-Tab "frachtboerse" aktiv?
+    return this._sectionTabs && "frachtboerse" === this._sectionTabs.markt;
+  },
+  _refreshSpotMarketIfActive() {
+    if (!this._isSpotMarketActive()) return;
+    // Nicht re-rendern, wenn ein Modal offen ist (User interagiert gerade)
+    const overlay = document.getElementById("modal-overlay");
+    if (overlay && overlay.classList.contains("show")) return;
+    const scrollEl = document.getElementById("markt-content") || document.querySelector(".view.active");
+    const oldScroll = scrollEl ? scrollEl.scrollTop : 0;
+    // Sort-Dropdown-Wert merken, damit der User-Wechsel nicht überschrieben wird
+    const sortEl = document.getElementById("spot-sort");
+    const oldSort = sortEl ? sortEl.value : null;
+    this.renderSpotMarket();
+    if (scrollEl) scrollEl.scrollTop = oldScroll;
+    const newSortEl = document.getElementById("spot-sort");
+    if (newSortEl && oldSort) newSortEl.value = oldSort;
   },
   renderSpotMarket() {
     const el = UI._getContentEl("markt-content");
