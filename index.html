@@ -24130,9 +24130,34 @@ const EventManager = {
     if ("breakdown" === type) {
       truck.status = "broken";
       if (!truck.accidentLog) truck.accidentLog = [];
-      truck.accidentLog.push({ day: State.day, type: "breakdown", damage: damage, cost: claim.playerPays });
+      // ServiceContract übernimmt die noch offenen Kosten (nach Versicherung).
+      let contractCovered = 0;
+      if ("undefined" !== typeof ServiceContractManager && claim.playerPays > 0) {
+        contractCovered = ServiceContractManager.coverBreakdown(truck, claim.playerPays);
+        if (contractCovered > 0) {
+          State.cash += contractCovered;
+          const sc = ServiceContractManager.activeContract(truck.id);
+          EventManager.addNews(
+            "good",
+            `🔧 ${sc?.name || "Wartungsvertrag"}: ${truck.plate} — ${Utils.euro(contractCovered)} der Reparatur übernommen`,
+          );
+        }
+      }
+      const finalCost = Math.max(0, claim.playerPays - contractCovered);
+      truck.accidentLog.push({ day: State.day, type: "breakdown", damage: damage, cost: finalCost });
       if (truck.accidentLog.length > 5) truck.accidentLog.shift();
       State.stats.breakdowns++;
+      // Hinweis bei voller Eigenleistung: kein Werkzeugkoffer + keine Kostenübernahme.
+      if (
+        finalCost > 0 &&
+        !FleetManager.hasEquipment(truck, "toolbox") &&
+        contractCovered === 0 &&
+        !claim.covered
+      )
+        EventManager.addNews(
+          "warn",
+          `🧰 ${truck.plate}: Keine Selbst-Reparatur möglich (kein Werkzeugkoffer), keine Versicherung/Vertrag — voller Schaden ${Utils.euro(finalCost)}`,
+        );
     }
     if ("theft" === type) {
       State.trucks = (State.trucks || []).filter((t) => t.id !== truck.id);
@@ -25490,6 +25515,8 @@ const ServiceContractManager = {
       conditionProtect: 0.3,
       breakdown: -0.15,
       truckMax: 3,
+      breakdownCoverPct: 0,
+      breakdownCoverMax: 0,
     },
     {
       id: "komfort",
@@ -25499,6 +25526,8 @@ const ServiceContractManager = {
       conditionProtect: 0.6,
       breakdown: -0.35,
       truckMax: 6,
+      breakdownCoverPct: 1,
+      breakdownCoverMax: 2000,
     },
     {
       id: "premium",
@@ -25508,16 +25537,20 @@ const ServiceContractManager = {
       conditionProtect: 1,
       breakdown: -0.55,
       truckMax: 99,
+      breakdownCoverPct: 1,
+      breakdownCoverMax: 1e9,
     },
     {
       id: "garantie",
       name: "Gebraucht-Garantievertrag",
-      desc: "Für Gebrauchtfahrzeuge: Garantie auf Motor und Getriebe für 12 Monate.",
+      desc: "Für Gebrauchtfahrzeuge: Garantie auf Motor und Getriebe für 12 Monate (~50% Pannen-Übernahme).",
       monthlyCost: 220,
       conditionProtect: 0.4,
       breakdown: -0.25,
       truckMax: 99,
       usedOnly: true,
+      breakdownCoverPct: 0.5,
+      breakdownCoverMax: 1e9,
     },
   ],
   sign(contractId, truckId) {
@@ -25573,6 +25606,18 @@ const ServiceContractManager = {
       });
   },
   getActive: () => (State.serviceContracts || []).filter((c) => c.active),
+  activeContract(truckId) {
+    return (State.serviceContracts || []).find((c) => c.truckId === truckId && c.active) || null;
+  },
+  coverBreakdown(truck, playerPays) {
+    if (!truck || !(playerPays > 0)) return 0;
+    const c = this.activeContract(truck.id);
+    if (!c) return 0;
+    const def = this.CONTRACTS.find((d) => d.id === c.contractId);
+    if (!def || !def.breakdownCoverPct) return 0;
+    const covered = Math.min(playerPays * def.breakdownCoverPct, def.breakdownCoverMax || 1e9);
+    return Math.max(0, Math.round(covered));
+  },
 };
 const DIFFICULTIES = {
   einfach: {
