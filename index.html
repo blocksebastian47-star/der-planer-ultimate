@@ -1146,7 +1146,7 @@ footer {
     <div class="stat"><span class="label">Bekanntheit</span><span class="val" id="stat-fame">—</span></div>
     <div class="stat"><span class="label">Stress</span><span class="val" id="stat-stress">—</span></div>
     <button class="btn" title="Menü — Spielstände, Einstellungen, Daten" onclick="UI.showStartMenu()" style="font-size:14px; padding:8px 12px;">☰</button>
-    <button class="btn" title="Schnell speichern" onclick="UI.manualSave()" style="font-size:14px; padding:8px 12px;">💾</button>
+    <button class="btn" title="Schnell speichern (Ctrl+S) · Rechtsklick: Spielstände-Modal (Ctrl+Shift+S)" onclick="UI.manualSave()" oncontextmenu="event.preventDefault();UI._showSaveSlots();" style="font-size:14px; padding:8px 12px;">💾</button>
     <!-- Spielgeschwindigkeit -->
     <div class="speed-controls">
       <button class="speed-btn pause-btn" id="btn-pause" onclick="GameClock.togglePause()" title="Pause / Weiter">⏸</button>
@@ -27628,6 +27628,46 @@ const UI = {
       actions: [{ label: "Schließen", primary: true, onclick: () => this.closeModal() }],
     });
   },
+  _showSaveSlots() {
+    const slots = Game.allSlots();
+    const autoMeta = Game.slotMeta(Game.AUTO_KEY);
+    const autoOff = "off" === localStorage.getItem("planer_autosave");
+    const slotCard = (s) => {
+      const m = s.meta;
+      const empty = !m;
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2);margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:${empty ? "var(--muted)" : "var(--accent2)"};">📁 Slot ${s.n}${empty ? " — leer" : ""}</div>
+            ${empty ? '<div style="font-size:10px;color:var(--muted2);margin-top:4px;">Noch kein Speicherstand</div>' : `<div style="font-size:10px;color:var(--muted2);margin-top:4px;line-height:1.6;">${m.company} · Tag ${m.day}<br>${Utils.euro(m.cash)} · ${m.trucks} LKW · ${m.staff} MA · Rep ${m.rep}%<br><span style="color:var(--muted);">Gespeichert: ${m.date || "—"}</span></div>`}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+            <button class="btn small primary" style="font-size:10px;" onclick="if(Game.saveToSlot(${s.n})){UI.toast('In Slot ${s.n} gespeichert','good');UI._showSaveSlots();}else UI.toast('Speichern fehlgeschlagen','error');">💾 Speichern</button>
+            <button class="btn small" style="font-size:10px;${empty ? "opacity:0.4;cursor:not-allowed;" : ""}" ${empty ? "disabled" : ""} onclick="if(confirm('Aktuellen Spielstand mit Slot ${s.n} überschreiben?')){if(Game.loadFromSlot(${s.n})){UI.toast('Slot ${s.n} geladen','good');UI.closeModal();UI.renderAll();}else UI.toast('Laden fehlgeschlagen','error');}">📂 Laden</button>
+            ${empty ? "" : `<button class="btn small danger" style="font-size:10px;" onclick="if(confirm('Slot ${s.n} wirklich löschen?')){localStorage.removeItem(Game.SLOT_KEY(${s.n}));UI._showSaveSlots();}">🗑</button>`}
+          </div>
+        </div>
+      </div>`;
+    };
+    const autoHTML = autoMeta
+      ? `<div style="border:1px dashed var(--accent2);border-radius:8px;padding:10px;background:rgba(74,222,128,0.04);margin-bottom:12px;font-size:11px;line-height:1.6;">
+          <div style="font-weight:700;color:var(--accent2);">🤖 Letzter Auto-Save</div>
+          <div style="color:var(--muted2);">${autoMeta.company} · Tag ${autoMeta.day} · ${Utils.euro(autoMeta.cash)}<br>${autoMeta.date || "—"}</div>
+          <button class="btn small" style="font-size:10px;margin-top:6px;" onclick="if(confirm('Auto-Save laden? Aktueller Stand geht verloren.')){const r=localStorage.getItem(Game.AUTO_KEY);if(r){Object.assign(State,JSON.parse(r));Game._reconcileTruckStatuses();UI.closeModal();UI.renderAll();UI.toast('Auto-Save geladen','good');}}">📂 Auto-Save laden</button>
+        </div>`
+      : '<div style="font-size:10px;color:var(--muted);margin-bottom:12px;">Noch kein Auto-Save vorhanden.</div>';
+    const content =
+      `<div style="font-size:11px;color:var(--muted2);margin-bottom:10px;">Bis zu 5 Spielstände parallel sichern. Auto-Save läuft im Hintergrund.</div>` +
+      autoHTML +
+      `<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;"><b style="font-size:12px;">Manuelle Slots</b><label style="font-size:11px;color:var(--muted2);cursor:pointer;"><input type="checkbox" ${autoOff ? "" : "checked"} onchange="localStorage.setItem('planer_autosave',this.checked?'on':'off');UI.toast('Auto-Save '+(this.checked?'aktiviert':'aus'),'info');" style="vertical-align:middle;margin-right:4px;">Auto-Save aktiv</label></div>` +
+      slots.map(slotCard).join("");
+    this.showModal({
+      title: "💾 Spielstände",
+      content: content,
+      maxWidth: "520px",
+      actions: [{ label: "Schließen", primary: true, onclick: () => this.closeModal() }],
+    });
+  },
   _showShortcutsHelp() {
     const rows = [
       ["1", "🏢 Büro"],
@@ -27640,7 +27680,8 @@ const UI = {
       ["8", "📈 Strategie"],
       ["9", "❓ Hilfe"],
       ["Leertaste", "Nächste offene Entscheidung öffnen"],
-      ["Ctrl+S / ⌘S", "Speichern"],
+      ["Ctrl+S / ⌘S", "Schnell speichern"],
+      ["Ctrl+Shift+S", "Spielstände-Modal (5 Slots)"],
       ["Esc", "Offenes Modal schließen"],
       ["?", "Dieses Cheat-Sheet anzeigen"],
     ];
@@ -33303,6 +33344,12 @@ window.addEventListener("DOMContentLoaded", () => {
     // Esc schließt Modal
     if ("Escape" === e.key) {
       if (typeof UI !== "undefined" && UI.closeModal) UI.closeModal();
+      return;
+    }
+    // Ctrl+Shift+S: Save-Slots-Modal
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && "s" === e.key.toLowerCase()) {
+      e.preventDefault();
+      if (typeof UI !== "undefined" && UI._showSaveSlots) UI._showSaveSlots();
       return;
     }
     // Ctrl+S / Cmd+S: Speichern
