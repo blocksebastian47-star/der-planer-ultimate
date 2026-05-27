@@ -27409,6 +27409,38 @@ const UI = {
     }
     return document.getElementById(defaultId);
   },
+  _showShortcutsHelp() {
+    const rows = [
+      ["1", "🏢 Büro"],
+      ["2", "⚠ Ereignisse"],
+      ["3", "💼 Finanzen"],
+      ["4", "🚛 Fuhrpark"],
+      ["5", "👷 Personal"],
+      ["6", "🏗 Standorte & Betrieb"],
+      ["7", "🤝 Kunden & Markt"],
+      ["8", "📈 Strategie"],
+      ["9", "❓ Hilfe"],
+      ["Leertaste", "Nächste offene Entscheidung öffnen"],
+      ["Ctrl+S / ⌘S", "Speichern"],
+      ["Esc", "Offenes Modal schließen"],
+      ["?", "Dieses Cheat-Sheet anzeigen"],
+    ];
+    const html =
+      '<div style="font-size:12px;line-height:1.8;">' +
+      rows
+        .map(
+          ([k, label]) =>
+            `<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:4px 0;"><kbd style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:'JetBrains Mono';font-size:11px;min-width:80px;text-align:center;">${k}</kbd><span style="margin-left:12px;flex:1;text-align:right;">${label}</span></div>`,
+        )
+        .join("") +
+      '<div style="margin-top:10px;font-size:10px;color:var(--muted2);">Shortcuts wirken nicht, während du in einem Eingabefeld tippst.</div></div>';
+    this.showModal({
+      title: "⌨ Tastatur-Shortcuts",
+      content: html,
+      maxWidth: "440px",
+      actions: [{ label: "Schließen", primary: true, onclick: () => this.closeModal() }],
+    });
+  },
   showModal({
     title: title,
     subtitle: subtitle,
@@ -32830,6 +32862,55 @@ window.addEventListener("DOMContentLoaded", () => {
   if (_mv) _mv.textContent = APP_VERSION;
   UI.init();
   Game.init();
+  // Tastatur-Shortcuts — global, aber nur ausserhalb von Eingabefeldern
+  window.addEventListener("keydown", (e) => {
+    const tag = e.target?.tagName;
+    if ("INPUT" === tag || "TEXTAREA" === tag || "SELECT" === tag || e.target?.isContentEditable) return;
+    // Esc schließt Modal
+    if ("Escape" === e.key) {
+      if (typeof UI !== "undefined" && UI.closeModal) UI.closeModal();
+      return;
+    }
+    // Ctrl+S / Cmd+S: Speichern
+    if ((e.ctrlKey || e.metaKey) && "s" === e.key.toLowerCase()) {
+      e.preventDefault();
+      if (typeof Game !== "undefined" && Game.save) {
+        Game.save();
+        if (typeof UI !== "undefined" && UI.toast) UI.toast("Gespeichert", "good");
+      }
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // 1-9: Tab-Wechsel (in Nav-Reihenfolge)
+    if (/^[1-9]$/.test(e.key)) {
+      const views = ["zentrale", "events", "finanzen", "fuhrpark", "personal", "standorte", "markt", "strategie", "help"];
+      const idx = parseInt(e.key, 10) - 1;
+      if (views[idx] && typeof UI !== "undefined" && UI.showView) {
+        e.preventDefault();
+        UI.showView(views[idx]);
+      }
+      return;
+    }
+    // Leertaste: nächste offene Entscheidung
+    if (" " === e.key || "Space" === e.code) {
+      if (
+        typeof State !== "undefined" &&
+        State.pendingDecisions &&
+        State.pendingDecisions.length > 0 &&
+        typeof UI !== "undefined" &&
+        UI.showNextDecision
+      ) {
+        e.preventDefault();
+        UI.showNextDecision();
+      }
+      return;
+    }
+    // ? : Cheat-Sheet
+    if ("?" === e.key) {
+      e.preventDefault();
+      if (typeof UI !== "undefined" && UI._showShortcutsHelp) UI._showShortcutsHelp();
+    }
+  });
 });
 </script>
 </body>
