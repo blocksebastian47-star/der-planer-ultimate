@@ -8742,6 +8742,7 @@ const MapV2 = {
   dim: 0.18, // Hintergrund-Abdunkelung (Lesbarkeit der Marker)
   devMode: false,
   _wpDev: false,
+  activeLayers: new Set(["cities", "highways", "ferries", "depots", "routes", "trucks"]),
   _drag: null,
   _anchors: new Set(),
   _container: "mapContainerStatic",
@@ -8793,7 +8794,7 @@ const MapV2 = {
   },
   open(containerId) { this._ensureData(); this.render(containerId || "mapContainerStatic"); },
   openOffice() { this._active = true; this.open("mapContainer"); if ("undefined" !== typeof UI && UI.renderLayerToggles) UI.renderLayerToggles(); }, // MapV2 als Cockpit-Karte (Live-Karte-Reiter)
-  showOldMap() { this._active = false; this._closePanels(); if ("undefined" !== typeof MapRender) MapRender.render("mapContainer"); if ("undefined" !== typeof UI && UI.renderLayerToggles) UI.renderLayerToggles(); }, // Fallback: alte Blob-Karte
+
   render(containerId) {
     this._ensureData();
     const el = document.getElementById(containerId);
@@ -9159,7 +9160,7 @@ const MapV2 = {
     const al = svg.querySelector("#v2-active"); if (al) al.innerHTML = this._activeLayer();
     const dl = svg.querySelector("#v2-depots"); if (dl) dl.innerHTML = this._depotsLayer();
   },
-  _layerOn(id) { return ("undefined" !== typeof MapRender && MapRender.activeLayers) ? MapRender.activeLayers.has(id) : true; },
+  _layerOn(id) { return this.activeLayers ? this.activeLayers.has(id) : true; },
   applyLayers() { // KARTENLAYER-Toggles auf MapV2 anwenden (zoom/pan-erhaltend, kein viewBox-Reset)
     const svg = this._curSvg(); if (!svg) return;
     const set = (sel, html) => { const g = svg.querySelector(sel); if (g) g.innerHTML = html; };
@@ -29878,7 +29879,7 @@ const Game = {
       console.error("[nextDay]", e);
     }
     Game.autoSave();
-    if (void 0 !== MapRender) MapRender.refreshAfterDayTick();
+    if ("undefined" !== typeof MapV2 && MapV2._active) MapV2.refresh();
   },
   skipWeekend() {
     try {
@@ -29898,7 +29899,7 @@ const Game = {
       console.error("[skipWeekend]", e);
     }
     Game.autoSave();
-    if (void 0 !== MapRender) MapRender.refreshAfterDayTick();
+    if ("undefined" !== typeof MapV2 && MapV2._active) MapV2.refresh();
   },
 };
 const UI = {
@@ -34178,7 +34179,7 @@ const UI = {
   },
   _renderOfficeLiveMap() {
     const html =
-      '\n      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">\n        <span style="font-size:11px;color:var(--muted);font-weight:700;">🗺 Karten-Modus:</span>\n        <button class="btn small" onclick="MapV2.openOffice()" title="Bildgestützte Europakarte (gemeinfrei)">🆕 Neue Karte</button>\n        <button class="btn small" onclick="MapV2.showOldMap()" title="Zur alten Blob-Karte wechseln">🗺 Alte Karte</button>\n        <button class="btn small" onclick="MapV2.toggleDev()" title="Dev-Editor: Städte mit der Maus ziehen">✏️ Dev</button>\n        <button class="btn small" onclick="MapV2.calibrate()" title="Aus ≥6 gezogenen Ankern alle Städte per Quadrat-Fit platzieren">📐 Kalibrieren</button>\n        <button class="btn small" onclick="MapV2.exportJSON()" title="Positionen als JSON kopieren">⬇ JSON</button>\n        <button class="btn small" onclick="MapV2.toggleWpDev()" title="Faehren-Wegpunkte mit der Maus platzieren">🚢 Faehren-WP</button>\n        <button class="btn small" onclick="MapV2.exportFerryJSON()" title="Faehren-Verbindungen + Wegpunkte als JSON">⬇ Faehren-JSON</button>\n      </div>\n      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">\n        <div id="mapContainer" style="flex:1 1 520px;min-width:0;height:min(78vh,820px);background:#a8c8e8;border:2px solid var(--border);border-radius:8px;overflow:hidden;position:relative;"></div>\n        <div style="flex:0 0 300px;min-width:0;display:flex;flex-direction:column;gap:10px;">\n          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;">\n            <div style="font-family:\'Bebas Neue\';color:var(--accent);font-size:14px;margin-bottom:8px;">KARTENLAYER</div>\n            <div id="layer-toggles-bottom" style="display:grid;grid-template-columns:1fr;gap:4px;font-size:11px;"></div>\n          </div>\n          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;">\n            <div style="font-family:\'Bebas Neue\';color:var(--accent);font-size:14px;margin-bottom:6px;">AKTIVE TOUREN</div>\n            <div id="active-routes-list" style="font-size:11px;max-height:240px;overflow-y:auto;"></div>\n          </div>\n        </div>\n      </div>';
+      '\n      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">\n        <span style="font-size:11px;color:var(--muted);font-weight:700;">🗺 Karten-Modus:</span>\n        <button class="btn small" onclick="MapV2.openOffice()" title="Bildgestützte Europakarte (gemeinfrei)">🆕 Neue Karte</button>\n        <button class="btn small" onclick="MapV2.toggleDev()" title="Dev-Editor: Städte mit der Maus ziehen">✏️ Dev</button>\n        <button class="btn small" onclick="MapV2.calibrate()" title="Aus ≥6 gezogenen Ankern alle Städte per Quadrat-Fit platzieren">📐 Kalibrieren</button>\n        <button class="btn small" onclick="MapV2.exportJSON()" title="Positionen als JSON kopieren">⬇ JSON</button>\n        <button class="btn small" onclick="MapV2.toggleWpDev()" title="Faehren-Wegpunkte mit der Maus platzieren">🚢 Faehren-WP</button>\n        <button class="btn small" onclick="MapV2.exportFerryJSON()" title="Faehren-Verbindungen + Wegpunkte als JSON">⬇ Faehren-JSON</button>\n      </div>\n      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">\n        <div id="mapContainer" style="flex:1 1 520px;min-width:0;height:min(78vh,820px);background:#a8c8e8;border:2px solid var(--border);border-radius:8px;overflow:hidden;position:relative;"></div>\n        <div style="flex:0 0 300px;min-width:0;display:flex;flex-direction:column;gap:10px;">\n          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;">\n            <div style="font-family:\'Bebas Neue\';color:var(--accent);font-size:14px;margin-bottom:8px;">KARTENLAYER</div>\n            <div id="layer-toggles-bottom" style="display:grid;grid-template-columns:1fr;gap:4px;font-size:11px;"></div>\n          </div>\n          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;">\n            <div style="font-family:\'Bebas Neue\';color:var(--accent);font-size:14px;margin-bottom:6px;">AKTIVE TOUREN</div>\n            <div id="active-routes-list" style="font-size:11px;max-height:240px;overflow-y:auto;"></div>\n          </div>\n        </div>\n      </div>';
     setTimeout(() => {
       if (void 0 !== MapV2) MapV2.openOffice(); // MapV2 (Bild-Karte) ist jetzt die Standard-Karte
       else if (void 0 !== MapRender) MapRender.render("mapContainer");
@@ -37656,19 +37657,18 @@ const UI = {
       list
         .map(
           (l) =>
-            `\n      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;padding:3px;border-radius:3px;"\n        onmouseover="this.style.background='rgba(255,255,255,0.07)'" onmouseout="this.style.background=''">\n        <input type="checkbox" ${MapRender.activeLayers.has(l.id) ? "checked" : ""}\n               onchange="UI._mapToggleLayer('${l.id}');"\n               style="cursor:pointer; accent-color:var(--accent);">\n        <span style="color:${MapRender.activeLayers.has(l.id) ? "var(--fg)" : "var(--muted)"};">${l.label}</span>\n      </label>`,
+            `\n      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;padding:3px;border-radius:3px;"\n        onmouseover="this.style.background='rgba(255,255,255,0.07)'" onmouseout="this.style.background=''">\n        <input type="checkbox" ${MapV2.activeLayers.has(l.id) ? "checked" : ""}\n               onchange="UI._mapToggleLayer('${l.id}');"\n               style="cursor:pointer; accent-color:var(--accent);">\n        <span style="color:${MapV2.activeLayers.has(l.id) ? "var(--fg)" : "var(--muted)"};">${l.label}</span>\n      </label>`,
         )
         .join("");
     const bottom = document.getElementById("layer-toggles-bottom");
     if (bottom) bottom.innerHTML = makeHtml();
   },
   _mapToggleLayer(id) {
-    if ("undefined" !== typeof MapRender && MapRender.activeLayers) {
-      if (MapRender.activeLayers.has(id)) MapRender.activeLayers.delete(id);
-      else MapRender.activeLayers.add(id);
+    if ("undefined" !== typeof MapV2 && MapV2.activeLayers) {
+      if (MapV2.activeLayers.has(id)) MapV2.activeLayers.delete(id);
+      else MapV2.activeLayers.add(id);
+      MapV2.applyLayers();
     }
-    if ("undefined" !== typeof MapV2 && MapV2._active) MapV2.applyLayers();
-    else if ("undefined" !== typeof MapRender) MapRender.render();
     this.renderLayerToggles();
     this.renderActiveRoutesList();
   },
