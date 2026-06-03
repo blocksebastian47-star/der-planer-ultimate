@@ -11128,33 +11128,6 @@ const GameDepth = {
     const fit = this.checkJobFit(driver, job);
     if (0 !== fit.delta) driver.motivation = Utils.clamp((driver.motivation || 70) + fit.delta, 5, 100);
   },
-  SEASON_DATA: {
-    0: [0.78, 0.92, "Januar — ruhige Saison, weniger Aufträge"],
-    1: [0.82, 0.93, "Februar — Nachwinter, leicht ruhig"],
-    2: [1.05, 1, "März — Frühjahrsaufschwung"],
-    3: [1.1, 1.02, "April — Bausaison beginnt"],
-    4: [1.12, 1.03, "Mai — Hochsaison Bau & Landwirtschaft"],
-    5: [1.08, 1.02, "Juni — Sommerbeginn"],
-    6: [0.9, 0.98, "Juli — Urlaubsmonat, weniger B2B"],
-    7: [0.88, 0.97, "August — Ferienzeit"],
-    8: [1.1, 1.03, "September — Herbstaufschwung"],
-    9: [1.15, 1.05, "Oktober — Ernte & Lageraufbau"],
-    10: [1.2, 1.08, "November — Weihnachtsverkehr beginnt"],
-    11: [1.35, 1.15, "Dezember — Hochsaison Weihnachtslogistik! +35% Aufträge"],
-  },
-  getCurrentSeason() {
-    const month = new Date(State.date || Date.now()).getMonth();
-    const data = this.SEASON_DATA[month] || [1, 1, ""];
-    return { month: month, jobMul: data[0], priceMul: data[1], note: data[2] };
-  },
-  getSeasonalJobCount(baseCount) {
-    const { jobMul: jobMul } = this.getCurrentSeason();
-    return Math.round(baseCount * jobMul);
-  },
-  getSeasonalPrice(basePrice) {
-    const { priceMul: priceMul } = this.getCurrentSeason();
-    return Math.round(basePrice * priceMul);
-  },
   negotiateJob(jobId, offerPct) {
     const job = (State.jobs || []).find((j) => j.id === jobId);
     if (!job) return { success: false, reason: "Job nicht gefunden" };
@@ -24253,8 +24226,8 @@ const JobManager = {
       return false;
     });
   },
-  // SB3: In-Game-Datum aus State.day ableiten (State.date ist auf den Startzeitpunkt
-  // eingefroren -> nicht nutzbar). Vereinfachtes 30-Tage-Monat-/365-Tage-Jahr-Modell.
+  // SB3: In-Game-Datum aus State.day ableiten. State.date laeuft via DayCycle.start mit,
+  // nutzt aber echte Monatslaengen - hier bewusst vereinfachtes 30-Tage-/365-Tage-Modell.
   _gameDayOfYear() {
     return ((Math.max(1, State.day || 1) - 1) % 365) + 1;
   },
