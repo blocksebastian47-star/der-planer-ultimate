@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.61.3 · Build 03.06.2026">
+<meta name="build" content="v2.61.4 · Build 03.06.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.61.3</title>
+<title>Der Planer Ultimate · v2.61.4</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -1577,7 +1577,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.61.3</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.61.4</div>
       <div style="font-size:10px; color:var(--muted);">Juni 2026</div>
     </div>
   </div>
@@ -1648,7 +1648,7 @@ footer {
 <div id="achievement-stack"></div>
 
 <script>
-const APP_VERSION = "v2.61.3";
+const APP_VERSION = "v2.61.4";
 const BUILD_DATE = "03.06.2026";
 const DATA = {
   locations: {
@@ -16872,7 +16872,8 @@ const GFOffice = {
       const cargo = Utils.pick(cargoPool);
       const weight = Math.round(10 * (cargo.minWeight + Math.random() * (cargo.maxWeight - cargo.minWeight))) / 10;
       const km = RouteManager.roadKm(fromC.id, toC.id);
-      const deadline = State.day + Math.max(1, Math.ceil(hours / 24));
+      const minDays = Math.ceil(km / 600) + 1;
+      const deadline = State.day + Math.max(Math.ceil(hours / 24), minDays);
       return {
         id: Utils.uid("EXP"),
         customerName: caller,
@@ -24667,12 +24668,10 @@ const JobManager = {
         continue;
       }
       if (j.isExpress) {
-        const penalty = j.expressPenalty || Math.round(0.5 * (j.price || 0));
-        State.cash -= penalty;
-        State.reputation = Utils.clamp((State.reputation || 50) - 10, 0, 100);
+        State.reputation = Utils.clamp((State.reputation || 50) - 5, 0, 100);
         EventManager.addNews(
-          "bad",
-          `🚨 Eilauftrag VERFALLEN — ${j.customerName}: ${j.fromName} → ${j.toName} · Vertragsstrafe ${Utils.euro(penalty)} · Reputation −10`,
+          "warn",
+          "Eilauftrag nicht angenommen - " + j.customerName + ": " + j.fromName + " -> " + j.toName + " (Reputation -5, keine Vertragsstrafe, da nie disponiert)",
         );
       }
     }
@@ -33020,7 +33019,8 @@ const UI = {
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
-      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.61.3", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge wirken sofort & enden korrekt</b> — Ein abgeschlossener Wartungsvertrag senkt das Pannenrisiko jetzt ab sofort (vorher erst ab dem nächsten Monatsersten — bis zu 30 Tage wirkungslos). Nach Kündigung entfällt der Schutz wieder (vorher blieb die Pannen-Reduktion dauerhaft am LKW). Außerdem lässt sich ein Vertrag nicht mehr ins Minus abschließen.')}
+      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.61.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Eilaufträge sind jetzt fair</b> — Die Frist berücksichtigt jetzt die tatsächliche Fahrstrecke (vorher war ein „24-Stunden"-Auftrag auf einer Mehrtagesstrecke nie rechtzeitig erfüllbar → garantiert 0 € + Strafe). Außerdem kostet ein angenommener, aber mangels Kapazität nie disponierter Eilauftrag beim Verfall keine Vertragsstrafe mehr, sondern nur etwas Reputation. Die Strafe bei verspäteter Lieferung eines tatsächlich gestarteten Eilauftrags bleibt bestehen.')}
+        ${v("v2.61.3", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge wirken sofort & enden korrekt</b> — Ein abgeschlossener Wartungsvertrag senkt das Pannenrisiko jetzt ab sofort (vorher erst ab dem nächsten Monatsersten — bis zu 30 Tage wirkungslos). Nach Kündigung entfällt der Schutz wieder (vorher blieb die Pannen-Reduktion dauerhaft am LKW). Außerdem lässt sich ein Vertrag nicht mehr ins Minus abschließen.')}
         ${v("v2.61.2", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Spielstand-Laden überschreibt sauber</b> — Beim Laden (Slot, Auto-Save, Datei-Import) wird der bisherige Spielzustand jetzt vollständig zurückgesetzt, bevor der geladene Stand angewendet wird. Vorher konnten Reste eines zuvor geladenen Spiels (z. B. Konkurrenten, Krisen, Familienstand) in den neuen Spielstand „durchsickern".')}
         ${v("v2.61.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Abteilungs-Direktiven wirken auf Aufträge</b> — Die Vertriebs-Strategien („Nur Premium-Aufträge": +25 % Preis / -30 % Volumen, „Wachstums-Offensive": +40 % Volumen / -10 % Preis, „Auslastungs-Maximierung": +10 % Volumen) hatten bisher keinen Effekt auf Preise und Auftragsmenge. Jetzt verschieben sie korrekt die Auftragspreise und die Zahl neu generierter Aufträge im eigenen Auftragspool (nicht die offene Frachtenbörse).')}
         ${v("v2.61.0", "Juni 2026", '<span style="color:var(--accent2);">NEU:</span> <b>Schnell-Disposition</b> — Über der Auftragsliste gibt es jetzt den Button „Alle freien LKW disponieren" (schnellste oder günstigste Route). Er nimmt automatisch alle offenen Aufträge an, für die ein freier LKW verfügbar ist — spart das einzelne Annehmen. Die bisherige Mehrfach-Auswahl bleibt erhalten.')}
