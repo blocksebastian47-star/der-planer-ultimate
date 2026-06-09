@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.62.10 · Build 07.06.2026">
+<meta name="build" content="v2.63.0 · Build 07.06.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.62.10</title>
+<title>Der Planer Ultimate · v2.63.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -1581,7 +1581,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.62.10</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.63.0</div>
       <div style="font-size:10px; color:var(--muted);">Juni 2026</div>
     </div>
   </div>
@@ -1652,7 +1652,7 @@ footer {
 <div id="achievement-stack"></div>
 
 <script>
-const APP_VERSION = "v2.62.10";
+const APP_VERSION = "v2.63.0";
 const BUILD_DATE = "07.06.2026";
 const DATA = {
   locations: {
@@ -4667,7 +4667,7 @@ function _planerDefaultState() {
     reputation: 50,
     fame: 5,
     privateWealth: 8e3,
-    ownerSalary: 3500,
+    ownerSalary: 2000,
     familyHappiness: 80,
     stress: 30,
     vacationDaysAvailable: 14,
@@ -22182,8 +22182,9 @@ const LocationManager = {
     // DOPPELT abgebucht. Jetzt zentral hier (Cash via payMonthlyRent, GuV via
     // dailyFixCostsTick aliquot); LocationExpansion bucht keine Miete mehr.
     const locs = State.locations || [];
-    if (locs.length) return Math.round(locs.reduce((s, l) => s + (l.rent || 0), 0) * Game.diffMod("rent", 1));
-    return this.current()?.monthlyRent || 0;
+    let _rent = locs.length ? Math.round(locs.reduce((s, l) => s + (l.rent || 0), 0) * Game.diffMod("rent", 1)) : (this.current()?.monthlyRent || 0);
+    if (State.rentGraceUntil && State.day < State.rentGraceUntil && locs.length <= 1) _rent = Math.min(_rent, State.rentGraceRate || 900);
+    return _rent;
   },
   fuelPrice: () => State.fuelPriceCurrent * (void 0 !== SeasonCalendar ? SeasonCalendar.fuelMultiplier() : 1),
   jobDensityMultiplier() {
@@ -23731,7 +23732,7 @@ const JobManager = {
     const homeCity = (DATA.locations[State.locationId] && DATA.locations[State.locationId].mapCityId) || State.locationId || "berlin";
     let maxKm = rep < 60 ? 400 : rep < 75 ? 1000 : rep < 90 ? 2000 : 99999;
     // Fruehspiel: engerer Radius -> kurze Touren, kaum Leerfahrt
-    if (this._smallCompany()) maxKm = Math.min(maxKm, 260);
+    if (this._smallCompany()) maxKm = Math.min(maxKm, 450);
     const homeC = MAP_DATA.getCity(homeCity);
     let cityPool = homeC
       ? MAP_DATA.cities.filter((c) => {
@@ -23819,7 +23820,7 @@ const JobManager = {
     );
     const maxPrice = rep < 40 ? 8e3 : rep < 60 ? 2e4 : rep < 80 ? 45e3 : 8e4;
     price = Utils.clamp(price, 80, maxPrice);
-    const deadline = State.day + Math.max(2, Math.ceil(km / 400)) + Utils.randInt(0, 4);
+    const deadline = State.day + Math.max(4, Math.ceil(km / 350)) + Utils.randInt(1, 4);
     const job = {
       id: Utils.uid("J"),
       customerName: customer.name,
@@ -25258,9 +25259,10 @@ const EventManager = {
       { text: "Überladung des LKW", cost: 950 },
     ];
     const r = Utils.pick(reasons);
-    FinanceManager.recordCost("admin", r.cost, false);
-    if (State.subCosts) State.subCosts.fines += r.cost;
-    this.addNews("warn", `📋 Bußgeld: ${r.text} – ${Utils.euro(r.cost)}`);
+    const _fine = (State.trucks || []).length <= 3 ? Math.round(r.cost * 0.5) : r.cost;
+    FinanceManager.recordCost("admin", _fine, false);
+    if (State.subCosts) State.subCosts.fines += _fine;
+    this.addNews("warn", `📋 Bußgeld: ${r.text} – ${Utils.euro(_fine)}`);
   },
   eventEconomyNews() {
     const events = [
@@ -25944,11 +25946,22 @@ const DispoManager = {
       if (j.customerId && activeContracts.some((c) => c.customerId === j.customerId)) return 1;
       return 2;
     };
+    // Deadhead-bewusste Reihenfolge: Auftragswert NETTO nach Anfahrt (Leerfahrt-Sprit)
+    // je Gesamt-km — so bekommt jeder LKW seinen naheliegendsten guten Auftrag statt
+    // des teuersten weit entfernten. Senkt die Leerkilometer.
+    const _ddScore = new Map();
+    for (const _j of State.jobs) {
+      const _tr = JobManager.findBestTruck(_j);
+      let _ddKm = 0;
+      if (_tr && _tr.location && _tr.location !== _j.from) { try { _ddKm = RouteManager.roadKm(_tr.location, _j.from) || 0; } catch (e) {} }
+      const _ddCost = Math.round(_ddKm * (((_tr && _tr.mpg) || 32) / 100) * (State.fuelPriceCurrent || 1.65));
+      _ddScore.set(_j.id, ((_j.price || 0) - _ddCost) / ((_j.km || 1) + _ddKm));
+    }
     const sortedJobs = State.jobs.slice().sort((a, b) => {
       const ta = dispoTier(a),
         tb = dispoTier(b);
       if (ta !== tb) return ta - tb;
-      return b.price / (b.km || 1) - a.price / (a.km || 1);
+      return (_ddScore.get(b.id) || 0) - (_ddScore.get(a.id) || 0);
     });
     let handled = 0;
     for (const job of sortedJobs) {
@@ -26893,17 +26906,18 @@ const DIFFICULTIES = {
     win: { fame: 100, rep: 75, trucks: 8, locations: 2 },
     name: "Einfach",
     icon: "🟢",
-    desc: "3 LKW · 3 Fahrer · 100.000 € · keine Schulden",
-    flavor: "Genug Polster, um die Spedition in Ruhe kennenzulernen.",
-    cash: 1e5,
+    desc: "1 LKW · du fährst selbst · 90.000 € · keine Schulden",
+    flavor: "Owner-Operator mit dickem Polster — viel Zeit zum Lernen und Wachsen.",
+    cash: 9e4,
     debt: 0,
     repBonus: 8,
     customers: 4,
-    drivers: 3,
+    drivers: 0,
+    ownerSalary: 2500,
+    rentGraceDays: 120,
+    rentGraceRate: 900,
     trucks: [
-      { model: "iveco_d", condition: 95, km: 35e3, insuranceTier: "teilkasko" },
-      { model: "tractor_4x2", condition: 90, km: 7e4, insuranceTier: "teilkasko", trailer: { type: "plane", condition: 90, km: 5e4 } },
-      { model: "tractor_4x2", condition: 85, km: 11e4, insuranceTier: "teilkasko", trailer: { type: "koffer", condition: 86, km: 75e3 } },
+      { model: "tractor_4x2", condition: 92, km: 6e4, insuranceTier: "teilkasko", trailer: { type: "plane", condition: 90, km: 5e4 } },
     ],
     spareTrailers: [],
   },
@@ -26913,18 +26927,20 @@ const DIFFICULTIES = {
     win: { fame: 100, rep: 85, trucks: 15, locations: 3 },
     name: "Mittel",
     icon: "🟡",
-    desc: "2 LKW · 2 Fahrer · 50.000 € · 50.000 € Schulden",
-    flavor: "Der ausgewogene Standard-Start.",
-    cash: 5e4,
-    debt: 5e4,
+    desc: "1 LKW · du fährst selbst · 35.000 € · 20.000 € Schulden",
+    flavor: "Owner-Operator: du sitzt selbst am Steuer, bis das erste Personal kommt.",
+    cash: 35e3,
+    debt: 2e4,
     repBonus: 0,
     customers: 3,
-    drivers: 2,
+    drivers: 0,
+    ownerSalary: 1500,
+    rentGraceDays: 90,
+    rentGraceRate: 900,
     trucks: [
-      { model: "iveco_d", condition: 88, km: 84e3, insuranceTier: "haftpflicht" },
-      { model: "tractor_4x2", condition: 75, km: 156e3, insuranceTier: "teilkasko", trailer: { type: "plane", condition: 78, km: 95e3 } },
+      { model: "tractor_4x2", condition: 80, km: 12e4, insuranceTier: "haftpflicht", trailer: { type: "plane", condition: 80, km: 9e4 } },
     ],
-    spareTrailers: [{ type: "koffer", condition: 72, km: 14e4 }],
+    spareTrailers: [],
   },
   schwer: {
     id: "schwer",
@@ -26932,13 +26948,16 @@ const DIFFICULTIES = {
     win: { fame: 100, rep: 90, trucks: 25, locations: 5 },
     name: "Schwer",
     icon: "🔴",
-    desc: "0 LKW · 0 Fahrer · knappes Kapital · 100.000 € Schulden",
-    flavor: "Gründung aus dem Nichts — jeder Euro zählt.",
-    cash: 4e4,
-    debt: 1e5,
+    desc: "0 LKW · 0 Fahrer · 25.000 € · 80.000 € Schulden",
+    flavor: "Aus dem Nichts — erst einen LKW besorgen und selbst ans Steuer.",
+    cash: 25e3,
+    debt: 8e4,
     repBonus: -10,
     customers: 1,
     drivers: 0,
+    ownerSalary: 1000,
+    rentGraceDays: 90,
+    rentGraceRate: 900,
     trucks: [],
     spareTrailers: [],
   },
@@ -27805,6 +27824,9 @@ const Game = {
     State.difficulty = diff.id;
     State.cash = diff.cash;
     State.debt = diff.debt;
+    if (diff.ownerSalary != null) State.ownerSalary = diff.ownerSalary;
+    State.rentGraceUntil = diff.rentGraceDays ? State.day + diff.rentGraceDays : 0;
+    State.rentGraceRate = diff.rentGraceRate || 0;
     State.reputation = Utils.clamp((State.reputation || 50) + (diff.repBonus || 0), 0, 100);
     State.trucks = [];
     State.trailers = [];
@@ -33009,7 +33031,7 @@ const UI = {
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
-      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
+      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
         ${v("v2.62.3", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Auftragsfilter „Nur machbare" wieder korrekt</b> — Der Filter zeigte auch Aufträge als machbar, die genau einen Tag zu spät fertig geworden wären (Off-by-one). Jetzt gelten nur Aufträge als machbar, die fristgerecht abgeschlossen werden können.')}
         ${v("v2.62.2", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Markteffekte verfliegen wieder & keine Entscheidungs-Staus</b> — (1) Markt-/Nachrichten-Effekte auf das Auftragsvolumen klingen jetzt über rund zwei Wochen wieder ab (vorher blieben sie dauerhaft und konnten das Volumen ohne erkennbare Ursache drücken). (2) Gleichartige Entscheidungen (gleicher Titel) werden nicht mehr doppelt eingereiht — das verhindert seltene Stau-Situationen, in denen sich das Spiel an gestapelten Dialogen verschluckte.')}
         ${v("v2.62.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Softlocks entschärft</b> — (1) Ein liegengebliebener LKW wird jetzt automatisch repariert, sobald du dir die Reparatur leisten kannst (vorher erst ab 1.500 € Kasse — günstigere Reparaturen blieben darunter hängen). (2) Wenn du keine LKW mehr hast, im Minus bist und das Kreditlimit ausgereizt ist, endet das Spiel jetzt sauber mit Insolvenz, statt in einer ausweglosen Hängepartie zu verharren.')}
