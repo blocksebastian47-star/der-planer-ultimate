@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.70.0 · Build 10.06.2026">
+<meta name="build" content="v2.71.0 · Build 10.06.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.70.0</title>
+<title>Der Planer Ultimate · v2.71.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -1581,7 +1581,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.70.0</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.71.0</div>
       <div style="font-size:10px; color:var(--muted);">Juni 2026</div>
     </div>
   </div>
@@ -1652,7 +1652,7 @@ footer {
 <div id="achievement-stack"></div>
 
 <script>
-const APP_VERSION = "v2.70.0";
+const APP_VERSION = "v2.71.0";
 const BUILD_DATE = "10.06.2026";
 const DATA = {
   locations: {
@@ -10493,7 +10493,7 @@ const StaffInteraction = {
     if (!badTruck) return;
     const tone = this._tone(mechanic);
     const truckModel = (DATA.truckModels || []).find((m) => m.id === badTruck.modelId);
-    const repairCost = Math.round(80 * (100 - badTruck.condition) * (badTruck.modelId?.includes("tractor") ? 1.5 : 1));
+    const repairCost = Math.round(Math.max(60, 0.0035 * (badTruck.purchasePrice || 60000)) * (100 - badTruck.condition) * (badTruck.modelId?.includes("tractor") ? 1.5 : 1));
     const replaceCost = Math.round(0.35 * (truckModel?.price || 8e4));
     EventManager.queueDecision({
       tier: 1,
@@ -14854,7 +14854,7 @@ const FuelHedging = {
     const totalCost = Math.round(liters * contractPrice);
     if (State.cash < totalCost) return { ok: false, reason: "Nicht genug Kapital" };
     if ("storage" === typeId) {
-      State.cash -= totalCost;
+      FinanceManager.book("fuelToll", "fuel", totalCost, { desc: "Diesel-Lagerkauf" });
       if (State.subCosts) State.subCosts.fuelActual += totalCost;
       State.fuelHedge.storage += liters;
       State.fuelHedge.storagePrice =
@@ -14938,7 +14938,7 @@ const FuelHedging = {
         EventManager.addNews("warn", `⚠ Dieselkontrakt: ${Utils.euro(cost)} nicht bezahlbar — verfallen`);
         return false;
       }
-      State.cash -= cost;
+      FinanceManager.book("fuelToll", "fuel", cost, { desc: `Dieselkontrakt-Lieferung ${c.liters.toLocaleString("de-DE")} L` });
       if (State.subCosts) State.subCosts.fuelActual += cost;
       hedge.storage += c.liters;
       const diff = Math.round(c.liters * State.fuelPriceCurrent) - cost;
@@ -22334,7 +22334,7 @@ const FinanceManager = {
     // Geleaste Fahrzeuge gehoeren nicht ins Anlagevermoegen.
     // (Single source of truth seit v2.15.3: t.leasing.active.
     //  Alt-Saves werden in _reconcileTruckStatuses auf dieses Schema migriert.)
-    const notLeased = (v) => !(v.leasing && v.leasing.active);
+    const notLeased = (v) => !v.leasing; // Leasing-Snapshot (auch abgelaufen, bis zur Kauf-Entscheidung) = kein Eigentum
     const trucks = (State.trucks || []).filter(notLeased).reduce((s, t) => s + depreciated(t), 0);
     const trailers = (State.trailers || []).filter(notLeased).reduce((s, t) => s + depreciated(t), 0);
     return trucks + trailers;
@@ -22682,6 +22682,8 @@ const EmployeeManager = {
     const staff = candidate || this.createStaff(roleId);
     if (void 0 !== StaffInteraction) StaffInteraction.onHire(staff);
     if ("driver" === staff.roleId && void 0 !== GameDepth) GameDepth.rollDriverPreference(staff);
+    const _hc = void 0 !== DepartmentSystem && DepartmentSystem.getHireCost ? DepartmentSystem.getHireCost(staff.salary || 0) : 0;
+    if (_hc > 0) FinanceManager.book("personnel", "other_out", _hc, { desc: `Einstellung ${staff.name} (Anwerbung/Ausstattung)` });
     State.staff.push(staff);
     const pIcon = void 0 !== StaffInteraction ? StaffInteraction.PERSONALITIES[staff.personality]?.icon || "" : "";
     const prefLabel = staff.preference ? ` · ${staff.preferenceLabel}` : "";
@@ -23372,6 +23374,8 @@ const FleetManager = {
   buy(truck, price) {
     if (State.cash < price) return false;
     FinanceManager.recordCost("fleet", price, false);
+    if (void 0 !== BankAccount) BankAccount.record("purchase", -price, `LKW-Kauf: ${truck.model} (${truck.plate})`);
+    if (State.subCosts) State.subCosts.truckPurchase = (State.subCosts.truckPurchase || 0) + price;
     State.trucks.push(truck);
     EventManager.addNews("good", `🚛 Fahrzeug gekauft: ${truck.model} (${truck.plate}) für ${Utils.euro(price)}`);
     return true;
@@ -23438,7 +23442,7 @@ const FleetManager = {
     const targetCondition = fullRepair ? 100 : Math.min(100, t.condition + 35);
     const maintFactor = DATA.truckModels.find((m) => m.id === t.modelId)?.maint || 1;
     const agingMul = void 0 !== GameDepth && GameDepth.getAgingTier ? GameDepth.getAgingTier(t).maintMul || 1 : 1;
-    const baseCost = 80 * (targetCondition - t.condition) * maintFactor * agingMul;
+    const baseCost = Math.max(60, 0.0035 * (t.purchasePrice || 60000)) * (targetCondition - t.condition) * maintFactor * agingMul;
     const hasMech = State.staff.some((s) => "mechanic" === s.roleId && "aktiv" === s.status);
     const hasMeister = State.staff.some(
       (s) => ("kfz_meister" === s.roleId || "head_workshop" === s.roleId) && "aktiv" === s.status,
@@ -23469,7 +23473,7 @@ const FleetManager = {
     const age = Math.max(0, year - (truck.yearBuilt || year));
     const ageFactor = Math.pow(1 - (m?.valueDeprec || 0.12), age);
     return Math.round(
-      (truck.purchasePrice || 0) * (truck.condition / 100) * 0.65 * ageFactor * (1 + (truck.valueBonus || 0)),
+      (truck.purchasePrice || 0) * (0.5 + 0.5 * (truck.condition / 100)) * 0.65 * ageFactor * (1 + (truck.valueBonus || 0)),
     );
   },
   canHaul(truck, cargoType) {
@@ -23881,6 +23885,7 @@ const JobManager = {
       if ("repair" === t.status) return;
       if (t._gfTour) return;
       if (t.recalled && (t.recalledUntil || 0) > State.day) return;
+      if (t.leasing && !t.leasing.active) return; // Leasing abgelaufen — erst Rückgabe/Kauf/Verlängerung entscheiden
       if ((t.strikePauseUntil || 0) > State.day) return;
       if (FleetManager.getDriverSkillLevel(driver) < (job.skillRequired || 1)) return;
       const isIdle = "idle" === t.status;
@@ -24070,7 +24075,7 @@ const JobManager = {
       if ("undefined" !== typeof EventManager) EventManager.addNews("info", "Sondergenehmigung Schwertransport beantragt: " + Utils.euro(_pf));
     }
     State.jobs = (State.jobs || []).filter((j) => j.id !== jobId);
-    if ("idle" === truck.status) return this._startJob(job, truck, driver, route, totalDays);
+    if ("idle" === truck.status && !truck._homeReturnDay && !(State.scheduledJobs || []).some((s) => s.truckId === truck.id)) return this._startJob(job, truck, driver, route, totalDays);
     if (!State.scheduledJobs) State.scheduledJobs = [];
     const queuePos = (State.scheduledJobs || []).filter((s) => s.truckId === truck.id).length + 1;
     State.scheduledJobs.push({
@@ -25050,7 +25055,7 @@ const EventManager = {
       wildlife: { dmg: 2200, condDrop: 18, label: "🦌 Wildschaden" },
       theft: { dmg: null, condDrop: 0, label: "🚓 Diebstahl" },
     }[type];
-    const truckResale = "theft" === type ? Math.round(truck.purchasePrice * (truck.condition / 100) * 0.65) : 0;
+    const truckResale = "theft" === type ? Math.round(truck.purchasePrice * (0.5 + 0.5 * (truck.condition / 100)) * 0.65) : 0;
     let damage = "theft" === type ? Math.max(truckResale, 5e3) : d.dmg + Utils.randInt(-300, 800);
     // Zubehoer-Effekte: Dashkam reduziert Schadenshoehe insgesamt (Beweissicherung),
     // Werkzeugkoffer reduziert speziell Panne-Folgekosten (Soforthilfe vor Ort).
@@ -25412,6 +25417,7 @@ const MarketingManager = {
   startCampaign(channelId) {
     const channel = DATA.marketingChannels.find((c) => c.id === channelId);
     if (!channel) return false;
+    if ((State.activeMarketing || []).some((m) => m.id === channelId)) { if ("undefined" !== typeof UI && UI.toast) UI.toast("Diese Kampagne läuft bereits", "warn"); return false; }
     if (State.cash < channel.cost) return false;
     FinanceManager.recordCost("marketing", channel.cost, false);
     if (State.subCosts) State.subCosts.marketing += channel.cost;
@@ -25778,6 +25784,7 @@ const DayCycle = {
     PlayerManager.dailyTick();
     // Aktive GF-Fortbildung: nach Ablauf-Tag XP/Buffs gutschreiben und State.gfTraining loeschen.
     if (PlayerManager.gfTrainingTick) PlayerManager.gfTrainingTick();
+    if (State.priceMultiplier && 1 !== State.priceMultiplier) { State.priceMultiplier = 1 + (State.priceMultiplier - 1) * 0.97; if (Math.abs(State.priceMultiplier - 1) < 0.005) State.priceMultiplier = 1; }
     const jobBoost = MarketingManager.dailyTick();
     const phoneBonus = (State.staff || []).filter((x) => "phone" === x.roleId && "aktiv" === x.status).length;
     const telesalesBonus = (State.staff || []).filter((x) => "telesales" === x.roleId && "aktiv" === x.status).length;
@@ -26033,8 +26040,8 @@ const DispoManager = {
             "warn",
             `📞 Disponent ${dispo.name.split(" ")[0]}: Rücksprache zu ${job.fromName}→${job.toName}`,
           );
+          handled++;
         }
-        handled++;
         continue;
       }
       if (perKm > 0.9 && days <= daysLeft) {
@@ -26137,6 +26144,7 @@ const DispoManager = {
       const job = (State.jobs || []).find((j) => j.id === c.jobId);
       if (success && job) {
         job.price = Math.round(1.18 * job.price);
+        job.negotiated = true;
         EventManager.addNews("good", `💼 Verhandlung erfolgreich: +18% — neuer Preis ${Utils.euro(job.price)}`);
       } else {
         State.jobs = (State.jobs || []).filter((j) => j.id !== c.jobId);
@@ -26409,12 +26417,17 @@ const DealerManager = {
   negotiate(offerId, factor, successProb) {
     const offer = [...State.dealer.newStock, ...State.dealer.usedStock].find((o) => o.id === offerId);
     if (!offer) return null;
+    // Realistisch: max. 2 Verhandlungsrunden pro Angebot, Händler-Schmerzgrenze ~12 % unter Erst-Listenpreis.
+    if (!offer._floorBase) offer._floorBase = offer.askingPrice;
+    offer._negCount = (offer._negCount || 0) + 1;
+    if (offer._negCount > 2) return { success: false, annoyed: false };
+    const _floor = Math.round(0.88 * offer._floorBase);
     const adjusted = State.staff.some((s) => "lawyer" === s.roleId && "aktiv" === s.status)
       ? successProb + 0.15
       : successProb;
     if (Math.random() < adjusted) {
       const oldPrice = offer.askingPrice;
-      offer.askingPrice = Math.round(offer.askingPrice * factor);
+      offer.askingPrice = Math.max(_floor, Math.round(offer.askingPrice * factor));
       return { success: true, oldPrice: oldPrice, newPrice: offer.askingPrice };
     } else {
       if (Math.random() < 0.4) {
@@ -26561,8 +26574,8 @@ const TrailerDealerManager = {
     if (!State.trailerDealer) return { accepted: false };
     const offer = State.trailerDealer.usedStock.find((o) => o.id === offerId);
     if (!offer) return { accepted: false };
-    const floor = Math.round(0.3 * offer.originalPrice);
-    const accepted = targetPrice >= floor;
+    const floor = Math.round(Math.max(0.85 * offer.askingPrice, 0.45 * offer.originalPrice));
+    const accepted = !offer._negotiated && targetPrice >= floor;
     if (accepted) {
       offer.askingPrice = targetPrice;
       offer._negotiated = true;
@@ -26602,6 +26615,7 @@ const VehicleLeasingManager = {
       equipment: offer.equipment,
       purchasePrice: offer.askingPrice,
     });
+    if (offer.age) truck.yearBuilt = new Date(State.date).getFullYear() - offer.age;
     truck.leasing = {
       active: true,
       monthlyRate: calc.monthlyRate,
@@ -26696,8 +26710,7 @@ const VehicleLeasingManager = {
               text: `🔁 Zurückgeben (${Utils.euro(totalReturnFee)} Gebühr)`,
               action: () => {
                 if (t.leasing) t.leasing._endHandled = true;
-                State.cash -= totalReturnFee;
-                if (State.subCosts) State.subCosts.other += totalReturnFee;
+                if (totalReturnFee > 0) FinanceManager.book("fleet", "lease", totalReturnFee, { desc: `Leasing-Rückgabe ${t.plate || t.id} (Mehr-km/Zustand)` });
                 if (void 0 !== FleetManager && FleetManager._purgeTruckRefs) FleetManager._purgeTruckRefs(t.id);
                 State.trucks = (State.trucks || []).filter((x) => x.id !== t.id);
                 EventManager.addNews("info", `LKW-Leasing beendet: ${t.plate || t.id} zurückgegeben`);
@@ -26707,8 +26720,10 @@ const VehicleLeasingManager = {
               text: `💰 Kaufen für ${Utils.euro(residual)}`,
               action: () => {
                 if (State.cash >= residual) {
-                  State.cash -= residual;
+                  FinanceManager.book("fleet", "purchase", residual, { desc: `Leasing-Übernahme ${t.plate || t.id}` });
+                  if (State.subCosts) State.subCosts.truckPurchase = (State.subCosts.truckPurchase || 0) + residual;
                   t.owned = true;
+                  t.purchasePrice = residual; // Buchwert = Übernahmepreis — kein Wiederverkauf auf Neupreis-Basis
                   t.leasing = null; // entfernt zugleich _endQueued/_endHandled — gekauft, kein Re-Trigger
                   EventManager.addNews("good", `🚛 ${t.plate || t.id} aus Leasing gekauft`);
                 } else {
@@ -26750,7 +26765,7 @@ const VehicleLeasingManager = {
               text: `🔁 Zurückgeben (${Utils.euro(overageFee)} Gebühr)`,
               action: () => {
                 if (tr.leasing) tr.leasing._endHandled = true;
-                State.cash -= overageFee;
+                if (overageFee > 0) FinanceManager.book("fleet", "lease", overageFee, { desc: `Leasing-Rückgabe ${tr.name || tr.id}` });
                 if (tr.assignedTruckId && void 0 !== TrailerManager) TrailerManager.detach(tr.id);
                 State.trailers = (State.trailers || []).filter((x) => x.id !== tr.id);
                 EventManager.addNews("info", `Anhänger-Leasing beendet: ${tr.name || tr.id} zurückgegeben`);
@@ -26760,8 +26775,10 @@ const VehicleLeasingManager = {
               text: `💰 Kaufen für ${Utils.euro(residual)}`,
               action: () => {
                 if (State.cash >= residual) {
-                  State.cash -= residual;
+                  FinanceManager.book("fleet", "purchase", residual, { desc: `Leasing-Übernahme ${tr.name || tr.id}` });
+                  if (State.subCosts) State.subCosts.truckPurchase = (State.subCosts.truckPurchase || 0) + residual;
                   tr.owned = true;
+                  tr.purchasePrice = residual;
                   tr.leasing = null;
                   EventManager.addNews("good", `🚚 ${tr.name || tr.id} aus Leasing gekauft`);
                 } else { Notifier.add("Nicht genug Kapital", "error"); return false; }
@@ -33074,7 +33091,7 @@ const UI = {
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
-      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.70.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Großes Korrektheits-Update (Audit Teil 1): Versicherung zahlt wirklich, Buchhaltung stimmt, keine Karteileichen</b> — (1) Diebstahl: Teil-/Vollkasko zahlen jetzt tatsächlich den Wiederbeschaffungswert minus Selbstbeteiligung aus (vorher wurde die Erstattung nur angezeigt); unversicherter Diebstahl wird nicht mehr doppelt belastet. (2) Frachtversicherung zahlte jede Entschädigung doppelt — behoben. (3) Betriebsversicherungen (Haftpflicht, Cyber, D&O …) kosten jetzt wirklich ihre Monatsprämie statt einmalig. (4) Schwere Unfälle werden sofort nach Versicherungslage reguliert — nicht mehr abhängig davon, welche Antwort Sie anklicken. (5) Kündigungen kosten genau einmal: regulär 2 Monatsgehälter Abfindung, fristlos (nach Abmahnungen) wie im echten Arbeitsrecht keine. (6) Fahrer ohne LKW oder zu Hause sammeln keine „Tage unterwegs" mehr — Ersatzfahrer verkümmern nicht mehr. (7) Auftrags-Storno räumt jetzt sauber auf: Anhänger wieder verfügbar, Karte zeigt keine Geistertour, LKW steht an plausibler Position. (8) Vorgeplante Aufträge berechnen die Anfahrt korrekt von der tatsächlichen LKW-Position. (9) Automatische Rückfracht respektiert Anhänger-Typ, Gefahrgut, Fahrer-Qualifikation und Genehmigungspflichten. (10) Hilfe/FAQ und Versicherungsanzeigen sagen jetzt überall die Wahrheit (Deckung, Diebstahl-Erstattung, Frachtenbörse ohne Tageslimit).')}\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
+      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.71.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Exploit-Schließung (Audit Teil 2): Geld-Drucker abgeschaltet, Markt verhält sich realistisch</b> — (1) Leasing-Ende konsequent: Ein ausgelaufener Vertrag fährt nicht weiter und zählt nicht als Eigentum, bis Sie sich entscheiden; die Restwert-Übernahme wird sauber gebucht und der Buchwert ist der Übernahmepreis — der „Leasen→Übernehmen→Teuer-Verkaufen"-Trick ist Geschichte. (2) Reparaturkosten skalieren mit der Fahrzeugklasse (ein Sattelzug kostet in der Werkstatt real mehr als ein Transporter) und der Wiederverkaufswert hängt stärker an Alter und Laufleistung — „vor dem Verkauf billig hochreparieren" lohnt nicht mehr; mit eigener Werkstatt samt Meister bleibt Aufbereitung ein ehrliches, begrenztes Geschäft. (3) Händler-Verhandlungen: maximal 2 Runden, Schmerzgrenze ~12 %; Anhänger-Händler akzeptieren keine 70-%-Abschläge mehr. (4) Marketing-Kampagnen sind nicht mehr stapelbar. (5) Frachtraten-Aufschläge aus Ereignissen bauen sich realistisch wieder ab. (6) Einstellungen kosten Anwerbung/Ausstattung (HR-Abteilung senkt das wirklich). (7) Diesel-Lager/Kontrakte und LKW-Käufe erscheinen jetzt vollständig in GuV und Kontoauszug. (8) Disponenten-Rücksprachen verbrennen keine Tageskapazität mehr; Sofortstarts überholen weder Warteschlange noch Fahrer-Heimkehr.')}\n        ${v("v2.70.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Großes Korrektheits-Update (Audit Teil 1): Versicherung zahlt wirklich, Buchhaltung stimmt, keine Karteileichen</b> — (1) Diebstahl: Teil-/Vollkasko zahlen jetzt tatsächlich den Wiederbeschaffungswert minus Selbstbeteiligung aus (vorher wurde die Erstattung nur angezeigt); unversicherter Diebstahl wird nicht mehr doppelt belastet. (2) Frachtversicherung zahlte jede Entschädigung doppelt — behoben. (3) Betriebsversicherungen (Haftpflicht, Cyber, D&O …) kosten jetzt wirklich ihre Monatsprämie statt einmalig. (4) Schwere Unfälle werden sofort nach Versicherungslage reguliert — nicht mehr abhängig davon, welche Antwort Sie anklicken. (5) Kündigungen kosten genau einmal: regulär 2 Monatsgehälter Abfindung, fristlos (nach Abmahnungen) wie im echten Arbeitsrecht keine. (6) Fahrer ohne LKW oder zu Hause sammeln keine „Tage unterwegs" mehr — Ersatzfahrer verkümmern nicht mehr. (7) Auftrags-Storno räumt jetzt sauber auf: Anhänger wieder verfügbar, Karte zeigt keine Geistertour, LKW steht an plausibler Position. (8) Vorgeplante Aufträge berechnen die Anfahrt korrekt von der tatsächlichen LKW-Position. (9) Automatische Rückfracht respektiert Anhänger-Typ, Gefahrgut, Fahrer-Qualifikation und Genehmigungspflichten. (10) Hilfe/FAQ und Versicherungsanzeigen sagen jetzt überall die Wahrheit (Deckung, Diebstahl-Erstattung, Frachtenbörse ohne Tageslimit).')}\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
         ${v("v2.62.3", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Auftragsfilter „Nur machbare" wieder korrekt</b> — Der Filter zeigte auch Aufträge als machbar, die genau einen Tag zu spät fertig geworden wären (Off-by-one). Jetzt gelten nur Aufträge als machbar, die fristgerecht abgeschlossen werden können.')}
         ${v("v2.62.2", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Markteffekte verfliegen wieder & keine Entscheidungs-Staus</b> — (1) Markt-/Nachrichten-Effekte auf das Auftragsvolumen klingen jetzt über rund zwei Wochen wieder ab (vorher blieben sie dauerhaft und konnten das Volumen ohne erkennbare Ursache drücken). (2) Gleichartige Entscheidungen (gleicher Titel) werden nicht mehr doppelt eingereiht — das verhindert seltene Stau-Situationen, in denen sich das Spiel an gestapelten Dialogen verschluckte.')}
         ${v("v2.62.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Softlocks entschärft</b> — (1) Ein liegengebliebener LKW wird jetzt automatisch repariert, sobald du dir die Reparatur leisten kannst (vorher erst ab 1.500 € Kasse — günstigere Reparaturen blieben darunter hängen). (2) Wenn du keine LKW mehr hast, im Minus bist und das Kreditlimit ausgereizt ist, endet das Spiel jetzt sauber mit Insolvenz, statt in einer ausweglosen Hängepartie zu verharren.')}
