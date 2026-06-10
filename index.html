@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.69.0 · Build 09.06.2026">
+<meta name="build" content="v2.70.0 · Build 10.06.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.69.0</title>
+<title>Der Planer Ultimate · v2.70.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -1581,7 +1581,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.69.0</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.70.0</div>
       <div style="font-size:10px; color:var(--muted);">Juni 2026</div>
     </div>
   </div>
@@ -1652,8 +1652,8 @@ footer {
 <div id="achievement-stack"></div>
 
 <script>
-const APP_VERSION = "v2.69.0";
-const BUILD_DATE = "09.06.2026";
+const APP_VERSION = "v2.70.0";
+const BUILD_DATE = "10.06.2026";
 const DATA = {
   locations: {
     hamburg: {
@@ -2043,8 +2043,8 @@ const DATA = {
       name: "Haftpflicht",
       tier: 1,
       monthlyCostFactor: 0.0023,
-      deductible: 1500,
-      damageReduction: 0.3,
+      deductible: 0,
+      damageReduction: 0,
       coversAccident: false,
       coversBreakdown: false,
       coversTheft: false,
@@ -19558,6 +19558,9 @@ const CrisisSystem = {
       driver._accidentInjury = true;
       truck.status = "broken";
       truck.condition = Math.max(10, truck.condition - Utils.randInt(30, 70));
+      // Schaden sofort nach Deckungsmatrix regulieren (v2.65) — unabhängig von der Antwort-Wahl.
+      const _claim = InsuranceManager.handleClaim(truck, "accident", damage);
+      if (State.subCosts) State.subCosts.accidents += _claim.playerPays;
       const crisis = {
         id: Utils.uid("CR"),
         type: "major_accident",
@@ -19568,14 +19571,14 @@ const CrisisSystem = {
         driver: driver.name,
         truck: truck.plate,
         damage: damage,
-        insured: "vollkasko" === truck.insuranceTier,
+        insured: _claim.covered,
       };
       State.activeCrises.push(crisis);
       EventManager.queueDecision({
         isCrisis: true,
         title: `🚨 SCHWERER UNFALL — ${driver.name}`,
         subtitle: `${truck.plate} auf der Autobahn`,
-        content: `${driver.name} hatte einen schweren Unfall mit ${truck.plate}. \n          Schaden: ca. ${Utils.euro(damage)}. ${driver.name} ist verletzt und fällt ${injuryDays} Tage aus.\n          ${crisis.insured ? "✅ Vollkasko versichert" : "⚠ NICHT vollkasko versichert!"}<br><br>\n          Die Polizei ist bereits vor Ort. Medien könnten berichten.`,
+        content: `${driver.name} hatte einen schweren Unfall mit ${truck.plate}. \n          Schaden: ca. ${Utils.euro(damage)}. ${driver.name} ist verletzt und fällt ${injuryDays} Tage aus.\n          ${crisis.insured ? `✅ Vollkasko greift — Eigenanteil (SB): ${Utils.euro(_claim.playerPays)}` : `⚠ NICHT vollkasko versichert — Eigenanteil: ${Utils.euro(_claim.playerPays)}`}<br><br>\n          Die Polizei ist bereits vor Ort. Medien könnten berichten.`,
         choices: [
           {
             text: "🚑 Sofort zum Unfallort fahren (+Fahrerloyalität)",
@@ -19589,11 +19592,7 @@ const CrisisSystem = {
           {
             text: "📞 Versicherung anrufen und Anwalt einschalten",
             action: () => {
-              if (!crisis.insured) {
-                FinanceManager.recordCost("repairs", damage, false);
-                if (void 0 !== BankAccount && BankAccount.hookRepair) BankAccount.hookRepair(damage, truck.plate);
-              }
-              EventManager.addNews("info", "Versicherungsfall gemeldet");
+              EventManager.addNews("info", "Versicherungsfall gemeldet — Schaden bereits reguliert");
             },
           },
           {
@@ -20182,6 +20181,10 @@ const HomerunSystem = {
       if (MAP_DATA.distanceKm(fromC, jFromC) > this.RETURN_SEARCH_RADIUS) return false;
       if (MAP_DATA.distanceKm(jToC, homeC) >= 0.8 * distToHome) return false;
       if (FleetManager.effectiveCapacity(truck) < (j.weight || 0)) return false;
+      if (j.cargoType && !FleetManager.canHaul(truck, j.cargoType)) return false;
+      const _rjDrv = (State.staff || []).find((s) => s.id === truck.driverId);
+      if (FleetManager.getDriverSkillLevel(_rjDrv) < ((j.cargoType && j.cargoType.skill) || j.skillRequired || 1)) return false;
+      if ((((j.cargoType && j.cargoType.restrictions) || j.restrictions) || []).length > 0) return false;
       const daysNeeded = JobManager.totalDays(j, truck);
       if (j.deadline && State.day + daysNeeded > j.deadline) return false;
       return true;
@@ -22250,7 +22253,7 @@ const InsuranceManager = {
     let repHit = 0;
     if ("accident" === type) repHit = -4 * (1 - repProtect);
     else if ("theft" === type) repHit = -2 * (1 - repProtect);
-    if (result.playerPays > 0)
+    if (result.playerPays > 0 && "theft" !== type)
       FinanceManager.book("repairs", "repair", result.playerPays, { desc: `Schaden ${truck.plate || ""} (${type}) — Eigenanteil` });
     State.reputation = Utils.clamp(State.reputation + repHit, 0, 100);
     return result;
@@ -22688,15 +22691,16 @@ const EmployeeManager = {
     );
     return staff;
   },
-  fire(staffId) {
+  fire(staffId, severanceMonths = 2) {
     const s = (State.staff || []).find((x) => x.id === staffId);
     if (!s) return false;
-    FinanceManager.recordCost("personnel", 2 * s.salary, false);
+    const _sev = Math.round(Math.max(0, severanceMonths) * s.salary);
+    if (_sev > 0) FinanceManager.book("personnel", "other_out", _sev, { desc: `Abfindung ${s.name}` });
     State.staff = (State.staff || []).filter((x) => x.id !== staffId);
     (State.trucks || []).forEach((t) => {
       if (t.driverId === staffId) t.driverId = null;
     });
-    EventManager.addNews("warn", `${s.name} entlassen (Abfindung ${Utils.euro(2 * s.salary)})`);
+    EventManager.addNews("warn", `${s.name} entlassen${_sev > 0 ? ` (Abfindung ${Utils.euro(_sev)})` : " — fristlos, ohne Abfindung"}`);
     return true;
   },
   removeStaff(staffId) {
@@ -23104,7 +23108,7 @@ const CargoInsurance = {
     if (!job || !p) return { ok: false, reason: "Auftrag oder Produkt nicht gefunden" };
     const prem = this.premium(job, productId);
     if (State.cash < prem) return { ok: false, reason: `Prämie: ${Utils.euro(prem)}` };
-    State.cash -= prem;
+    FinanceManager.book("insurance", "insurance", prem, { desc: `Frachtprämie ${p.name}: ${job.fromName}→${job.toName}` });
     if (State.subCosts) State.subCosts.insurance += prem;
     job.cargoInsurance = { productId: productId, premium: prem, jobPrice: job.price };
     EventManager.addNews("info", `${p.icon} ${p.name} für ${job.fromName}→${job.toName}: Prämie ${Utils.euro(prem)}`);
@@ -23120,8 +23124,7 @@ const CargoInsurance = {
     const base = Math.min(damageAmount, p.maxCoverage);
     const payout = Math.max(0, Math.round((base - p.deductible) * p.coveragePct));
     if (payout > 0) {
-      State.cash += payout;
-      if (State.subRevenue) State.subRevenue.other += payout;
+      // Auszahlung bucht der Aufrufer zentral via recordRevenue (Cash+GuV) + Kontoauszug — hier KEINE Cash-Gutschrift (war Doppelzahlung).
       EventManager.addNews("good", `${p.icon} Frachtversicherung: +${Utils.euro(payout)} (${p.name})`);
     }
     return { covered: true, payout: payout, deductible: p.deductible };
@@ -24079,6 +24082,7 @@ const JobManager = {
       queuedDay: State.day,
       estimatedStartDay: freeDay,
       estimatedDays: totalDays,
+      baseDays: totalDays - Math.max(0, this.totalDays(job, truck) - Math.max(1, Math.ceil((job.km || 0) / 600))),
       queuePosition: queuePos,
     });
     return { ok: true, queued: true, truck: truck, driver: driver, estimatedStartDay: freeDay, queuePos: queuePos };
@@ -24221,7 +24225,8 @@ const JobManager = {
         );
         return false;
       }
-      this._startJob(sq.job, truck, driver, route, sq.estimatedDays);
+      const _bakedNow = Math.max(0, this.totalDays(sq.job, truck) - Math.max(1, Math.ceil((sq.job.km || 0) / 600)));
+      this._startJob(sq.job, truck, driver, route, "number" === typeof sq.baseDays ? sq.baseDays + _bakedNow : sq.estimatedDays);
       return false;
     });
   },
@@ -24474,10 +24479,11 @@ const JobManager = {
         if (!onTime && j.cargoInsurance && void 0 !== CargoInsurance) {
           const delayDamage = Math.round(0.4 * j.price);
           const cargoResult = CargoInsurance.handleCargoClaim(j, "delay", delayDamage);
-          // handleCargoClaim hat State.cash bereits direkt gutgeschrieben — nur als Versicherungs-Revenue
-          // für die Buchhaltung verbuchen, NICHT noch einmal in finalPrice (würde Forderung duplizieren).
-          if (cargoResult.covered && cargoResult.payout > 0 && void 0 !== FinanceManager)
+          // Auszahlung zentral: recordRevenue (Cash+GuV) + Kontoauszug — handleCargoClaim bucht selbst nichts mehr.
+          if (cargoResult.covered && cargoResult.payout > 0 && void 0 !== FinanceManager) {
             FinanceManager.recordRevenue("insurance", cargoResult.payout);
+            if (void 0 !== BankAccount) BankAccount.record("insurance", cargoResult.payout, "Frachtversicherung: Verspätungsschaden");
+          }
         }
         if (FleetManager.hasEquipment(truck, "paint")) finalPrice += 50;
         const fx = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
@@ -24633,6 +24639,8 @@ const JobManager = {
             State.activeJobs = (State.activeJobs || []).filter((x) => x !== aj);
             if (State.activeRoutes) State.activeRoutes = (State.activeRoutes || []).filter((r) => r.truckId !== truck.id);
             if (t) t.jobId = null; // LKW bleibt "broken", aber ohne Auftrag (spätere Reparatur macht ihn frei)
+            const _bTr = t && t.trailerId && (State.trailers || []).find((x) => x.id === t.trailerId);
+            if (_bTr) _bTr.status = "idle";
             const cust = (State.customers || []).find((c) => c.id === aj.customerId);
             if (cust) cust.relationship = Utils.clamp((cust.relationship || 50) - 10, 0, 100);
             let penaltyMsg = "";
@@ -24850,6 +24858,7 @@ const TrailerManager = {
       if (truck) truck.trailerId = null;
     }
     tr.assignedTruckId = null;
+    tr.status = "idle";
     return true;
   },
   ownedTypes: () => [...new Set(State.trailers.map((t) => t.typeId))],
@@ -24897,7 +24906,7 @@ const EventManager = {
   _insuranceClaim(insId, damage) {
     const insured = this._bizInsured(insId);
     const selfPay = insured ? Math.max(150, Math.round(0.1 * damage)) : damage;
-    FinanceManager.recordCost("admin", selfPay, false); if (State.subCosts) State.subCosts.claims = (State.subCosts.claims || 0) + selfPay;
+    FinanceManager.book("admin", "other_out", selfPay, { desc: "Betriebsschaden-Selbstbehalt" }); if (State.subCosts) State.subCosts.claims = (State.subCosts.claims || 0) + selfPay;
     return { insured: insured, selfPay: selfPay };
   },
   // Hatte/hat der Spieler ueberhaupt Transport-Betrieb? Verhindert Schaeden an
@@ -25067,7 +25076,8 @@ const EventManager = {
       if ("undefined" !== typeof ServiceContractManager && claim.playerPays > 0) {
         contractCovered = ServiceContractManager.coverBreakdown(truck, claim.playerPays);
         if (contractCovered > 0) {
-          State.cash += contractCovered;
+          FinanceManager.recordRevenue("insurance", contractCovered);
+          if (void 0 !== BankAccount) BankAccount.record("insurance", contractCovered, `Wartungsvertrag-Erstattung ${truck.plate}`);
           const sc = ServiceContractManager.activeContract(truck.id);
           EventManager.addNews(
             "good",
@@ -25076,6 +25086,7 @@ const EventManager = {
         }
       }
       const finalCost = Math.max(0, claim.playerPays - contractCovered);
+      claim._contractCovered = contractCovered;
       truck.accidentLog.push({ day: State.day, type: "breakdown", damage: damage, cost: finalCost });
       if (truck.accidentLog.length > 5) truck.accidentLog.shift();
       State.stats.breakdowns++;
@@ -25094,8 +25105,13 @@ const EventManager = {
     if ("theft" === type) {
       FleetManager._purgeTruckRefs(truck.id); // Begleitfahrzeug, Warteschlange, Wartungsvertrag, Hänger lösen
       State.trucks = (State.trucks || []).filter((t) => t.id !== truck.id);
+      // Kasko-Erstattung: Wiederbeschaffungswert minus SB wird jetzt wirklich ausgezahlt (vorher nur angezeigt).
+      if (claim.covered && claim.insurancePays > 0) {
+        FinanceManager.recordRevenue("insurance", claim.insurancePays);
+        if (void 0 !== BankAccount) BankAccount.record("insurance", claim.insurancePays, `Kasko-Erstattung Diebstahl ${truck.plate}`);
+      }
       const hasLawyer = State.staff.some((s) => "lawyer" === s.roleId && "aktiv" === s.status);
-      setTimeout(() => {
+      (() => {
         EventManager.queueDecision({
           type: "theft_decision",
           title: `🚓 Diebstahl — ${truck.plate}`,
@@ -25122,7 +25138,7 @@ const EventManager = {
               text: `🔍 Polizei-Report stellen (−${Utils.euro(500)}, Chance auf Wiederfund)`,
               action: () => {
                 if (State.cash >= 500) {
-                  FinanceManager.recordCost("admin", 500, false);
+                  FinanceManager.book("admin", "other_out", 500, { desc: `Polizei-Report Diebstahl ${truck.plate}` });
                   if (Math.random() < 0.2) {
                     const recovered = {
                       ...truck,
@@ -25136,20 +25152,21 @@ const EventManager = {
                       `🔍 Polizei: ${truck.plate} wiedergefunden! Zustand ${recovered.condition}%`,
                     );
                   } else EventManager.addNews("info", "🔍 Polizei-Report eingereicht — bisher kein Fund");
-                }
+                } else if ("undefined" !== typeof UI && UI.toast) UI.toast("Nicht genug Geld für den Polizei-Report (500 €)", "warn");
               },
             },
           ],
         });
-      }, 100);
+      })();
     }
     if (job && "glass" !== type) job.daysRemaining += 1;
-    if (State.subCosts) State.subCosts.accidents += claim.playerPays;
+    if (State.subCosts && "theft" !== type) State.subCosts.accidents += Math.max(0, claim.playerPays - (claim._contractCovered || 0));
     if (job && job.cargoInsurance && void 0 !== CargoInsurance) {
       const cargoDamage = Math.round(job.price * ("theft" === type ? 1 : "accident" === type ? 0.4 : 0.15));
       const cargoResult = CargoInsurance.handleCargoClaim(job, type, cargoDamage);
       if (cargoResult.covered && cargoResult.payout > 0) {
         FinanceManager.recordRevenue("insurance", cargoResult.payout);
+        if (void 0 !== BankAccount) BankAccount.record("insurance", cargoResult.payout, `Frachtversicherung: ${d.label} ${truck.plate}`);
         this.addNews("good", `🛡 Frachtversicherung zahlt ${Utils.euro(cargoResult.payout)} für ${d.label}`);
       }
     }
@@ -25165,7 +25182,7 @@ const EventManager = {
       const isRepeat = (driver.accidents || 0) > 1;
       const severity = isRepeat ? "gross" : "serious";
       const warningCount = (driver.warnings || []).length;
-      setTimeout(() => {
+      (() => {
         EventManager.queueDecision({
           type: "warning_offer",
           title: `⚠ Abmahnung erforderlich? — ${driver.name.split(" ").pop()}`,
@@ -25196,7 +25213,7 @@ const EventManager = {
             { text: "Keine Maßnahme", action: () => {} },
           ],
         });
-      }, 100);
+      })();
     }
   },
   eventDieselShock() {
@@ -25348,7 +25365,12 @@ const EventManager = {
       if (truck) {
         truck.status = "idle";
         truck.jobId = null;
+        const _cTr = truck.trailerId && (State.trailers || []).find((x) => x.id === truck.trailerId);
+        if (_cTr) _cTr.status = "idle";
+        // Plausible Position statt Gratis-Teleport: unter 50 % Fortschritt zurück zum Start, sonst am Ziel.
+        truck.location = (j.progress || 0) >= 50 ? j.to : j.from;
       }
+      State.activeRoutes = (State.activeRoutes || []).filter((r) => r.truckId !== j.truckId);
       if (JobManager._releaseEscort) JobManager._releaseEscort(j);
       State.activeJobs = (State.activeJobs || []).filter((x) => x.id !== j.id);
       this.addNews("warn", `Kunde ${j.customerName} hat storniert. Stornogebühr: ${Utils.euro(compensation)}`);
@@ -25742,7 +25764,11 @@ const DayCycle = {
     if (void 0 !== Onboarding) Onboarding.dailyTick();
     (State.staff || []).forEach((s) => {
       if ("driver" === s.roleId && "aktiv" === s.status) {
-        s.daysAway = (s.daysAway || 0) + 1;
+        // daysAway = echte Auswärts-Tage: nur zählen, wenn der Fahrer mit LKW unterwegs/auswärts ist; zu Hause Reset.
+        const _tk = (State.trucks || []).find((t) => t.driverId === s.id);
+        const _homeC = _tk && void 0 !== FleetManager && FleetManager.truckHomeCityId ? FleetManager.truckHomeCityId(_tk) : State.locationId;
+        if (_tk && ("active" === _tk.status || (_tk.location && _tk.location !== _homeC))) s.daysAway = (s.daysAway || 0) + 1;
+        else s.daysAway = 0;
         if (void 0 !== DriverTraits) {
           DriverTraits.dailyReveal(s);
           if (s.traits) s.wantsHomeAfter = DriverTraits.getWantsHomeAfter(s);
@@ -25866,7 +25892,7 @@ const DayCycle = {
   // Versicherungs-Cash-Abfluss am Monatsersten — der periodengerechte Aufwand
   // wird taeglich aliquot via dailyFixCostsTick in subCosts/departments gebucht.
   payInsurance() {
-    const total = InsuranceManager.totalMonthlyCost();
+    const total = InsuranceManager.totalMonthlyCost() + (State.insurances || []).reduce((s, i) => s + (i.monthlyPremium || 0), 0);
     if (0 === total) return;
     State.cash -= total;
     // GuV-Aufwand laeuft aliquot via dailyFixCostsTick — hier NUR Cash + Kontoauszug
@@ -25908,7 +25934,8 @@ const DayCycle = {
     bucket("personnel", "salaries", salaries);
     const rent = void 0 !== LocationManager ? LocationManager.monthlyRent() : 0;
     bucket("admin", "rent", rent);
-    const insurance = void 0 !== InsuranceManager ? InsuranceManager.totalMonthlyCost() : 0;
+    const _bizPrem = (State.insurances || []).reduce((s, i) => s + (i.monthlyPremium || 0), 0);
+    const insurance = (void 0 !== InsuranceManager ? InsuranceManager.totalMonthlyCost() : 0) + _bizPrem;
     bucket("insurance", "insurance", insurance);
     const truckLeasing = (State.trucks || []).reduce(
       (s, t) => s + (t.leasing && t.leasing.active ? t.leasing.monthlyRate || 0 : 0),
@@ -27954,6 +27981,15 @@ const Game = {
       }
     });
     if (fixed > 0) console.warn(`Reconciled ${fixed} stale truck status flag(s) to idle`);
+    // Trailer-Heilung: "in_use" ohne laufenden Job des zugehörigen LKW -> idle (repariert Alt-Saves mit Storno-/Diebstahl-Leck).
+    let trFixed = 0;
+    (State.trailers || []).forEach((tr) => {
+      if ("in_use" === tr.status) {
+        const busy = active.some((j) => { const t = (State.trucks || []).find((x) => x.id === j.truckId); return t && t.trailerId === tr.id; });
+        if (!busy) { tr.status = "idle"; trFixed++; }
+      }
+    });
+    if (trFixed > 0) console.warn(`Reconciled ${trFixed} stale trailer status flag(s) to idle`);
     // Backfill missing customer ids on legacy saves (customers predate the id field) and
     // drop the orphaned "undefined" skonto agreement such id-less customers could produce.
     let custFixed = 0;
@@ -30934,7 +30970,7 @@ const UI = {
       items.push({
         icon: "📈",
         label: "Wirtschafts-Aufschwung",
-        effect: `+15% Aufträge bis Tag ${State.economyBoost}`,
+        effect: `+20% Aufträge bis Tag ${State.economyBoost}`,
         positive: true,
       });
     }
@@ -32893,7 +32929,7 @@ const UI = {
           "Häufige Fragen (FAQ)",
           "❓",
           `\n        ${faq("Wie gewinne ich?", "Ziel ist <b>100% Bekanntheit</b>. Diese steigt durch pünktliche Lieferungen, gute Reputation, Marketing und Expansion. Sie verlieren das Spiel wenn der Kontostand unter −50.000 € fällt (Insolvenz).")}\n        ${faq("Warum nehmen meine LKW keine Aufträge an?", "Prüfen Sie: 1) Hat der LKW einen Fahrer? 2) Ist der Fahrer aktiv (nicht krank/Urlaub/Schulung)? 3) Passt die Kapazität? 4) Ist der LKW im Umbau (Tuning)? Im Fuhrpark sehen Sie den genauen Status.")}\n        ${faq("Mein Geld wird weniger obwohl ich Aufträge fahre — warum?", "Feste Kosten laufen täglich: Miete, Gehälter (monatlich), Versicherungen, Zinsen auf Schulden. Prüfen Sie unter Bilanz → Kosten welcher Bereich am meisten kostet. Oft sind es Gehälter bei zu vielen Mitarbeitern oder hohe Schuldzinsen.")}
-        ${faq("Was passiert mit überfälligen Rechnungen — und hilft mein Anwalt?", "Zahlt ein Kunde nicht, mahnt Ihr <b>Buchhalter</b> automatisch alle 7 Tage (bis zu 3×, mit Verzugszins) und senkt das Ausfallrisiko deutlich. Ab 3.000 € offener Forderung legt Ihnen die Buchhaltung eine Entscheidung vor: Anwalt einschalten, 3. Mahnung, Kulanzfrist oder abschreiben. Beim Anwalt zählt, ob Sie einen <b>eigenen Rechtsanwalt</b> beschäftigen: <b>intern</b> kostet nur 5% Auslagen (keine 800 € Grundgebühr) und treibt die Forderung mit deutlich höherer Erfolgschance bei; <b>ohne</b> eigenen Anwalt beauftragen Sie extern zur Pauschale (800 € + 5%). In beiden Fällen werden 10% Verzugskosten auf den Schuldner aufgeschlagen.")}\n        ${faq("Was bringt ein Disponent?", "Ein Disponent nimmt automatisch passende Aufträge für freie LKW an — ohne dass Sie manuell eingreifen müssen. Außerdem reagiert er bei Fahrerkrankheit: Er sucht selbstständig einen Ersatzfahrer und weist ihn dem betroffenen LKW zu.")}\n        ${faq("Warum kann ich keinen Sattelauflieger an meinen Iveco Daily hängen?", "Der Iveco Daily ist ein Kleintransporter (3,5t) — er kann physisch keinen 25t-Auflieger ziehen. Für Sattelauflieger brauchen Sie eine Sattelzugmaschine (z.B. 4x2 oder 6x2). Für den Daily gibt es leichte Kastenanhänger (bis 3,5t) im Hänger-Markt.")}\n        ${faq("Was ist der Unterschied zwischen Teilkasko und Vollkasko?", "Teilkasko deckt Diebstahl, Glasbruch, Wildschaden, Brand. Vollkasko deckt zusätzlich selbstverschuldete Unfälle. Bei einem gestohlenen LKW erstattet Teilkasko ~65% des Restwerts, Vollkasko ~90%. Haftpflicht allein deckt keinen Diebstahl.")}\n        ${faq("Wie sammle ich XP für Fahrer-Skills?", 'Fahrer sammeln automatisch XP bei jedem abgeschlossenen Auftrag: 5 Basis-XP + 1 XP pro 100 gefahrene km, plus 30% Bonus bei pünktlicher Lieferung. Bei 100–200 XP können Sie Tier-1-Skills in der Logistik-Zentrale unter „Fahrer-Skills" kaufen.')}\n        ${faq("Was ist Diesel-Hedging und wann lohnt es sich?", "Beim Diesel-Hedging kaufen Sie Kraftstoff auf Vorrat oder sichern sich über Kontrakte gegen Preissteigerungen ab. Lohnt sich ab ca. 3+ LKW wenn der Dieselpreis über 1,80 €/L steigt. Zu finden unter: Diesel-Hedging im Menü.")}\n        ${faq("Wie wechsle ich die Rechtsform?", "Unter ⚖️ Rechtsform & GF können Sie die Gesellschaftsform ändern. Als e.K. starten Sie — für beschränkte Haftung empfiehlt sich ab Tag 30 der Wechsel zur UG oder GmbH (25.000 € Mindestkapital). Das GF-Gehalt ist bei Kapitalgesellschaften steuerlich absetzbar.")}\n        ${faq("Was passiert wenn ein Fahrer krank wird?", "Der Disponent (falls vorhanden) reagiert automatisch und sucht einen freien Ersatzfahrer im Personalbestand. Gibt es keinen, bleibt der LKW stehen. Unter Personal sehen Sie auf jeder Mitarbeiterkarte den Krankheitsstatus und die verbleibenden Tage.")}\n        ${faq("Wie funktioniert die Frachtenbörse (Spot-Markt)?", "Die Frachtenbörse öffnet täglich von 8:00 bis 18:00 Uhr. Preise steigen wenn kaum Angebote da sind, sinken bei viel Konkurrenz. Sie können max. 3 Spot-Aufträge pro Tag annehmen. Hochpreisige Güter erscheinen oft am Morgen — früh buchen lohnt sich.")}\n        ${faq("Wie eröffne ich eine Niederlassung?", "Im Betrieb-Tab unter Niederlassungen. Sie brauchen mindestens einen Manager als Niederlassungsleiter. Dieser stellt dann selbstständig Personal ein und managt die Filiale. Als GF sehen Sie monatliche Umsatz- und Gewinnberichte pro Standort.")}\n        ${faq("Was bedeutet die Spielgeschwindigkeit?", "1× = 1 Echtminute pro Spielstunde (ein Tag dauert ~48 Min. in Echtzeit). 2× = doppelt so schnell. Bis 32× für schnelles Vorspulen. Mit +1 Tag überspringen Sie sofort einen Tag. ⏸ pausiert das Spiel — nützlich zum Analysieren von Reports.")}\n      `,
+        ${faq("Was passiert mit überfälligen Rechnungen — und hilft mein Anwalt?", "Zahlt ein Kunde nicht, mahnt Ihr <b>Buchhalter</b> automatisch alle 7 Tage (bis zu 3×, mit Verzugszins) und senkt das Ausfallrisiko deutlich. Ab 3.000 € offener Forderung legt Ihnen die Buchhaltung eine Entscheidung vor: Anwalt einschalten, 3. Mahnung, Kulanzfrist oder abschreiben. Beim Anwalt zählt, ob Sie einen <b>eigenen Rechtsanwalt</b> beschäftigen: <b>intern</b> kostet nur 5% Auslagen (keine 800 € Grundgebühr) und treibt die Forderung mit deutlich höherer Erfolgschance bei; <b>ohne</b> eigenen Anwalt beauftragen Sie extern zur Pauschale (800 € + 5%). In beiden Fällen werden 10% Verzugskosten auf den Schuldner aufgeschlagen.")}\n        ${faq("Was bringt ein Disponent?", "Ein Disponent nimmt automatisch passende Aufträge für freie LKW an — ohne dass Sie manuell eingreifen müssen. Außerdem reagiert er bei Fahrerkrankheit: Er sucht selbstständig einen Ersatzfahrer und weist ihn dem betroffenen LKW zu.")}\n        ${faq("Warum kann ich keinen Sattelauflieger an meinen Iveco Daily hängen?", "Der Iveco Daily ist ein Kleintransporter (3,5t) — er kann physisch keinen 25t-Auflieger ziehen. Für Sattelauflieger brauchen Sie eine Sattelzugmaschine (z.B. 4x2 oder 6x2). Für den Daily gibt es leichte Kastenanhänger (bis 3,5t) im Hänger-Markt.")}\n        ${faq("Was ist der Unterschied zwischen Teilkasko und Vollkasko?", "Teilkasko deckt Diebstahl, Glasbruch, Wildschaden, Brand. Vollkasko deckt zusätzlich selbstverschuldete Unfälle. Bei einem gestohlenen LKW erstatten Teilkasko und Vollkasko den Wiederbeschaffungswert abzüglich Selbstbeteiligung (800 € bzw. 300 €). Haftpflicht allein deckt keinen Diebstahl.")}\n        ${faq("Wie sammle ich XP für Fahrer-Skills?", 'Fahrer sammeln automatisch XP bei jedem abgeschlossenen Auftrag: 5 Basis-XP + 1 XP pro 100 gefahrene km, plus 30% Bonus bei pünktlicher Lieferung. Bei 100–200 XP können Sie Tier-1-Skills in der Logistik-Zentrale unter „Fahrer-Skills" kaufen.')}\n        ${faq("Was ist Diesel-Hedging und wann lohnt es sich?", "Beim Diesel-Hedging kaufen Sie Kraftstoff auf Vorrat oder sichern sich über Kontrakte gegen Preissteigerungen ab. Lohnt sich ab ca. 3+ LKW wenn der Dieselpreis über 1,80 €/L steigt. Zu finden unter: Diesel-Hedging im Menü.")}\n        ${faq("Wie wechsle ich die Rechtsform?", "Unter ⚖️ Rechtsform & GF können Sie die Gesellschaftsform ändern. Als e.K. starten Sie — für beschränkte Haftung empfiehlt sich ab Tag 30 der Wechsel zur UG oder GmbH (25.000 € Mindestkapital). Das GF-Gehalt ist bei Kapitalgesellschaften steuerlich absetzbar.")}\n        ${faq("Was passiert wenn ein Fahrer krank wird?", "Der Disponent (falls vorhanden) reagiert automatisch und sucht einen freien Ersatzfahrer im Personalbestand. Gibt es keinen, bleibt der LKW stehen. Unter Personal sehen Sie auf jeder Mitarbeiterkarte den Krankheitsstatus und die verbleibenden Tage.")}\n        ${faq("Wie funktioniert die Frachtenbörse (Spot-Markt)?", "Die Frachtenbörse öffnet täglich von 8:00 bis 18:00 Uhr. Preise steigen wenn kaum Angebote da sind, sinken bei viel Konkurrenz. Sie können Spot-Aufträge unbegrenzt annehmen, solange die Börse geöffnet ist (bis 18:00 Uhr). Hochpreisige Güter erscheinen oft am Morgen — früh buchen lohnt sich.")}\n        ${faq("Wie eröffne ich eine Niederlassung?", "Im Betrieb-Tab unter Niederlassungen. Sie brauchen mindestens einen Manager als Niederlassungsleiter. Dieser stellt dann selbstständig Personal ein und managt die Filiale. Als GF sehen Sie monatliche Umsatz- und Gewinnberichte pro Standort.")}\n        ${faq("Was bedeutet die Spielgeschwindigkeit?", "1× = 1 Echtminute pro Spielstunde (ein Tag dauert ~48 Min. in Echtzeit). 2× = doppelt so schnell. Bis 32× für schnelles Vorspulen. Mit +1 Tag überspringen Sie sofort einen Tag. ⏸ pausiert das Spiel — nützlich zum Analysieren von Reports.")}\n      `,
         ) +
         section(
           "Über das Spiel",
@@ -32977,7 +33013,7 @@ const UI = {
         section(
           "Fortgeschrittene Strategien",
           "🔥",
-          "\n        <b>🔥 Spot-Markt am Morgen</b> — Frachtenbörse öffnet um 8:00. Die besten Angebote erscheinen zuerst und werden schnell von KI-Konkurrenten übernommen. Früh einloggen!<br><br>\n        <b>🔥 Fahrstil bewusst wählen</b> — Aggressive Fahrer liefern schneller aber verursachen mehr Unfälle. Ruhige Fahrer schonen Fahrzeuge. Für Gefahrgut-Transporte: immer ruhige oder normale Fahrer.<br><br>\n        <b>🔥 Vollkasko bei neuen LKW</b> — Ein neuer 125.000 € LKW mit Teilkasko bringt nach Diebstahl ~39.000 € zurück. Mit Vollkasko ~54.000 €. Die Differenz in der monatlichen Prämie amortisiert sich schnell.<br><br>\n        <b>🔥 Frachtenversicherung bei teuren Ladungen</b> — Beim Routenwahl-Dialog können Sie die Fracht versichern. Waren-Vollkasko (2,2% Prämie) deckt auch Verspätungsschäden — bei Premium-Verträgen entscheidend.<br><br>\n        <b>🔥 Lobbying vor Expansion</b> — Sonntagsfahrverbot-Ausnahme = mehr Touren pro Woche. Lohnt sich sobald Sie 5+ LKW haben und einen Anwalt im Team ist.<br><br>\n        <b>🔥 GmbH-Gründung ab Tag 30</b> — Das GF-Gehalt bei der GmbH ist Betriebsausgabe und senkt den Unternehmensgewinn (und damit die Steuer). Optimal: Gehalt knapp unter dem Jahresgewinn/12.\n      ",
+          "\n        <b>🔥 Spot-Markt am Morgen</b> — Frachtenbörse öffnet um 8:00. Die besten Angebote erscheinen zuerst und werden schnell von KI-Konkurrenten übernommen. Früh einloggen!<br><br>\n        <b>🔥 Fahrstil bewusst wählen</b> — Aggressive Fahrer liefern schneller aber verursachen mehr Unfälle. Ruhige Fahrer schonen Fahrzeuge. Für Gefahrgut-Transporte: immer ruhige oder normale Fahrer.<br><br>\n        <b>🔥 Vollkasko bei neuen LKW</b> — Ein neuer 125.000 € LKW mit Teilkasko bringt nach Diebstahl den Wiederbeschaffungswert minus 800 € SB zurück, mit Vollkasko minus nur 300 € SB. Der eigentliche Vollkasko-Vorteil: selbstverschuldete Unfälle zahlt NUR sie.<br><br>\n        <b>🔥 Frachtenversicherung bei teuren Ladungen</b> — Beim Routenwahl-Dialog können Sie die Fracht versichern. Waren-Vollkasko (2,2% Prämie) deckt auch Verspätungsschäden — bei Premium-Verträgen entscheidend.<br><br>\n        <b>🔥 Lobbying vor Expansion</b> — Sonntagsfahrverbot-Ausnahme = mehr Touren pro Woche. Lohnt sich sobald Sie 5+ LKW haben und einen Anwalt im Team ist.<br><br>\n        <b>🔥 GmbH-Gründung ab Tag 30</b> — Das GF-Gehalt bei der GmbH ist Betriebsausgabe und senkt den Unternehmensgewinn (und damit die Steuer). Optimal: Gehalt knapp unter dem Jahresgewinn/12.\n      ",
         ) +
         section(
           "Häufige Fehler",
@@ -33038,7 +33074,7 @@ const UI = {
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
-      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
+      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.70.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Großes Korrektheits-Update (Audit Teil 1): Versicherung zahlt wirklich, Buchhaltung stimmt, keine Karteileichen</b> — (1) Diebstahl: Teil-/Vollkasko zahlen jetzt tatsächlich den Wiederbeschaffungswert minus Selbstbeteiligung aus (vorher wurde die Erstattung nur angezeigt); unversicherter Diebstahl wird nicht mehr doppelt belastet. (2) Frachtversicherung zahlte jede Entschädigung doppelt — behoben. (3) Betriebsversicherungen (Haftpflicht, Cyber, D&O …) kosten jetzt wirklich ihre Monatsprämie statt einmalig. (4) Schwere Unfälle werden sofort nach Versicherungslage reguliert — nicht mehr abhängig davon, welche Antwort Sie anklicken. (5) Kündigungen kosten genau einmal: regulär 2 Monatsgehälter Abfindung, fristlos (nach Abmahnungen) wie im echten Arbeitsrecht keine. (6) Fahrer ohne LKW oder zu Hause sammeln keine „Tage unterwegs" mehr — Ersatzfahrer verkümmern nicht mehr. (7) Auftrags-Storno räumt jetzt sauber auf: Anhänger wieder verfügbar, Karte zeigt keine Geistertour, LKW steht an plausibler Position. (8) Vorgeplante Aufträge berechnen die Anfahrt korrekt von der tatsächlichen LKW-Position. (9) Automatische Rückfracht respektiert Anhänger-Typ, Gefahrgut, Fahrer-Qualifikation und Genehmigungspflichten. (10) Hilfe/FAQ und Versicherungsanzeigen sagen jetzt überall die Wahrheit (Deckung, Diebstahl-Erstattung, Frachtenbörse ohne Tageslimit).')}\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
         ${v("v2.62.3", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Auftragsfilter „Nur machbare" wieder korrekt</b> — Der Filter zeigte auch Aufträge als machbar, die genau einen Tag zu spät fertig geworden wären (Off-by-one). Jetzt gelten nur Aufträge als machbar, die fristgerecht abgeschlossen werden können.')}
         ${v("v2.62.2", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Markteffekte verfliegen wieder & keine Entscheidungs-Staus</b> — (1) Markt-/Nachrichten-Effekte auf das Auftragsvolumen klingen jetzt über rund zwei Wochen wieder ab (vorher blieben sie dauerhaft und konnten das Volumen ohne erkennbare Ursache drücken). (2) Gleichartige Entscheidungen (gleicher Titel) werden nicht mehr doppelt eingereiht — das verhindert seltene Stau-Situationen, in denen sich das Spiel an gestapelten Dialogen verschluckte.')}
         ${v("v2.62.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Softlocks entschärft</b> — (1) Ein liegengebliebener LKW wird jetzt automatisch repariert, sobald du dir die Reparatur leisten kannst (vorher erst ab 1.500 € Kasse — günstigere Reparaturen blieben darunter hängen). (2) Wenn du keine LKW mehr hast, im Minus bist und das Kreditlimit ausgereizt ist, endet das Spiel jetzt sauber mit Insolvenz, statt in einer ausweglosen Hängepartie zu verharren.')}
@@ -33066,7 +33102,7 @@ const UI = {
     const remaining = Math.max(0, mc.phaseDuration - elapsed);
     const phasePct = Math.min(100, Math.round((elapsed / mc.phaseDuration) * 100));
     const timeline = MarketCycles.phaseTimeline();
-    el.innerHTML = `\n      <div class="dashboard-grid">\n        <div>\n          <div class="card">\n            <div class="card-title">Aktuelle Konjunkturphase</div>\n            <div style="text-align:center; padding:20px 0;">\n              <div style="font-size:32px; font-weight:900; color:${phase.color};">${phase.label}</div>\n              <div style="font-size:12px; color:var(--muted); margin-top:6px; line-height:1.8;">\n                <div>Auftragsvolumen: <b style="color:${phase.jobMul > 1 ? "var(--accent2)" : "var(--danger)"};">×${phase.jobMul.toFixed(2)}</b></div>\n                <div>Preisniveau: <b>×${phase.payMul.toFixed(2)}</b></div>\n                ${phase.customerLoss > 0 ? `<div style="color:var(--danger);">Forderungsausfallrisiko: ${(100 * phase.customerLoss).toFixed(1)}%/Tag</div>` : ""}\n              </div>\n              <div style="margin:12px auto; max-width:240px;">\n                <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">Phasendauer: ${elapsed} von ${mc.phaseDuration} Tagen (noch ${remaining}d)</div>\n                <div style="height:6px; background:var(--bg2); border-radius:3px; overflow:hidden;">\n                  <div style="height:100%; width:${phasePct}%; background:${phase.color};"></div>\n                </div>\n              </div>\n            </div>\n          </div>\n          <div class="card">\n            <div class="card-title">Strategie-Empfehlung</div>\n            <div style="font-size:12px; line-height:1.8; color:var(--muted2);">\n              ${{ boom: ["🚀 Jetzt expandieren — Auftragsvolumen hoch, Preise gut.", "Rahmenverträge zu Premium-Konditionen abschließen.", "Fahrschule lohnt sich — hohe externe Nachfrage."], plateau: ["📊 Solide Basis — Wartung und Optimierung der Flotte.", "ESG-Rating verbessern für nächsten Boom.", "Guter Zeitpunkt für Fahrzeug-Upgrades."], slowdown: ["📉 Kosten senken — unnötige Ausgaben streichen.", "Diesel-Kontrakte für 90 Tage sichern.", "Liquiditätsreserve aufbauen."], recession: ["❄️ Reserven schonen, keine großen Investitionen.", "Schwache Konkurrenten günstig übernehmen (M&A).", "Subunternehmer statt Neupersonal."], recovery: ["🌱 Antizyklisch investieren — Preise noch günstig.", "Frachtenbörse intensiv nutzen — Volumen steigt.", "Jetzt neuen Fuhrpark kaufen bevor Boom kommt."] }[mc.phase]?.map((t) => `<div>• ${t}</div>`).join("") || ""}\n            </div>\n          </div>\n        </div>\n        <div>\n          <div class="card">\n            <div class="card-title">Phasenverlauf (Historie)</div>\n            ${0 === timeline.length ? '<div style="color:var(--muted); font-size:11px;">Noch kein abgeschlossener Zyklus</div>' : timeline.map((h) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:11px;">\n                <div style="display:flex; align-items:center; gap:8px;">\n                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${h.color || "#888"};"></span>\n                  <span>${h.label}</span>\n                </div>\n                <span style="color:var(--muted2);">Tag ${h.startDay}–${h.endDay}</span>\n              </div>`).join("")}\n            <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:11px; color:var(--muted);">Aktuell: <b style="color:${phase.color};">${phase.label}</b> (seit Tag ${mc.phaseDay})</div>\n          </div>\n          <div class="card">\n            <div class="card-title">Alle Phasen im Überblick</div>\n            <div style="font-size:11px; line-height:1.9;">\n              ${Object.entries(
+    el.innerHTML = `\n      <div class="dashboard-grid">\n        <div>\n          <div class="card">\n            <div class="card-title">Aktuelle Konjunkturphase</div>\n            <div style="text-align:center; padding:20px 0;">\n              <div style="font-size:32px; font-weight:900; color:${phase.color};">${phase.label}</div>\n              <div style="font-size:12px; color:var(--muted); margin-top:6px; line-height:1.8;">\n                <div>Auftragsvolumen: <b style="color:${phase.jobMul > 1 ? "var(--accent2)" : "var(--danger)"};">×${phase.jobMul.toFixed(2)}</b></div>\n                <div>Preisniveau: <b>×${phase.payMul.toFixed(2)}</b></div>\n                ${phase.badDebtChance > 0 ? `<div style="color:var(--danger);">Forderungsausfallrisiko: ${(100 * phase.badDebtChance).toFixed(1)}%/Tag</div>` : ""}\n              </div>\n              <div style="margin:12px auto; max-width:240px;">\n                <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">Phasendauer: ${elapsed} von ${mc.phaseDuration} Tagen (noch ${remaining}d)</div>\n                <div style="height:6px; background:var(--bg2); border-radius:3px; overflow:hidden;">\n                  <div style="height:100%; width:${phasePct}%; background:${phase.color};"></div>\n                </div>\n              </div>\n            </div>\n          </div>\n          <div class="card">\n            <div class="card-title">Strategie-Empfehlung</div>\n            <div style="font-size:12px; line-height:1.8; color:var(--muted2);">\n              ${{ boom: ["🚀 Jetzt expandieren — Auftragsvolumen hoch, Preise gut.", "Rahmenverträge zu Premium-Konditionen abschließen.", "Fahrschule lohnt sich — hohe externe Nachfrage."], plateau: ["📊 Solide Basis — Wartung und Optimierung der Flotte.", "ESG-Rating verbessern für nächsten Boom.", "Guter Zeitpunkt für Fahrzeug-Upgrades."], slowdown: ["📉 Kosten senken — unnötige Ausgaben streichen.", "Diesel-Kontrakte für 90 Tage sichern.", "Liquiditätsreserve aufbauen."], recession: ["❄️ Reserven schonen, keine großen Investitionen.", "Schwache Konkurrenten günstig übernehmen (M&A).", "Subunternehmer statt Neupersonal."], recovery: ["🌱 Antizyklisch investieren — Preise noch günstig.", "Frachtenbörse intensiv nutzen — Volumen steigt.", "Jetzt neuen Fuhrpark kaufen bevor Boom kommt."] }[mc.phase]?.map((t) => `<div>• ${t}</div>`).join("") || ""}\n            </div>\n          </div>\n        </div>\n        <div>\n          <div class="card">\n            <div class="card-title">Phasenverlauf (Historie)</div>\n            ${0 === timeline.length ? '<div style="color:var(--muted); font-size:11px;">Noch kein abgeschlossener Zyklus</div>' : timeline.map((h) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:11px;">\n                <div style="display:flex; align-items:center; gap:8px;">\n                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${h.color || "#888"};"></span>\n                  <span>${h.label}</span>\n                </div>\n                <span style="color:var(--muted2);">Tag ${h.startDay}–${h.endDay}</span>\n              </div>`).join("")}\n            <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:11px; color:var(--muted);">Aktuell: <b style="color:${phase.color};">${phase.label}</b> (seit Tag ${mc.phaseDay})</div>\n          </div>\n          <div class="card">\n            <div class="card-title">Alle Phasen im Überblick</div>\n            <div style="font-size:11px; line-height:1.9;">\n              ${Object.entries(
       MarketCycles.PHASES,
     )
       .map(
@@ -33910,7 +33946,7 @@ const UI = {
                 }
               }
               const expressBadge = j.isExpress
-                ? `<span title="Eilauftrag — Vertragsstrafe ${Utils.euro(j.expressPenalty || Math.round(0.5 * j.price))} bei Verspätung oder Verfall" style="display:inline-block;background:#cc1a1a;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:900;margin-left:3px;">EIL</span>`
+                ? `<span title="Eilauftrag — Vertragsstrafe ${Utils.euro(j.expressPenalty || Math.round(0.5 * j.price))} bei Verspätung; bei Verfall ohne Disposition: Reputationsverlust" style="display:inline-block;background:#cc1a1a;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:900;margin-left:3px;">EIL</span>`
                 : "";
               const insBadge = j.cargoInsurance
                 ? `<div style="font-size:9px;color:var(--accent2);margin-top:1px;" title="${CargoInsurance.PRODUCTS[j.cargoInsurance.productId]?.name || "versichert"} · Prämie ${Utils.euro(j.cargoInsurance.premium || 0)}">🛡 versichert</div>`
@@ -34843,11 +34879,7 @@ const UI = {
             : `Kündigen (Abfindung ${Utils.euro(abfindung)})`,
           primary: false,
           onclick: () => {
-            if (!canTerminateWithout) {
-              State.cash -= abfindung;
-              State.departments.personnel.variableCosts += abfindung;
-            }
-            EmployeeManager.fire(staffId);
+            EmployeeManager.fire(staffId, canTerminateWithout ? 0 : 2);
             this.closeModal();
             this.renderAll();
             this.toast(`${s.name.split(" ")[0]} wurde ${canTerminateWithout ? "fristlos" : ""} entlassen`, "warn");
@@ -35470,7 +35502,7 @@ const UI = {
     const _sqColor = _schadenquote < 60 ? "var(--accent2)" : _schadenquote <= 120 ? "var(--accent)" : "var(--info)";
     const _sqKpi = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">SCHADENQUOTE (KUMULIERT)</div><div style="font-size:22px;font-weight:900;color:${_sqColor};">${_schadenquote}%</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;">${U.euro(_claimsRecv)} Schäden ÷ ${U.euro(_premPaid)} Prämien</div></div>`;
     const _sqBanner = `<div style="font-size:11px;color:var(--muted2);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:14px;">🛡 Versicherung ist <b>Schutz, kein Profit-Center</b> — Prämien sind der Preis dafür, im Schadenfall nicht selbst zu zahlen. Eine <b>niedrige Schadenquote</b> ist gut: sie bedeutet wenige Schäden.</div>`;
-    el.innerHTML = `\n      \x3c!-- KPI --\x3e\n      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">MONATLICHE PRÄMIEN GESAMT</div>\n          <div style="font-size:22px;font-weight:900;color:var(--danger);">−${U.euro(total)}</div>\n        </div>\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">VERSICHERTE FAHRZEUGE</div>\n          <div style="font-size:22px;font-weight:900;color:var(--accent2);">${State.trucks.length}</div>\n        </div>\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">BETRIEBSVERSICHERUNGEN</div>\n          <div style="font-size:22px;font-weight:900;color:var(--info);">${allIns.length}</div>\n        </div>${_sqKpi}\n      </div>\n      ${_sqBanner}\n\n      \x3c!-- Fahrzeug-Versicherungen --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🚛 FAHRZEUGVERSICHERUNGEN</div>\n        <div style="overflow-x:auto;">\n          <table class="data-table" style="width:100%;font-size:11px;">\n            <thead><tr><th>Fahrzeug</th><th>Tarif</th><th>Prämie</th><th>Selbstbehalt</th><th>Deckung</th><th>Aktion</th></tr></thead>\n            <tbody>${truckRows || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Keine Fahrzeuge</td></tr>'}</tbody>\n            <tfoot><tr>\n              <td colspan="2" style="padding:6px;font-weight:700;">Gesamt Fahrzeuge</td>\n              <td class="num" style="font-weight:700;color:var(--danger);">−${U.euro(total)}/Mon.</td>\n              <td colspan="3"></td>\n            </tr></tfoot>\n          </table>\n        </div>\n        <div style="margin-top:10px;font-size:10px;color:var(--muted2);">\n          💡 Haftpflicht = gesetzlich Pflicht · Teilkasko = Diebstahl + Naturschäden · Vollkasko = + Unfall + Verspätungsdeckung\n        </div>\n      </div>\n\n      \x3c!-- Betriebliche Versicherungen --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🏢 BETRIEBSVERSICHERUNGEN</div>\n        ${allIns.length ? `\n          <div style="overflow-x:auto;">\n            <table class="data-table" style="width:100%;font-size:11px;">\n              <thead><tr><th>Versicherung</th><th>Beschreibung</th><th>Prämie</th><th>Deckungssumme</th><th>Aktion</th></tr></thead>\n              <tbody>${bizRows}</tbody>\n            </table>\n          </div>` : '<div style="color:var(--muted);font-size:11px;">Keine betrieblichen Versicherungen abgeschlossen. Empfehlung: Betriebshaftpflicht (Pflicht ab 3 Mitarbeitern).</div>'}\n        <button class="btn small primary" style="margin-top:10px;" onclick="UI._showInsuranceShop()">+ Neue Versicherung abschließen</button>\n      </div>\n\n      \x3c!-- Buchungshistorie --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">📋 LETZTE BUCHUNGEN (Versicherung)</div>\n        ${insLedger.length ? `\n          <table class="data-table" style="width:100%;font-size:11px;">\n            <thead><tr><th>Tag</th><th>Beschreibung</th><th>Betrag</th></tr></thead>\n            <tbody>\n              ${insLedger.map((e) => `<tr>\n                <td>Tag ${e.day || "?"}</td>\n                <td style="color:var(--muted2);">${e.description || "Versicherungsprämie"}</td>\n                <td class="num" style="color:var(--danger);">−${U.euro(Math.abs(e.amount))}</td>\n              </tr>`).join("")}\n            </tbody>\n          </table>` : '<div style="color:var(--muted);font-size:11px;">Noch keine Versicherungsbuchungen im Kontoauszug.</div>'}\n      </div>`;
+    el.innerHTML = `\n      \x3c!-- KPI --\x3e\n      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">MONATLICHE PRÄMIEN GESAMT</div>\n          <div style="font-size:22px;font-weight:900;color:var(--danger);">−${U.euro(total)}</div>\n        </div>\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">VERSICHERTE FAHRZEUGE</div>\n          <div style="font-size:22px;font-weight:900;color:var(--accent2);">${State.trucks.length}</div>\n        </div>\n        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">\n          <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">BETRIEBSVERSICHERUNGEN</div>\n          <div style="font-size:22px;font-weight:900;color:var(--info);">${allIns.length}</div>\n        </div>${_sqKpi}\n      </div>\n      ${_sqBanner}\n\n      \x3c!-- Fahrzeug-Versicherungen --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🚛 FAHRZEUGVERSICHERUNGEN</div>\n        <div style="overflow-x:auto;">\n          <table class="data-table" style="width:100%;font-size:11px;">\n            <thead><tr><th>Fahrzeug</th><th>Tarif</th><th>Prämie</th><th>Selbstbehalt</th><th>Deckung</th><th>Aktion</th></tr></thead>\n            <tbody>${truckRows || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Keine Fahrzeuge</td></tr>'}</tbody>\n            <tfoot><tr>\n              <td colspan="2" style="padding:6px;font-weight:700;">Gesamt Fahrzeuge</td>\n              <td class="num" style="font-weight:700;color:var(--danger);">−${U.euro(total)}/Mon.</td>\n              <td colspan="3"></td>\n            </tr></tfoot>\n          </table>\n        </div>\n        <div style="margin-top:10px;font-size:10px;color:var(--muted2);">\n          💡 Haftpflicht = Pflicht, deckt nur Fremdschäden · Teilkasko = Diebstahl/Glas/Wild (voll minus SB) · Vollkasko = zusätzlich selbstverschuldete Unfälle (voll minus SB) · Pannen → Wartungsvertrag\n        </div>\n      </div>\n\n      \x3c!-- Betriebliche Versicherungen --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">🏢 BETRIEBSVERSICHERUNGEN</div>\n        ${allIns.length ? `\n          <div style="overflow-x:auto;">\n            <table class="data-table" style="width:100%;font-size:11px;">\n              <thead><tr><th>Versicherung</th><th>Beschreibung</th><th>Prämie</th><th>Deckungssumme</th><th>Aktion</th></tr></thead>\n              <tbody>${bizRows}</tbody>\n            </table>\n          </div>` : '<div style="color:var(--muted);font-size:11px;">Keine betrieblichen Versicherungen abgeschlossen. Empfehlung: Betriebshaftpflicht (Pflicht ab 3 Mitarbeitern).</div>'}\n        <button class="btn small primary" style="margin-top:10px;" onclick="UI._showInsuranceShop()">+ Neue Versicherung abschließen</button>\n      </div>\n\n      \x3c!-- Buchungshistorie --\x3e\n      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;">\n        <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;">📋 LETZTE BUCHUNGEN (Versicherung)</div>\n        ${insLedger.length ? `\n          <table class="data-table" style="width:100%;font-size:11px;">\n            <thead><tr><th>Tag</th><th>Beschreibung</th><th>Betrag</th></tr></thead>\n            <tbody>\n              ${insLedger.map((e) => `<tr>\n                <td>Tag ${e.day || "?"}</td>\n                <td style="color:var(--muted2);">${e.description || "Versicherungsprämie"}</td>\n                <td class="num" style="color:var(--danger);">−${U.euro(Math.abs(e.amount))}</td>\n              </tr>`).join("")}\n            </tbody>\n          </table>` : '<div style="color:var(--muted);font-size:11px;">Noch keine Versicherungsbuchungen im Kontoauszug.</div>'}\n      </div>`;
   },
   _showInsuranceShop() {
     const PRODUCTS = [
@@ -36358,6 +36390,8 @@ const UI = {
             State.cash -= penalty;
             State.activeJobs = (State.activeJobs || []).filter((j) => j.truckId !== truck.id);
             State.activeRoutes = (State.activeRoutes || []).filter((r) => r.id !== routeId);
+            const _aTr = truck.trailerId && (State.trailers || []).find((x) => x.id === truck.trailerId);
+            if (_aTr) _aTr.status = "idle";
             truck.status = "idle";
             State.reputation = Math.max(0, State.reputation - 3);
             EventManager.addNews("warn", `🏠 Auftrag abgebrochen — Strafe ${Utils.euro(penalty)} (${truck.plate})`);
