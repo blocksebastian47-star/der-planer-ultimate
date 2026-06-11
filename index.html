@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.78.0 · Build 11.06.2026">
+<meta name="build" content="v2.79.0 · Build 11.06.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.78.0</title>
+<title>Der Planer Ultimate · v2.79.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -1581,7 +1581,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.78.0</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.79.0</div>
       <div style="font-size:10px; color:var(--muted);">Juni 2026</div>
     </div>
   </div>
@@ -1652,7 +1652,7 @@ footer {
 <div id="achievement-stack"></div>
 
 <script>
-const APP_VERSION = "v2.78.0";
+const APP_VERSION = "v2.79.0";
 const BUILD_DATE = "11.06.2026";
 const DATA = {
   locations: {
@@ -9428,10 +9428,10 @@ const DepartmentSystem = {
       minStaff: 1,
       idealStaff: 2,
       penalties: {
-        noStaff: { taxRate: 0.12, invoiceDelay: 30, badDebtRate: 0.08, latePaymentFine: 0.02 },
-        underStaff: { taxRate: 0.05, invoiceDelay: 14, badDebtRate: 0.04 },
+        noStaff: { taxRate: 0.12, invoiceDelay: 21, badDebtRate: 0.08 },
+        underStaff: { taxRate: 0.05, invoiceDelay: 7, badDebtRate: 0.04 },
       },
-      bonuses: { fullStaff: { taxRate: -0.05, invoiceDelay: 3, cashflowBonus: 0.03 } },
+      bonuses: { fullStaff: { taxRate: -0.05, invoiceDelay: -3, cashflowBonus: 0.03, latePaymentFine: 0.11 } },
     },
     hr: {
       id: "hr",
@@ -9536,7 +9536,7 @@ const DepartmentSystem = {
   getEffects() {
     const fx = {
       taxRate: 0,
-      invoiceDelay: 7,
+      invoiceDelay: 0,
       badDebtRate: 0.02,
       latePaymentFine: 0,
       cashflowBonus: 0,
@@ -9797,6 +9797,11 @@ const DepartmentSystem = {
     if (dfx.legalCost > 0) FinanceManager.book("admin", "other_out", dfx.legalCost, { desc: "Recht: aggressive Rechtsverfolgung" });
     if (dfx.newCustomers > 0 && void 0 !== JobManager)
       EventManager.addNews("good", `📈 Vertriebsoffensive: ${dfx.newCustomers} neue Kunden gewonnen`);
+    // v2.79: Intensiv-Mahnwesen drueckt die Kundenstimmung (customerSat = Beziehungs-Delta/Monat).
+    if (dfx.customerSat) {
+      (State.customers || []).forEach((c) => { c.relationship = Utils.clamp((c.relationship || 50) + dfx.customerSat, 0, 100); });
+      if (dfx.customerSat < 0) EventManager.addNews("info", `📞 Intensives Mahnwesen: Kundenbeziehungen ${dfx.customerSat}/Monat`);
+    }
     Object.entries(State.deptDirectives || {}).forEach(([deptId, dir]) => {
       if (!(State.staff || []).find((s) => s.id === dir.headId && "aktiv" === s.status)) return;
       const remaining = dir.endsDay - State.day;
@@ -9848,7 +9853,7 @@ const DepartmentSystem = {
   createInvoice(job, amount, truckId) {
     if (!State.invoices) State.invoices = [];
     const fx = this.getEffects();
-    const delay = Math.max(1, fx.invoiceDelay + Utils.randInt(-3, 5));
+    const delay = Math.max(1, 7 + (fx.invoiceDelay || 0) + Utils.randInt(-3, 5));
     const skontoPolicy = State.skontoPolicy || { enabled: false, percent: 0, days: 0 };
     const offerSkonto =
       this._countActiveStaff(["accountant", "controller", "head_accounting"]) > 0 &&
@@ -15390,12 +15395,16 @@ const MarketCycles = {
       this._onPhaseChange(mc.phase, next);
     }
     if (phase.badDebtChance > 0 && Math.random() < phase.badDebtChance) {
-      const openInvoices = (State.invoices || []).filter((i) => "offen" === i.status);
-      if (openInvoices.length > 0) {
-        const inv = Utils.pick(openInvoices);
-        const loss = Math.round(inv.amount * (0.3 + 0.5 * Math.random()));
-        inv.amount = Math.max(0, inv.amount - loss);
-        EventManager.addNews("bad", `💸 Forderungsausfall: Kunde zahlt ${Utils.euro(loss)} nicht (${phase.label})`);
+      // v2.79: wirkt aufs LEBENDE Forderungssystem (CashflowSystem) — State.invoices war seit je leer.
+      const openRecs = ((State.cashflow && State.cashflow.receivables) || []).filter((r) => !r.paid && !r.factored);
+      if (openRecs.length > 0) {
+        const rec = Utils.pick(openRecs);
+        const loss = Math.round(rec.amount * (0.3 + 0.5 * Math.random()));
+        rec.amount = Math.max(0, rec.amount - loss);
+        const _dA = State.departments && State.departments.admin;
+        if (_dA) { _dA.variableCosts += loss; _dA.monthVariable += loss; }
+        if (State.subCosts) State.subCosts.claims = (State.subCosts.claims || 0) + loss;
+        EventManager.addNews("bad", `💸 Konjunktur-Teilausfall: ${rec.customerName} kürzt die Rechnung um ${Utils.euro(loss)} (${phase.label})`);
       }
     }
     if (State.day >= mc.nextTip) {
@@ -17297,7 +17306,7 @@ const GFOffice = {
       const fn = {
         head_accounting: () => ({
           subject: "Monatsbericht Buchhaltung",
-          body: `Steuerlast: ${Math.round(100 * (fx.taxRate || 0))}% Anpassung · Zahlungsziel Ø ${fx.invoiceDelay || 7} Tage · Liquidität: ${Utils.euro(State.cash)}.`,
+          body: `Steuerlast: ${Math.round(100 * (fx.taxRate || 0))}% Anpassung · Fakturierungs-Verzug ${(fx.invoiceDelay || 0) >= 0 ? "+" : ""}${Math.round(fx.invoiceDelay || 0)} Tage · Liquidität: ${Utils.euro(State.cash)}.`,
         }),
         head_hr: () => ({
           subject: "Monatsbericht Personal",
@@ -21018,7 +21027,10 @@ const CashflowSystem = {
       else if (rel >= 30) termKey = "medium";
       else termKey = "low";
     const term = this.PAYMENT_TERMS[termKey];
-    const days = Utils.randInt(term.min, term.max);
+    // v2.79: invoiceDelay-Delta — ohne Buchhaltung gehen Rechnungen Wochen spaeter raus (+21 T),
+    // volle Buchhaltung fakturiert schneller (-3 T); Direktiven steuer +2 / mahnen -4.
+    const _fxC = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
+    const days = Math.max(3, Utils.randInt(term.min, term.max) + Math.round(_fxC.invoiceDelay || 0));
     const dueDay = State.day + days;
     const rec = {
       id: Utils.uid("REC"),
@@ -21068,6 +21080,7 @@ const CashflowSystem = {
     // Recourse-Default-Check (seit v2.16.14): bei Kunden-Ausfall fordert der
     // Factor das Geld + Poenale zurueck — siehe _processRecourseDefaults.
     this._processRecourseDefaults();
+    const _fxD = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
     cf.overdueTotal = 0;
     for (const rec of cf.receivables) {
       if (rec.paid || rec.factored) continue;
@@ -21084,6 +21097,9 @@ const CashflowSystem = {
         else if (!rec.overdue) {
           rec.overdue = true;
           EventManager.addNews("warn", `⚠️ ${rec.customerName} zahlt zu spät — ${Utils.euro(rec.amount)} überfällig`);
+        } else if ((_fxD.cashflowBonus || 0) > 0 && Math.random() < 3 * _fxD.cashflowBonus) {
+          // v2.79: aktives Forderungsmanagement (cashflowBonus) — Buchhaltung treibt Ueberfaellige telefonisch ein.
+          this._processPayment(rec);
         }
       }
       if (!rec.paid && !rec.factored) cf.overdueTotal += rec.overdue ? rec.amount : 0;
@@ -21097,6 +21113,24 @@ const CashflowSystem = {
     this._checkLiquidityCrisis();
   },
   _processPayment(rec) {
+    // v2.79: Einzel-Forderungsausfall (Audit-M26-Restluecke: vorher zahlte JEDE Forderung am Ende).
+    // Rate = badDebtRate (Basis 2%, ohne Buchhaltung 10%, Mahnwesen-Direktive -1pp); Rechtsabteilung x0.6.
+    // GuV-Aufwand ohne Cash-Buchung (das Geld kam nie an) — analog Insolvenz-Pfad v2.75.
+    const _fxP = void 0 !== DepartmentSystem ? DepartmentSystem.getEffects() : {};
+    let _bdr = Math.max(0, _fxP.badDebtRate || 0);
+    if ((State.staff || []).some((s) => "lawyer" === s.roleId && "aktiv" === s.status)) _bdr *= 0.6;
+    if (Math.random() < _bdr) {
+      rec.paid = true;
+      rec.paidDay = State.day;
+      rec.defaulted = true;
+      const _dA = State.departments && State.departments.admin;
+      if (_dA) { _dA.variableCosts += rec.amount; _dA.monthVariable += rec.amount; }
+      if (State.subCosts) State.subCosts.claims = (State.subCosts.claims || 0) + rec.amount;
+      const _cust = (State.customers || []).find((c) => c.id === rec.customerId);
+      if (_cust) _cust.relationship = Math.max(0, (_cust.relationship || 50) - 12);
+      EventManager.addNews("bad", `❌ Forderungsausfall: ${rec.customerName} zahlt ${Utils.euro(rec.amount)} endgültig nicht`);
+      return;
+    }
     rec.paid = true;
     rec.paidDay = State.day;
     let paidAmount = rec.amount;
@@ -21116,6 +21150,15 @@ const CashflowSystem = {
         `Zahlung: ${rec.customerName} (${rec.jobFrom}→${rec.jobTo})${skontoNote}`,
       );
     const wasLate = rec.overdue;
+    // v2.79: Verzugszins par. 288 BGB (B2B): 40-EUR-Pauschale + latePaymentFine (11% p.a.) anteilig —
+    // nur mit voll besetzter Buchhaltung. Nicht umsatzsteuerbar -> admin-Ertrag, kein fleet.
+    if (wasLate && (_fxP.latePaymentFine || 0) > 0 && !rec.defaulted) {
+      const _lateDays = Math.max(1, State.day - rec.dueDay);
+      const _interest = 40 + Math.round(rec.amount * (_fxP.latePaymentFine || 0) * (_lateDays / 365));
+      FinanceManager.recordRevenue("admin", _interest);
+      if (void 0 !== BankAccount) BankAccount.record("revenue_other", _interest, `Verzugszins + Mahnpauschale: ${rec.customerName}`);
+      EventManager.addNews("info", `⚖️ Verzugszins von ${rec.customerName}: +${Utils.euro(_interest)}`);
+    }
     EventManager.addNews(
       "good",
       `💰 ${rec.customerName} bezahlt ${Utils.euro(paidAmount)}${wasLate ? " (verspätet)" : ""}${skontoNote}`,
@@ -22264,6 +22307,9 @@ const LocationManager = {
     const locs = State.locations || [];
     let _rent = locs.length ? Math.round(locs.reduce((s, l) => s + (l.rent || 0), 0) * Game.diffMod("rent", 1)) : (this.current()?.monthlyRent || 0);
     if (State.rentGraceUntil && State.day < State.rentGraceUntil && locs.length <= 1) _rent = Math.min(_rent, State.rentGraceRate || 900);
+    // v2.79: Kosten-Audit-Direktive (costMul) — zentral hier, damit GuV-Tick UND Cash-Zahlung konsistent sinken.
+    const _cmR = void 0 !== DepartmentSystem ? (DepartmentSystem.getEffects().costMul || 0) : 0;
+    if (_cmR) _rent = Math.round(_rent * Math.max(0.7, 1 + _cmR));
     return _rent;
   },
   fuelPrice: () => State.fuelPriceCurrent * (void 0 !== SeasonCalendar ? SeasonCalendar.fuelMultiplier() : 1),
@@ -22294,7 +22340,9 @@ const InsuranceManager = {
     if (!truck.insuranceTier) return 0;
     const ins = DATA.insurance[truck.insuranceTier];
     const value = truck.purchasePrice * (truck.condition / 100);
-    return Math.round(value * ins.monthlyCostFactor);
+    // v2.79: costMul (Kosten-Audit verhandelt Flottentarife) — zentral, alle Leser (GuV/Cash/UI) konsistent.
+    const _cmI = void 0 !== DepartmentSystem ? (DepartmentSystem.getEffects().costMul || 0) : 0;
+    return Math.round(value * ins.monthlyCostFactor * Math.max(0.7, 1 + _cmI));
   },
   handleClaim(truck, type, totalDamage) {
     const tier = truck.insuranceTier || "haftpflicht";
@@ -26120,7 +26168,9 @@ const DispoManager = {
     }
     this.assignIdleDrivers();
     this.restExhaustedDrivers();
-    const totalCapacity = dispos.reduce((s, d) => s + 2 + Math.floor(d.experience / 30), 0);
+    // v2.79: Digitalisierungs-Direktive (adminEfficiency) — ERP/TMS steigert die Dispositions-Kapazitaet.
+    const _admEff = void 0 !== DepartmentSystem ? (DepartmentSystem.getEffects().adminEfficiency || 0) : 0;
+    const totalCapacity = Math.round(dispos.reduce((s, d) => s + 2 + Math.floor(d.experience / 30), 0) * (1 + _admEff));
     const activeContracts = (State.contracts || []).filter((c) => c.endDay > State.day);
     const dispoTier = (j) => {
       if (j.isExpress) return 0;
@@ -32176,7 +32226,7 @@ const UI = {
         {
           accounting: [
             ["Steuer-Delta", `${(fx.taxRate || 0) >= 0 ? "+" : ""}${Math.round(100 * (fx.taxRate || 0))}%`],
-            ["Zahlungsziel", `${fx.invoiceDelay || 7}T`],
+            ["Fakturierungs-Verzug", `${(fx.invoiceDelay || 0) >= 0 ? "+" : ""}${Math.round(fx.invoiceDelay || 0)}T`],
           ],
           hr: [
             ["Einstellkosten", `${(fx.hireCost || 0) >= 0 ? "+" : ""}${Math.round(100 * (fx.hireCost || 0))}%`],
@@ -32264,21 +32314,21 @@ const UI = {
         {
           id: "steuer",
           label: "💰 Steueroptimierung",
-          desc: "Steuerberater-Fokus: −3% Steuerlast, +2 Tage Zahlungsziel",
+          desc: "Steuerberater-Fokus: −3% Steuerlast — Rechnungen gehen dafür 2 Tage später raus",
           effect: { taxRate: -0.03, invoiceDelay: 2 },
           duration: 90,
         },
         {
           id: "mahnen",
           label: "⚡ Mahnwesen intensivieren",
-          desc: "+40% Mahnquote: Rechnungen schneller eingetrieben, Kundenzufriedenheit −2%",
+          desc: "Rechnungen 4 Tage schneller fakturiert, −1%-Punkt Ausfallrisiko, −2 Kundenbeziehung/Monat",
           effect: { invoiceDelay: -4, badDebtRate: -0.01, customerSat: -2 },
           duration: 60,
         },
         {
           id: "sparen",
           label: "✂️ Kosten-Audit",
-          desc: "Alle Ausgaben auf Einsparpotenzial prüfen: −5% Betriebskosten für 60 Tage",
+          desc: "Miete und Kfz-Flottentarife nachverhandeln: −5% für 60 Tage",
           effect: { costMul: -0.05 },
           duration: 60,
         },
@@ -32411,7 +32461,7 @@ const UI = {
         {
           id: "digitalisierung",
           label: "💻 Digitalisierungs-Sprint",
-          desc: "ERP-Optimierung: +15% Berichtsgenauigkeit, +5% Verwaltungseffizienz",
+          desc: "ERP/TMS-Optimierung: +15% Berichtsgenauigkeit, +5% Dispositions-Kapazität",
           effect: { reportAccuracy: 0.15, adminEfficiency: 0.05 },
           duration: 60,
         },
@@ -33243,7 +33293,7 @@ const UI = {
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
-      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.78.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Personalabteilung wirkt (Backlog B, Teil 2 — HR).</b> Der Bewerberpool hängt jetzt an der HR-Arbeit: ohne Personalabteilung nur 2 Kandidaten, mit Einstellungs-Offensive ein vierter; HR-Vollbesetzung und Offensive heben Zuverlässigkeit, Pünktlichkeit und Motivation der Bewerber spürbar. Der Weiterbildungs-Fokus senkt Kurs- und Skill-Schulungskosten real um 20% und beschleunigt den XP-Gewinn (+5%) — ohne Personalabteilung kosten Kurse dagegen +30%. Die Präventiv-Compliance-Direktive schickt jeden Monat bis zu zwei ungeschulte Fahrer verbindlich in den Defensiv-Kurs (echte Kosten und Ausfalltage, danach dauerhaft −25% Unfallrisiko). Kurs- und Skillkosten laufen jetzt vollständig durch die Buchführung (GuV, Steuerbasis und Kontoauszug — vorher Kasse-direkt bzw. ohne Kontoauszug).')}\n        ${v("v2.77.0", "Juni 2026", '<span style="color:var(--accent2);">FIX:</span> <b>Abteilungs-Direktiven wirken jetzt wirklich (Backlog B, Teil 1).</b> Der Direktiven-Kern reichte etliche gesetzte Effekte nie an die Spielmechanik durch — der IT-Sicherheits-Modus (−90% Cyber-Risiko) blieb komplett wirkungslos, ebenso der Gehaltskosten-Aufschlag der Einstellungs-Offensive. Jetzt werden ALLE Direktiv-Effekte durchgereicht; die restlichen Mechanik-Anbindungen folgen in den nächsten Updates. Buchführung: Externe Werkstattaufträge zählen als Werkstatt-Umsatz in der GuV, Anwaltskosten der Rechtsverfolgung laufen über die ordentliche Buchung (vorher beides Kasse-direkt am Monatsbericht vorbei). Der Einstellungsstopp gibt keine Fantasie-Gutschrift mehr (+2.000€ ohne Gegenbuchung) — er spart real die Anwerbungskosten. Direktiven-Beschreibungen an die tatsächliche Mechanik angeglichen.')}\n        ${v("v2.76.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Letzte Audit-Reste: Frachtenbörse realistisch bepreist, saubere Spielenden, ehrliche Heimkehr</b> — (1) Spot-Aufträge berücksichtigen jetzt Qualifikation, Gefahrgut, Auflagen und Dieselpreis wie das Auftragsbuch — und respektieren denselben Reputations-Preisdeckel (keine Früh-Arbitrage mehr). (2) Selbstfahrer-Touren zählen in der Statistik (Aufträge + Kilometer). (3) Ohne LKW und ohne realistische Chance auf einen neuen (Kasse + Kreditrahmen unter 15.000 €) endet das Spiel sauber mit Insolvenz statt in einer ewigen Hängepartie. (4) Die Heimkehr vorausgeplanter Fahrer ist jetzt ehrlich: Leerfahrt-Sprit wird gebucht, der LKW steht danach wirklich an seiner Heimat-Niederlassung, und nach langen Einsätzen gilt auch hier die 45h-Wochenruhe.')}\n        ${v("v2.75.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realismus-Feinschliff (Audit Teil 6 — Abschluss des Audit-Programms)</b> — (1) EIN Kalender: Das LKW-Fahrverbot gilt jetzt am echten Kalender-Sonntag und an echten Feiertagen (vorher lief ein Parallel-Kalender, dessen „Sonntag" auf einen Werktag fiel). (2) BAG-Fahrverbot und Krankmeldungen stoppen jetzt auch laufende Touren — es wird sofort eine Vertretung organisiert. (3) Kunden-Insolvenz bedeutet echten Forderungsausfall: offene Rechnungen werden als Verlust ausgebucht (sichtbar in der GuV) — Factoring hat damit einen realen Sinn. (4) Selbstfahrer zahlen Maut wie jeder andere LKW und tragen ein Grundrisiko auch ohne Skill-Lücke. (5) Fahrer-Risiko steigt stetig mit sinkender Motivation statt an einer unsichtbaren Klippe. (6) Wetter & Baustellen wirken jetzt wirklich: Umwege kosten Sprit, Unwetter erhöhen das Unfallrisiko auf der betroffenen Route. (7) Die IT-Sicherheits-Direktive senkt die Cyberangriff-Wahrscheinlichkeit tatsächlich (−90 %). (8) Lange verfallene vorgeplante Aufträge räumen sich aus der Warteschlange; der Diebstahl-Anwalt holt nur bei bestehender Deckung mehr heraus; Büroschäden skalieren mit der Betriebsgröße.')}\n        ${v("v2.74.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV-Details auch für Selbstfahrer vollständig</b> — Kraftstoff der eigenen Touren (inkl. Leerfahrt heim) und Reparaturen aus Selbstfahr-Zwischenfällen erscheinen jetzt in den GuV-Detailzeilen „Kraftstoff & Maut" und „Reparaturen" (die Summen stimmten bereits, die Aufschlüsselung zeigte 0).')}\n        ${v("v2.74.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Echte Buchhaltung: Abschreibung (AfA) und Umsatzsteuer (Audit Teil 5, „Paket D2")</b> — (1) Fahrzeugkäufe sind jetzt erfolgsneutral: Der Kaufpreis ist kein Sofort-Aufwand mehr, sondern aktiviert das Fahrzeug — abgeschrieben wird linear über 8 Jahre (15 % Restwert), als eigene GuV-Position „Abschreibungen". Kein künstlicher Riesen-Verlust mehr im Kaufmonat. (2) Beim Verkauf oder Diebstahl wird der Restbuchwert ausgebucht — die GuV zeigt den echten Buchgewinn oder -verlust. (3) 19 % Umsatzsteuer als durchlaufender Posten: Erlöse werden brutto vereinnahmt, vorsteuerfähige Ausgaben (Diesel, Maut, Reparaturen, Fahrzeuge, Verwaltung) brutto bezahlt, und am Monatsersten wird die Zahllast ans Finanzamt abgeführt — im Investitionsmonat gibt es wie real eine Vorsteuer-Erstattung. Der Gewinn bleibt davon unberührt, aber die Liquidität verhält sich wie im echten Unternehmen. (4) Bilanz-Buchwert jetzt konsistent linear zur AfA; der Markt-Wiederverkaufswert bleibt davon getrennt.')}\n        ${v("v2.73.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Wochenruhe wie im echten Fahrerleben (Audit Teil 4)</b> — Die gesetzliche 45-Stunden-Wochenruhe wird jetzt aufs Wochenende gelegt, wie es reale Disponenten planen: Sie blockiert effektiv einen Arbeitstag statt zwei — denn sonntags ruht der LKW wegen des Fahrverbots ohnehin. Ergebnis: spürbar mehr Touren pro Monat (+27 % gemessen) und mehr pünktliche Lieferungen, ohne die Lenk- und Ruhezeiten-Regeln aufzuweichen.')}\n        ${v("v2.72.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Reale Marktpreise & Durchsatz (Audit Teil 3): Frachtraten, Tagesleistung, Disposition und Pönalen wie in der echten Branche</b> — (1) Frachtraten auf reales Niveau (~2,10 €/km für Komplettladungen auf „mittel", Board und Frachtenbörse). (2) Reale Tagesleistung: kurze Anfahrt + Beladung passen in einen Tag (bis ~580 km Gesamtstrecke) — LKW schaffen spürbar mehr Touren. (3) Nachmittags-Disposition: heute frei gewordene LKW bekommen noch am selben Tag die nächste Ladung. (4) Disponenten verplanen maximal eine Folgetour pro LKW — keine wochenlangen Warteschlangen mehr, deutlich mehr pünktliche Lieferungen. (5) Verspätungs-Pönale gestaffelt wie in echten Verträgen (~8 % plus 6 % je Tag, Deckel 40 %) statt pauschal 40 %. (6) Kontrolldichte (Bußgelder) auf reales Maß reduziert. (7) Werkstattkosten kalibriert (~0,13 €/km Routine-Instandhaltung) und Pannen kosten Zustand in realistischem Umfang. Gemessen: Umsatz je LKW verzehnfacht, Erlös exakt im realen Korridor — der Aufbau einer profitablen Flotte bleibt eine echte unternehmerische Aufgabe (Auslastung, Verträge, Werkstatt, Compliance).')}\n        ${v("v2.71.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Exploit-Schließung (Audit Teil 2): Geld-Drucker abgeschaltet, Markt verhält sich realistisch</b> — (1) Leasing-Ende konsequent: Ein ausgelaufener Vertrag fährt nicht weiter und zählt nicht als Eigentum, bis Sie sich entscheiden; die Restwert-Übernahme wird sauber gebucht und der Buchwert ist der Übernahmepreis — der „Leasen→Übernehmen→Teuer-Verkaufen"-Trick ist Geschichte. (2) Reparaturkosten skalieren mit der Fahrzeugklasse (ein Sattelzug kostet in der Werkstatt real mehr als ein Transporter) und der Wiederverkaufswert hängt stärker an Alter und Laufleistung — „vor dem Verkauf billig hochreparieren" lohnt nicht mehr; mit eigener Werkstatt samt Meister bleibt Aufbereitung ein ehrliches, begrenztes Geschäft. (3) Händler-Verhandlungen: maximal 2 Runden, Schmerzgrenze ~12 %; Anhänger-Händler akzeptieren keine 70-%-Abschläge mehr. (4) Marketing-Kampagnen sind nicht mehr stapelbar. (5) Frachtraten-Aufschläge aus Ereignissen bauen sich realistisch wieder ab. (6) Einstellungen kosten Anwerbung/Ausstattung (HR-Abteilung senkt das wirklich). (7) Diesel-Lager/Kontrakte und LKW-Käufe erscheinen jetzt vollständig in GuV und Kontoauszug. (8) Disponenten-Rücksprachen verbrennen keine Tageskapazität mehr; Sofortstarts überholen weder Warteschlange noch Fahrer-Heimkehr.')}\n        ${v("v2.70.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Großes Korrektheits-Update (Audit Teil 1): Versicherung zahlt wirklich, Buchhaltung stimmt, keine Karteileichen</b> — (1) Diebstahl: Teil-/Vollkasko zahlen jetzt tatsächlich den Wiederbeschaffungswert minus Selbstbeteiligung aus (vorher wurde die Erstattung nur angezeigt); unversicherter Diebstahl wird nicht mehr doppelt belastet. (2) Frachtversicherung zahlte jede Entschädigung doppelt — behoben. (3) Betriebsversicherungen (Haftpflicht, Cyber, D&O …) kosten jetzt wirklich ihre Monatsprämie statt einmalig. (4) Schwere Unfälle werden sofort nach Versicherungslage reguliert — nicht mehr abhängig davon, welche Antwort Sie anklicken. (5) Kündigungen kosten genau einmal: regulär 2 Monatsgehälter Abfindung, fristlos (nach Abmahnungen) wie im echten Arbeitsrecht keine. (6) Fahrer ohne LKW oder zu Hause sammeln keine „Tage unterwegs" mehr — Ersatzfahrer verkümmern nicht mehr. (7) Auftrags-Storno räumt jetzt sauber auf: Anhänger wieder verfügbar, Karte zeigt keine Geistertour, LKW steht an plausibler Position. (8) Vorgeplante Aufträge berechnen die Anfahrt korrekt von der tatsächlichen LKW-Position. (9) Automatische Rückfracht respektiert Anhänger-Typ, Gefahrgut, Fahrer-Qualifikation und Genehmigungspflichten. (10) Hilfe/FAQ und Versicherungsanzeigen sagen jetzt überall die Wahrheit (Deckung, Diebstahl-Erstattung, Frachtenbörse ohne Tageslimit).')}\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
+      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.79.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Buchhaltung wirkt aufs echte Forderungssystem (Backlog B, Teil 3).</b> Ohne Buchhaltung gehen Rechnungen jetzt ~3 Wochen später raus und ~10% der Forderungen fallen endgültig aus; volle Buchhaltung fakturiert 3 Tage schneller, treibt Überfällige telefonisch ein und kassiert bei Zahlungsverzug die gesetzliche 40-€-Pauschale plus ~11% Verzugszins p.a. (§ 288 BGB). Eine Rechtsabteilung senkt das Ausfallrisiko zusätzlich (×0,6). Die Mahnwesen-Direktive beschleunigt die Fakturierung und senkt Ausfälle, kostet aber monatlich Kundenbeziehung; das Kosten-Audit verhandelt real Miete und Kfz-Flottentarife (−5%); der Digitalisierungs-Sprint erhöht die Dispositions-Kapazität (+5%). Rezessions-Forderungsausfälle treffen jetzt das lebende Forderungssystem statt einer leeren Alt-Tabelle — Abschwung tut spürbar weh. Alle Ausfälle laufen als ordentlicher GuV-Aufwand (Wertberichtigung), Verzugszinsen als nicht-umsatzsteuerbarer Ertrag.')}\n        ${v("v2.78.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Personalabteilung wirkt (Backlog B, Teil 2 — HR).</b> Der Bewerberpool hängt jetzt an der HR-Arbeit: ohne Personalabteilung nur 2 Kandidaten, mit Einstellungs-Offensive ein vierter; HR-Vollbesetzung und Offensive heben Zuverlässigkeit, Pünktlichkeit und Motivation der Bewerber spürbar. Der Weiterbildungs-Fokus senkt Kurs- und Skill-Schulungskosten real um 20% und beschleunigt den XP-Gewinn (+5%) — ohne Personalabteilung kosten Kurse dagegen +30%. Die Präventiv-Compliance-Direktive schickt jeden Monat bis zu zwei ungeschulte Fahrer verbindlich in den Defensiv-Kurs (echte Kosten und Ausfalltage, danach dauerhaft −25% Unfallrisiko). Kurs- und Skillkosten laufen jetzt vollständig durch die Buchführung (GuV, Steuerbasis und Kontoauszug — vorher Kasse-direkt bzw. ohne Kontoauszug).')}\n        ${v("v2.77.0", "Juni 2026", '<span style="color:var(--accent2);">FIX:</span> <b>Abteilungs-Direktiven wirken jetzt wirklich (Backlog B, Teil 1).</b> Der Direktiven-Kern reichte etliche gesetzte Effekte nie an die Spielmechanik durch — der IT-Sicherheits-Modus (−90% Cyber-Risiko) blieb komplett wirkungslos, ebenso der Gehaltskosten-Aufschlag der Einstellungs-Offensive. Jetzt werden ALLE Direktiv-Effekte durchgereicht; die restlichen Mechanik-Anbindungen folgen in den nächsten Updates. Buchführung: Externe Werkstattaufträge zählen als Werkstatt-Umsatz in der GuV, Anwaltskosten der Rechtsverfolgung laufen über die ordentliche Buchung (vorher beides Kasse-direkt am Monatsbericht vorbei). Der Einstellungsstopp gibt keine Fantasie-Gutschrift mehr (+2.000€ ohne Gegenbuchung) — er spart real die Anwerbungskosten. Direktiven-Beschreibungen an die tatsächliche Mechanik angeglichen.')}\n        ${v("v2.76.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Letzte Audit-Reste: Frachtenbörse realistisch bepreist, saubere Spielenden, ehrliche Heimkehr</b> — (1) Spot-Aufträge berücksichtigen jetzt Qualifikation, Gefahrgut, Auflagen und Dieselpreis wie das Auftragsbuch — und respektieren denselben Reputations-Preisdeckel (keine Früh-Arbitrage mehr). (2) Selbstfahrer-Touren zählen in der Statistik (Aufträge + Kilometer). (3) Ohne LKW und ohne realistische Chance auf einen neuen (Kasse + Kreditrahmen unter 15.000 €) endet das Spiel sauber mit Insolvenz statt in einer ewigen Hängepartie. (4) Die Heimkehr vorausgeplanter Fahrer ist jetzt ehrlich: Leerfahrt-Sprit wird gebucht, der LKW steht danach wirklich an seiner Heimat-Niederlassung, und nach langen Einsätzen gilt auch hier die 45h-Wochenruhe.')}\n        ${v("v2.75.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realismus-Feinschliff (Audit Teil 6 — Abschluss des Audit-Programms)</b> — (1) EIN Kalender: Das LKW-Fahrverbot gilt jetzt am echten Kalender-Sonntag und an echten Feiertagen (vorher lief ein Parallel-Kalender, dessen „Sonntag" auf einen Werktag fiel). (2) BAG-Fahrverbot und Krankmeldungen stoppen jetzt auch laufende Touren — es wird sofort eine Vertretung organisiert. (3) Kunden-Insolvenz bedeutet echten Forderungsausfall: offene Rechnungen werden als Verlust ausgebucht (sichtbar in der GuV) — Factoring hat damit einen realen Sinn. (4) Selbstfahrer zahlen Maut wie jeder andere LKW und tragen ein Grundrisiko auch ohne Skill-Lücke. (5) Fahrer-Risiko steigt stetig mit sinkender Motivation statt an einer unsichtbaren Klippe. (6) Wetter & Baustellen wirken jetzt wirklich: Umwege kosten Sprit, Unwetter erhöhen das Unfallrisiko auf der betroffenen Route. (7) Die IT-Sicherheits-Direktive senkt die Cyberangriff-Wahrscheinlichkeit tatsächlich (−90 %). (8) Lange verfallene vorgeplante Aufträge räumen sich aus der Warteschlange; der Diebstahl-Anwalt holt nur bei bestehender Deckung mehr heraus; Büroschäden skalieren mit der Betriebsgröße.')}\n        ${v("v2.74.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV-Details auch für Selbstfahrer vollständig</b> — Kraftstoff der eigenen Touren (inkl. Leerfahrt heim) und Reparaturen aus Selbstfahr-Zwischenfällen erscheinen jetzt in den GuV-Detailzeilen „Kraftstoff & Maut" und „Reparaturen" (die Summen stimmten bereits, die Aufschlüsselung zeigte 0).')}\n        ${v("v2.74.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Echte Buchhaltung: Abschreibung (AfA) und Umsatzsteuer (Audit Teil 5, „Paket D2")</b> — (1) Fahrzeugkäufe sind jetzt erfolgsneutral: Der Kaufpreis ist kein Sofort-Aufwand mehr, sondern aktiviert das Fahrzeug — abgeschrieben wird linear über 8 Jahre (15 % Restwert), als eigene GuV-Position „Abschreibungen". Kein künstlicher Riesen-Verlust mehr im Kaufmonat. (2) Beim Verkauf oder Diebstahl wird der Restbuchwert ausgebucht — die GuV zeigt den echten Buchgewinn oder -verlust. (3) 19 % Umsatzsteuer als durchlaufender Posten: Erlöse werden brutto vereinnahmt, vorsteuerfähige Ausgaben (Diesel, Maut, Reparaturen, Fahrzeuge, Verwaltung) brutto bezahlt, und am Monatsersten wird die Zahllast ans Finanzamt abgeführt — im Investitionsmonat gibt es wie real eine Vorsteuer-Erstattung. Der Gewinn bleibt davon unberührt, aber die Liquidität verhält sich wie im echten Unternehmen. (4) Bilanz-Buchwert jetzt konsistent linear zur AfA; der Markt-Wiederverkaufswert bleibt davon getrennt.')}\n        ${v("v2.73.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Wochenruhe wie im echten Fahrerleben (Audit Teil 4)</b> — Die gesetzliche 45-Stunden-Wochenruhe wird jetzt aufs Wochenende gelegt, wie es reale Disponenten planen: Sie blockiert effektiv einen Arbeitstag statt zwei — denn sonntags ruht der LKW wegen des Fahrverbots ohnehin. Ergebnis: spürbar mehr Touren pro Monat (+27 % gemessen) und mehr pünktliche Lieferungen, ohne die Lenk- und Ruhezeiten-Regeln aufzuweichen.')}\n        ${v("v2.72.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Reale Marktpreise & Durchsatz (Audit Teil 3): Frachtraten, Tagesleistung, Disposition und Pönalen wie in der echten Branche</b> — (1) Frachtraten auf reales Niveau (~2,10 €/km für Komplettladungen auf „mittel", Board und Frachtenbörse). (2) Reale Tagesleistung: kurze Anfahrt + Beladung passen in einen Tag (bis ~580 km Gesamtstrecke) — LKW schaffen spürbar mehr Touren. (3) Nachmittags-Disposition: heute frei gewordene LKW bekommen noch am selben Tag die nächste Ladung. (4) Disponenten verplanen maximal eine Folgetour pro LKW — keine wochenlangen Warteschlangen mehr, deutlich mehr pünktliche Lieferungen. (5) Verspätungs-Pönale gestaffelt wie in echten Verträgen (~8 % plus 6 % je Tag, Deckel 40 %) statt pauschal 40 %. (6) Kontrolldichte (Bußgelder) auf reales Maß reduziert. (7) Werkstattkosten kalibriert (~0,13 €/km Routine-Instandhaltung) und Pannen kosten Zustand in realistischem Umfang. Gemessen: Umsatz je LKW verzehnfacht, Erlös exakt im realen Korridor — der Aufbau einer profitablen Flotte bleibt eine echte unternehmerische Aufgabe (Auslastung, Verträge, Werkstatt, Compliance).')}\n        ${v("v2.71.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Exploit-Schließung (Audit Teil 2): Geld-Drucker abgeschaltet, Markt verhält sich realistisch</b> — (1) Leasing-Ende konsequent: Ein ausgelaufener Vertrag fährt nicht weiter und zählt nicht als Eigentum, bis Sie sich entscheiden; die Restwert-Übernahme wird sauber gebucht und der Buchwert ist der Übernahmepreis — der „Leasen→Übernehmen→Teuer-Verkaufen"-Trick ist Geschichte. (2) Reparaturkosten skalieren mit der Fahrzeugklasse (ein Sattelzug kostet in der Werkstatt real mehr als ein Transporter) und der Wiederverkaufswert hängt stärker an Alter und Laufleistung — „vor dem Verkauf billig hochreparieren" lohnt nicht mehr; mit eigener Werkstatt samt Meister bleibt Aufbereitung ein ehrliches, begrenztes Geschäft. (3) Händler-Verhandlungen: maximal 2 Runden, Schmerzgrenze ~12 %; Anhänger-Händler akzeptieren keine 70-%-Abschläge mehr. (4) Marketing-Kampagnen sind nicht mehr stapelbar. (5) Frachtraten-Aufschläge aus Ereignissen bauen sich realistisch wieder ab. (6) Einstellungen kosten Anwerbung/Ausstattung (HR-Abteilung senkt das wirklich). (7) Diesel-Lager/Kontrakte und LKW-Käufe erscheinen jetzt vollständig in GuV und Kontoauszug. (8) Disponenten-Rücksprachen verbrennen keine Tageskapazität mehr; Sofortstarts überholen weder Warteschlange noch Fahrer-Heimkehr.')}\n        ${v("v2.70.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Großes Korrektheits-Update (Audit Teil 1): Versicherung zahlt wirklich, Buchhaltung stimmt, keine Karteileichen</b> — (1) Diebstahl: Teil-/Vollkasko zahlen jetzt tatsächlich den Wiederbeschaffungswert minus Selbstbeteiligung aus (vorher wurde die Erstattung nur angezeigt); unversicherter Diebstahl wird nicht mehr doppelt belastet. (2) Frachtversicherung zahlte jede Entschädigung doppelt — behoben. (3) Betriebsversicherungen (Haftpflicht, Cyber, D&O …) kosten jetzt wirklich ihre Monatsprämie statt einmalig. (4) Schwere Unfälle werden sofort nach Versicherungslage reguliert — nicht mehr abhängig davon, welche Antwort Sie anklicken. (5) Kündigungen kosten genau einmal: regulär 2 Monatsgehälter Abfindung, fristlos (nach Abmahnungen) wie im echten Arbeitsrecht keine. (6) Fahrer ohne LKW oder zu Hause sammeln keine „Tage unterwegs" mehr — Ersatzfahrer verkümmern nicht mehr. (7) Auftrags-Storno räumt jetzt sauber auf: Anhänger wieder verfügbar, Karte zeigt keine Geistertour, LKW steht an plausibler Position. (8) Vorgeplante Aufträge berechnen die Anfahrt korrekt von der tatsächlichen LKW-Position. (9) Automatische Rückfracht respektiert Anhänger-Typ, Gefahrgut, Fahrer-Qualifikation und Genehmigungspflichten. (10) Hilfe/FAQ und Versicherungsanzeigen sagen jetzt überall die Wahrheit (Deckung, Diebstahl-Erstattung, Frachtenbörse ohne Tageslimit).')}\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
         ${v("v2.62.3", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Auftragsfilter „Nur machbare" wieder korrekt</b> — Der Filter zeigte auch Aufträge als machbar, die genau einen Tag zu spät fertig geworden wären (Off-by-one). Jetzt gelten nur Aufträge als machbar, die fristgerecht abgeschlossen werden können.')}
         ${v("v2.62.2", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Markteffekte verfliegen wieder & keine Entscheidungs-Staus</b> — (1) Markt-/Nachrichten-Effekte auf das Auftragsvolumen klingen jetzt über rund zwei Wochen wieder ab (vorher blieben sie dauerhaft und konnten das Volumen ohne erkennbare Ursache drücken). (2) Gleichartige Entscheidungen (gleicher Titel) werden nicht mehr doppelt eingereiht — das verhindert seltene Stau-Situationen, in denen sich das Spiel an gestapelten Dialogen verschluckte.')}
         ${v("v2.62.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Softlocks entschärft</b> — (1) Ein liegengebliebener LKW wird jetzt automatisch repariert, sobald du dir die Reparatur leisten kannst (vorher erst ab 1.500 € Kasse — günstigere Reparaturen blieben darunter hängen). (2) Wenn du keine LKW mehr hast, im Minus bist und das Kreditlimit ausgereizt ist, endet das Spiel jetzt sauber mit Insolvenz, statt in einer ausweglosen Hängepartie zu verharren.')}
