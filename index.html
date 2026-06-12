@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="build" content="v2.91.1 · Build 11.06.2026">
+<meta name="build" content="v2.92.0 · Build 11.06.2026">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Der Planer Ultimate · v2.91.1</title>
+<title>Der Planer Ultimate · v2.92.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E🚛%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -1581,7 +1581,7 @@ footer {
       <div style="font-size:11px; color:var(--muted2); margin-top:2px;">Deutsches Logistik-Simulationsspiel · Einzelspieler</div>
     </div>
     <div style="text-align:right;">
-      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.91.1</div>
+      <div id="menu-version" style="font-family:'JetBrains Mono'; font-size:20px; font-weight:700; color:var(--accent);">v2.92.0</div>
       <div style="font-size:10px; color:var(--muted);">Juni 2026</div>
     </div>
   </div>
@@ -1652,7 +1652,7 @@ footer {
 <div id="achievement-stack"></div>
 
 <script>
-const APP_VERSION = "v2.91.1";
+const APP_VERSION = "v2.92.0";
 const BUILD_DATE = "11.06.2026";
 const DATA = {
   locations: {
@@ -2668,7 +2668,7 @@ const DATA = {
       perKg: 0.18,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["plane", "koffer", "silo", "bdf_swap", "glider_box"],
     },
@@ -2680,7 +2680,7 @@ const DATA = {
       perKg: 0.17,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["plane", "koffer", "glider_box"],
     },
@@ -2788,7 +2788,7 @@ const DATA = {
       perKg: 0.18,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["plane", "koffer", "glider_box"],
     },
@@ -2824,7 +2824,7 @@ const DATA = {
       perKg: 0.45,
       hazard: false,
       urgency: 2,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["koffer", "mega"],
     },
@@ -2860,7 +2860,7 @@ const DATA = {
       perKg: 0.32,
       hazard: false,
       urgency: 3,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["koffer", "mega"],
     },
@@ -2872,7 +2872,7 @@ const DATA = {
       perKg: 0.28,
       hazard: false,
       urgency: 2,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["koffer", "plane"],
     },
@@ -2884,7 +2884,7 @@ const DATA = {
       perKg: 0.38,
       hazard: false,
       urgency: 2,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["koffer", "mega"],
     },
@@ -2932,7 +2932,7 @@ const DATA = {
       perKg: 0.15,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["plane", "glider_box"],
     },
@@ -2944,7 +2944,7 @@ const DATA = {
       perKg: 0.12,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["plane", "kipper"],
     },
@@ -2956,7 +2956,7 @@ const DATA = {
       perKg: 0.14,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["plane", "kipper"],
     },
@@ -3004,7 +3004,7 @@ const DATA = {
       perKg: 0.25,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["plane", "mega"],
     },
@@ -3467,7 +3467,7 @@ const DATA = {
       perKg: 0.13,
       hazard: false,
       urgency: 1,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["walking_floor", "plane"],
     },
@@ -3599,7 +3599,7 @@ const DATA = {
       perKg: 0.45,
       hazard: false,
       urgency: 2,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       requiresTrailer: ["koffer", "bdf_swap"],
     },
@@ -3867,6 +3867,162 @@ const DATA = {
       restrictions: ["animal_welfare_rules"],
       requiresTrailer: ["livestock", "plane"],
     },
+    {
+      id: "blumen_grossmarkt",
+      name: "Schnittblumen (Großmarkt)",
+      minWeight: 2,
+      maxWeight: 10,
+      perKg: 0.45,
+      hazard: false,
+      urgency: 3,
+      skill: 2,
+      restrictions: [],
+      requiresTrailer: ["kuehl"],
+      countries: ["NL"],
+    },
+    {
+      id: "kaese_export",
+      name: "Käse-Laibe (Export)",
+      minWeight: 4,
+      maxWeight: 16,
+      perKg: 0.32,
+      hazard: false,
+      urgency: 2,
+      skill: 2,
+      restrictions: [],
+      requiresTrailer: ["kuehl"],
+      countries: ["NL", "CH"],
+    },
+    {
+      id: "pils_export",
+      name: "Pils-Export (Fässer)",
+      minWeight: 8,
+      maxWeight: 22,
+      perKg: 0.18,
+      hazard: false,
+      urgency: 1,
+      skill: 2,
+      restrictions: [],
+      requiresTrailer: ["plane", "koffer", "glider_box"],
+      countries: ["CZ"],
+    },
+    {
+      id: "wein_chateau",
+      name: "Wein-Paletten (Château)",
+      minWeight: 5,
+      maxWeight: 18,
+      perKg: 0.28,
+      hazard: false,
+      urgency: 1,
+      skill: 2,
+      restrictions: [],
+      requiresTrailer: ["koffer", "plane"],
+      countries: ["FR", "IT"],
+    },
+    {
+      id: "moebel_flatpack",
+      name: "Möbel-Flatpacks",
+      minWeight: 5,
+      maxWeight: 20,
+      perKg: 0.2,
+      hazard: false,
+      urgency: 1,
+      skill: 1,
+      restrictions: [],
+      requiresTrailer: ["koffer", "plane", "mega"],
+      countries: ["DK", "SE"],
+    },
+    {
+      id: "steinkohle",
+      name: "Steinkohle (Schüttgut)",
+      minWeight: 15,
+      maxWeight: 27,
+      perKg: 0.09,
+      hazard: false,
+      urgency: 1,
+      skill: 3,
+      restrictions: [],
+      requiresTrailer: ["kipper", "walking_floor"],
+      countries: ["PL"],
+    },
+    {
+      id: "uhren_feinmechanik",
+      name: "Uhren & Feinmechanik",
+      minWeight: 1,
+      maxWeight: 6,
+      perKg: 1.4,
+      hazard: false,
+      urgency: 2,
+      skill: 3,
+      restrictions: [],
+      requiresTrailer: ["koffer"],
+      countries: ["CH"],
+    },
+    {
+      id: "oliven_suedfruechte",
+      name: "Oliven & Südfrüchte",
+      minWeight: 4,
+      maxWeight: 16,
+      perKg: 0.3,
+      hazard: false,
+      urgency: 2,
+      skill: 2,
+      restrictions: [],
+      requiresTrailer: ["kuehl"],
+      countries: ["IT"],
+    },
+    {
+      id: "frischfisch",
+      name: "Frischfisch (auf Eis)",
+      minWeight: 2,
+      maxWeight: 12,
+      perKg: 0.5,
+      hazard: false,
+      urgency: 3,
+      skill: 3,
+      restrictions: [],
+      requiresTrailer: ["kuehl"],
+      countries: ["DK"],
+    },
+    {
+      id: "porzellan_glas",
+      name: "Porzellan & Glaswaren",
+      minWeight: 2,
+      maxWeight: 10,
+      perKg: 0.55,
+      hazard: false,
+      urgency: 1,
+      skill: 2,
+      restrictions: [],
+      requiresTrailer: ["koffer"],
+      countries: ["CZ"],
+    },
+    {
+      id: "schokolade_suesswaren",
+      name: "Schokolade & Süßwaren",
+      minWeight: 3,
+      maxWeight: 14,
+      perKg: 0.35,
+      hazard: false,
+      urgency: 2,
+      skill: 2,
+      restrictions: [],
+      requiresTrailer: ["kuehl", "koffer"],
+      countries: ["CH", "BE"],
+    },
+    {
+      id: "tulpenzwiebeln",
+      name: "Tulpenzwiebeln (Saison)",
+      minWeight: 3,
+      maxWeight: 12,
+      perKg: 0.22,
+      hazard: false,
+      urgency: 1,
+      skill: 1,
+      restrictions: [],
+      requiresTrailer: ["plane", "koffer"],
+      countries: ["NL"],
+    },
   ],
   trailers: [
     {
@@ -3879,7 +4035,7 @@ const DATA = {
       length_m: 13.6,
       volume_m3: 90,
       maint: 0.7,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       enables: [],
       desc: "Universalauflieger mit Schiebeplane — für Paletten, Stahl, Möbel. Seitenbeladung möglich.",
@@ -3895,7 +4051,7 @@ const DATA = {
       length_m: 13.6,
       volume_m3: 85,
       maint: 0.8,
-      skill: 2,
+      skill: 1,
       restrictions: [],
       enables: ["Wertschutz", "witterungsgeschützt"],
       desc: "Vollständig geschlossener Auflieger — für Elektronik, hochwertige Güter und witterungsempfindliche Ware",
@@ -4412,6 +4568,71 @@ const DATA = {
     { name: "Kompakt Spedition", industry: "Logistik-Dienstleister" },
     { name: "Express24 AG", industry: "Logistik-Dienstleister" },
     { name: "Autoteile Nord", industry: "Automobilindustrie" },
+    { name: "Großmarkt Rheinland", industry: "Lebensmittelhandel" },
+    { name: "Brauerei Adlerbräu", industry: "Lebensmittelhandel" },
+    { name: "Molkerei Almgold", industry: "Lebensmittelhandel" },
+    { name: "Fleischwerke Berger", industry: "Lebensmittelhandel" },
+    { name: "Ziegelwerk Hartmann", industry: "Bauwirtschaft" },
+    { name: "Kieswerk Oberrhein", industry: "Bauwirtschaft" },
+    { name: "BauStoff Union", industry: "Bauwirtschaft" },
+    { name: "Betonwerk Maier", industry: "Bauwirtschaft" },
+    { name: "Präzisionstechnik Lang", industry: "Maschinenbau" },
+    { name: "Anlagenbau Krüger", industry: "Maschinenbau" },
+    { name: "HydroTech Systeme", industry: "Maschinenbau" },
+    { name: "Lacke & Farben Richter", industry: "Chemie & Pharma" },
+    { name: "MediSupply GmbH", industry: "Chemie & Pharma" },
+    { name: "ChemPlast Werke", industry: "Chemie & Pharma" },
+    { name: "Süddeutsche Motorenwerke", industry: "Automobilindustrie" },
+    { name: "Achsen & Antriebe AG", industry: "Automobilindustrie" },
+    { name: "ReifenDepot24", industry: "Automobilindustrie" },
+    { name: "Kaufhaus Brenner", industry: "Einzelhandel" },
+    { name: "MöbelMarkt XXL", industry: "Einzelhandel" },
+    { name: "ElektroLand Nord", industry: "Einzelhandel" },
+    { name: "ModeHaus Vogel", industry: "Einzelhandel" },
+    { name: "SpielwarenParadies", industry: "Einzelhandel" },
+    { name: "Textilwerke Lindemann", industry: "Textil & Mode" },
+    { name: "Agrarhandel Brandt", industry: "Landwirtschaft & Agrar" },
+    { name: "Raiffeisen Landhandel Ost", industry: "Landwirtschaft & Agrar" },
+    { name: "Gut Falkenhof", industry: "Landwirtschaft & Agrar" },
+    { name: "Geflügelhof Wessel", industry: "Landwirtschaft & Agrar" },
+    { name: "RecyclingWerk West", industry: "Entsorgung & Recycling" },
+    { name: "Rohstoffhandel Scholz", industry: "Entsorgung & Recycling" },
+    { name: "Containerdienst Krause", industry: "Entsorgung & Recycling" },
+    { name: "NordOel Energie", industry: "Energie & Kraftstoffe" },
+    { name: "SolarPark Logistik", industry: "Energie & Kraftstoffe" },
+    { name: "GNS Nuklear-Service GmbH", industry: "Nuklear-Entsorgung" },
+    { name: "BwLog Bundeswehr-Logistik", industry: "Verteidigung & Behörden" },
+    { name: "Universitätsklinikum Service", industry: "Öffentliche Hand & Gesundheit" },
+    { name: "Hansa Container Line", industry: "Häfen & Reedereien" },
+    { name: "Reederei Nordwind", industry: "Häfen & Reedereien" },
+    { name: "Auktionshaus Reinhardt", industry: "Kunst & Wertlogistik" },
+    { name: "Galerie & Depot München", industry: "Kunst & Wertlogistik" },
+    { name: "EuroTrans Logistics", industry: "Logistik-Dienstleister" },
+    { name: "Continental Cargo", industry: "Logistik-Dienstleister" },
+    { name: "Kopalnia Silesia", industry: "Energie & Kraftstoffe", country: "PL" },
+    { name: "Budmat Materiały", industry: "Bauwirtschaft", country: "PL" },
+    { name: "AgroPol Handel", industry: "Landwirtschaft & Agrar", country: "PL" },
+    { name: "Pivovar Staročech", industry: "Lebensmittelhandel", country: "CZ" },
+    { name: "Sklo a Porcelán Praha", industry: "Einzelhandel", country: "CZ" },
+    { name: "StrojTech Brno", industry: "Maschinenbau", country: "CZ" },
+    { name: "Alpenmilch Tirol", industry: "Lebensmittelhandel", country: "AT" },
+    { name: "Holzwerke Steiermark", industry: "Bauwirtschaft", country: "AT" },
+    { name: "Salzburg Pharma Handel", industry: "Chemie & Pharma", country: "AT" },
+    { name: "Vignobles Distribution", industry: "Lebensmittelhandel", country: "FR" },
+    { name: "Atelier Mécanique Lyon", industry: "Maschinenbau", country: "FR" },
+    { name: "Mode Paris Export", industry: "Textil & Mode", country: "FR" },
+    { name: "Bloemenveiling Holland", industry: "Landwirtschaft & Agrar", country: "NL" },
+    { name: "Kaashandel Van Dijk", industry: "Lebensmittelhandel", country: "NL" },
+    { name: "Rotterdam Port Services", industry: "Häfen & Reedereien", country: "NL" },
+    { name: "Olio & Frutta Sud", industry: "Lebensmittelhandel", country: "IT" },
+    { name: "Marmi & Ceramiche Verona", industry: "Bauwirtschaft", country: "IT" },
+    { name: "Moda Milano SpA", industry: "Textil & Mode", country: "IT" },
+    { name: "Uhrenmanufaktur Jura", industry: "Maschinenbau", country: "CH" },
+    { name: "Pharma Basel AG", industry: "Chemie & Pharma", country: "CH" },
+    { name: "Käserei Emmental Export", industry: "Lebensmittelhandel", country: "CH" },
+    { name: "Fiskeri Nordsø", industry: "Lebensmittelhandel", country: "DK" },
+    { name: "Møbel Design Aarhus", industry: "Einzelhandel", country: "DK" },
+    { name: "VindEnergi Service", industry: "Energie & Kraftstoffe", country: "DK" },
   ],
   marketingChannels: [
     { id: "local", name: "Lokale Anzeige", cost: 500, durationDays: 7, jobBoost: 1, repBoost: 0.5, reach: 0.2 },
@@ -13860,13 +14081,28 @@ const SpotMarket = {
   },
   _generateListing() {
     if (!MAP_DATA.cities || MAP_DATA.cities.length < 2) return null;
-    const cargo = Utils.pick(DATA.cargoTypes);
     const fromC = Utils.pick(MAP_DATA.cities);
     const candidates = MAP_DATA.cities.filter((c) => c.id !== fromC.id);
     if (!candidates.length) return null;
     const toC = Utils.pick(candidates);
     const km = RouteManager.roadKm(fromC.id, toC.id);
     if (km < 50) return null;
+    // v2.92: Skill-Matching wie in JobManager.generateOneJob — auch die Boerse
+    // spiegelt die Faehigkeiten der Flotte (60 % fahrbar, Rest Zufall als Anreiz).
+    // Laender-Frachten (Tulpen, Pils, Kohle …) erscheinen nur im passenden Land.
+    let _cargoPool = DATA.cargoTypes;
+    const _cc = void 0 !== JobManager && JobManager._cityCountry ? JobManager._cityCountry(fromC.id) : "DE";
+    _cargoPool = _cargoPool.filter((c) => !c.countries || c.countries.includes(_cc));
+    if (Math.random() < 0.35) {
+      const _locals = _cargoPool.filter((c) => c.countries && c.countries.includes(_cc));
+      if (_locals.length > 0) _cargoPool = _locals;
+    }
+    const _fs = void 0 !== JobManager && JobManager._fleetMaxSkill ? JobManager._fleetMaxSkill() : 5;
+    if (_fs < 5 && Math.random() < 0.6) {
+      const _drivable = _cargoPool.filter((c) => (c.skill || 2) <= _fs);
+      if (_drivable.length > 0) _cargoPool = _drivable;
+    }
+    const cargo = Utils.pick(_cargoPool);
     const weight = Utils.rand(cargo.minWeight || 1, cargo.maxWeight || 22);
     const loadFactor = cargo.maxWeight > 0 ? Math.min(1, weight / cargo.maxWeight) : 1;
     const cargoClass = Utils.clamp(Math.sqrt((cargo.perKg || 0.28) / 0.28), 0.75, 2.2);
@@ -14303,7 +14539,10 @@ const LaneManager = {
     if (!toCity || toCity === home) return { ok: false, reason: "Kunde sitzt am eigenen Standort — keine Pendel-Strecke." };
     const km = RouteManager.roadKm(home, toCity);
     if (!km || km < 80) return { ok: false, reason: "Strecke zu kurz fuer eine Pendel-Lane (min. 80 km)." };
-    const cargo = (DATA.cargoTypes || []).find((c) => !c.hazard && (!c.restrictions || 0 === c.restrictions.length) && (c.skill || 2) <= 2) || DATA.cargoTypes[0];
+    // v2.92: Lane-Fracht passt zur Branche des Kunden, keine Laender-Spezialitaet;
+    // zufaellige Wahl statt stur erstes Element (vorher pendelte JEDE Lane Mehl).
+    const _laneFit = (DATA.cargoTypes || []).filter((c) => !c.hazard && (!c.restrictions || 0 === c.restrictions.length) && (c.skill || 2) <= 2 && !c.countries && JobManager._indMatch(cust.industry, c.name));
+    const cargo = (_laneFit.length > 0 ? Utils.pick(_laneFit) : (DATA.cargoTypes || []).find((c) => !c.hazard && (!c.restrictions || 0 === c.restrictions.length) && (c.skill || 2) <= 2)) || DATA.cargoTypes[0];
     const lane = {
       id: Utils.uid("LN"),
       customerId: cust.id,
@@ -17141,6 +17380,25 @@ const GFOffice = {
     });
     if (void 0 === State.gfOffice.cargoInsurancePolicy) State.gfOffice.cargoInsurancePolicy = "none";
     if (void 0 === State.gfOffice._lastReadNewsDay) State.gfOffice._lastReadNewsDay = State.day || 0;
+    // v2.92: Anruf-Optionen sind Funktionen und ueberleben einen Spielstand-Load
+    // nicht (gleiche Natur wie pendingDecisions) — vorher blieb der Anruf als
+    // Datenleiche im Posteingang: "Annehmen" klickte ins Leere, der Eilauftrag
+    // entstand nie (Spieltest-Befund). Geladene Anrufe (ohne _live-Marker)
+    // verfallen ehrlich — ein Eilkunde wartet keinen Neustart ab.
+    const _stale = (State.gfOffice.callQueue || []).filter((c) => !c._live);
+    if (_stale.length > 0) {
+      State.gfOffice.callQueue = State.gfOffice.callQueue.filter((c) => c._live);
+      for (const c of _stale) {
+        State.gfOffice.callHistory.unshift({ ...c, dismissed: true });
+        if ("undefined" != typeof EventManager && EventManager.addNews) EventManager.addNews("info", `📞 Verpasster Anruf: ${c.caller} — ${c.subject} (inzwischen anderweitig vergeben)`);
+      }
+      if (State.gfOffice.callHistory.length > 50) State.gfOffice.callHistory.length = 50;
+    }
+    // Tote Aktions-Buttons geladener Posteingangs-Nachrichten entfernen — die
+    // Nachricht bleibt lesbar, nur nicht mehr ausfuehrbare Knoepfe verschwinden.
+    for (const m of State.gfOffice.inbox || []) {
+      if ((m.actions || []).some((a) => a && "function" != typeof a.action)) m.actions = [];
+    }
   },
   threshold(key) {
     this.init();
@@ -17215,6 +17473,9 @@ const GFOffice = {
       urgent: urgent,
       day: State.day,
     };
+    // v2.92: non-enumerable Marker — uebersteht den JSON-Save bewusst NICHT;
+    // init() erkennt geladene Anrufe daran und laesst sie ehrlich verfallen.
+    Object.defineProperty(call, "_live", { value: true, enumerable: false, configurable: true });
     State.gfOffice.callQueue.unshift(call);
     if (void 0 !== Notifier) Notifier.add(`📞 Eingehender Anruf: ${caller}`, urgent ? "error" : "warn");
     if ("undefined" !== typeof UI && UI._refreshZentraleIfActive) UI._refreshZentraleIfActive();
@@ -17337,7 +17598,7 @@ const GFOffice = {
   },
   _callBigCustomer() {
     const cityNames = ["München", "Hamburg", "Berlin", "Frankfurt a.M.", "Köln", "Stuttgart"];
-    const names = ["Schreiber Logistik", "Wagner Industrie", "Bauer & Partner", "Klein Automotive", "Hoffmann Handel"];
+    const names = ["Schreiber Logistik", "Wagner Großhandel", "Bauer & Partner", "Klein & Co. Handelskontor", "Hoffmann Handel"];
     const pickMapCity = () => {
       const n = Utils.pick(cityNames);
       return MAP_DATA.cities.find((c) => c.name === n) || Utils.pick(MAP_DATA.cities);
@@ -24367,6 +24628,69 @@ const JobManager = {
     const caps = (State.trucks || []).map((t) => FleetManager.effectiveCapacity(t)).filter((c) => c > 0);
     return caps.length > 0 ? Math.max(...caps) : 3.5;
   },
+  // ---- v2.92 Branchen-Logik: welche Branche verschickt welche Fracht? ----
+  // EINE Quelle fuer Auftragsliste, Lanen und Kundenakquise. Frachten, die in
+  // KEINER Branche stehen (Wechselbruecken, Moebelumzuege ...), vergeben nur
+  // Logistik-Dienstleister — Speditionen subkontraktieren real jede Warenart.
+  // Castor faehrt fuer die Nuklear-Entsorgung (real: GNS, die Gesellschaft der
+  // AKW-Betreiber — der Staat genehmigt, beauftragt aber nicht selbst).
+  INDUSTRY_CARGO: {
+    "Lebensmittelhandel": ["Paletten Mehl", "Getränkekisten", "Tiefkühlkost", "Frischgemüse", "Fleisch und Wurstwaren", "Milchprodukte", "Tiefkühl-Pizza", "Bier & Fässer", "Weinflaschen", "Backwaren (Großhandel)", "Konserven & Dosen", "Kaffee & Kakao (Säcke)", "Kartoffeln (Ernte)", "Weizen & Getreide", "Mehl (Silo-Fahrzeug)", "Käse-Laibe (Export)", "Pils-Export (Fässer)", "Wein-Paletten (Château)", "Oliven & Südfrüchte", "Frischfisch (auf Eis)", "Schokolade & Süßwaren"],
+    "Einzelhandel": ["Möbel & Einrichtung", "Kleidung & Textilien", "Elektronik (Konsumer)", "Haushaltsgeräte", "Spielzeug (Saison)", "Büromaterial", "Sportartikel", "Parfüm & Kosmetik", "E-Commerce Retouren", "Eilpakete (B2B)", "Sperrgut-Express", "Überseeware (gemischt)", "Getränkekisten", "Konserven & Dosen", "Backwaren (Großhandel)", "Möbel-Flatpacks", "Schnittblumen (Großmarkt)", "Schokolade & Süßwaren", "Tiefkühlkost", "Tiefkühl-Pizza", "Server-Racks & IT", "Porzellan & Glaswaren"],
+    "Bauwirtschaft": ["Stahlträger", "Bauholz & Paletten", "Ziegelsteine", "Baumaterial allgemein", "Dachdecker-Material", "Fliesen & Keramik", "Sanitäranlagen", "Isoliermaterial", "Kies & Splitt", "Bauschutt & Schutt", "Sand (Bauwirtschaft)", "Zement (Silo)", "Betonfertigteile", "Bagger & Radlader", "Krane & Hebezeug", "Glasscheiben (Sonder)", "Schwimmbad-Ausrüstung"],
+    "Maschinenbau": ["Maschinenteile allg.", "Werkzeugmaschinen", "Hydraulikteile", "Elektromotoren", "Kompressoren", "Gabelstapler", "Krane & Hebezeug", "Trafo-Schwertransport", "Windkraft-Turmsegment", "Industrieofen (Stahl)", "Stahlcoils", "Stahlträger", "Druckmaschinen", "Motorenblöcke", "Uhren & Feinmechanik"],
+    "Chemie & Pharma": ["Chemie (flüssig, ADR)", "Farben & Lacke (ADR)", "Pflanzenschutzmittel", "Säuren & Laugen", "Pharma-Sendung", "Medizinprodukte", "Impfstoffe (Kühlkette)", "Krankenhausbedarf", "Dialysegeräte & Technik", "Apotheken-Nachtlieferung", "Parfüm & Kosmetik", "Düngemittel (Granulat)"],
+    "Automobilindustrie": ["PKW-Sendung (Neuwagen)", "Motorräder & Roller", "Automotive-Teile (Mega)", "Fahrzeuggetriebe", "Reifen & Felgen (Palette)", "Motorenblöcke", "E-Auto Batteriesysteme"],
+    "Textil & Mode": ["Kleidung & Textilien", "Sportartikel", "Überseeware (gemischt)"],
+    "Landwirtschaft & Agrar": ["Weizen & Getreide", "Raps & Ölsaaten", "Zuckerrüben", "Düngemittel (Granulat)", "Kartoffeln (Ernte)", "Tierfutter (Silo)", "Rinder & Kälber", "Schweinetransport", "Geflügel (Lebend)", "Pferde (Turniertransport)", "Bienenstöcke & Imkerei", "Pflanzenschutzmittel", "Holzhackschnitzel", "Tulpenzwiebeln (Saison)", "Frischgemüse"],
+    "Entsorgung & Recycling": ["Recycling-Material", "Altpapier & Karton", "Bauschutt & Schutt"],
+    "Energie & Kraftstoffe": ["Diesel-Lieferung", "Benzin-Tankwagenzug", "Flüssiggas", "Solarmodule", "Windkraft-Turmsegment", "Holzhackschnitzel", "Steinkohle (Schüttgut)"],
+    "Nuklear-Entsorgung": ["Atomtransport (CASTOR)"],
+    "Verteidigung & Behörden": ["Militärgut (zivil)"],
+    "Öffentliche Hand & Gesundheit": ["Krankenhausbedarf", "Medizinprodukte", "Dialysegeräte & Technik", "Impfstoffe (Kühlkette)", "Apotheken-Nachtlieferung"],
+    "Häfen & Reedereien": ["Seecontainer 40ft", "Kühlcontainer (Reefer)", "Überseeware (gemischt)", "Hafen-Projekt-Ladung", "Yachten & Boote", "Frischfisch (auf Eis)"],
+    "Kunst & Wertlogistik": ["Kunstwerke & Antiquitäten", "Goldbarren & Münzen", "Messebau & Exponate", "Uhren & Feinmechanik"],
+  },
+  _indSets: null,
+  _indSet(industry) {
+    if (!this._indSets) {
+      this._indSets = {};
+      for (const [k, v] of Object.entries(this.INDUSTRY_CARGO)) this._indSets[k] = new Set(v);
+    }
+    return this._indSets[industry] || null;
+  },
+  // true = diese Branche darf diese Fracht beauftragen. Logistik-Dienstleister
+  // und unbekannte Branchen (Alt-Saves, Sonderfaelle) sind bewusst Joker.
+  _indMatch(industry, cargoName) {
+    if (!industry || "Logistik-Dienstleister" === industry) return true;
+    const s = this._indSet(industry);
+    return !s || s.has(cargoName);
+  },
+  _cityCountry(cityId) {
+    return (void 0 !== FuelHedging && FuelHedging.cityCountry ? FuelHedging.cityCountry(cityId) : "DE") || "DE";
+  },
+  // Passender Spot-Absender: Branche muss zur Fracht passen und die Firma sitzt
+  // im Land des Beladeorts (kein country-Feld = DE). Logistik-Dienstleister
+  // fahren laenderuebergreifend und sind der garantierte Fallback.
+  _companyFor(cargo, countryCode) {
+    const all = DATA.companyNames || [];
+    const fit = all.filter((co) => {
+      const isLog = "Logistik-Dienstleister" === co.industry;
+      if (!isLog && (co.country || "DE") !== countryCode) return false;
+      return this._indMatch(co.industry, cargo.name);
+    });
+    if (fit.length > 0) return Utils.pick(fit);
+    const logs = all.filter((co) => "Logistik-Dienstleister" === co.industry);
+    return Utils.pick(logs.length ? logs : all);
+  },
+  // v2.92: hoechste Fahrer-Stufe der Flotte inkl. GF (er kann selbst fahren).
+  // Kranke/Urlauber zaehlen mit — der Markt soll nicht kollabieren, weil der
+  // Profi drei Tage flach liegt.
+  _fleetMaxSkill() {
+    let m = void 0 !== PlayerManager && PlayerManager.gfSkillLevel ? PlayerManager.gfSkillLevel() : 1;
+    for (const s of State.staff || []) if ("driver" === s.roleId) m = Math.max(m, FleetManager.getDriverSkillLevel(s));
+    return m;
+  },
   generateOneJob() {
     let from, to, customer;
     const rep = State.reputation || 50;
@@ -24402,6 +24726,7 @@ const JobManager = {
     const fromC = MAP_DATA.cities.find((c) => c.id === from);
     const toC = MAP_DATA.cities.find((c) => c.id === to);
     const km = RouteManager.roadKm(from, to);
+    const fromCountry = this._cityCountry(from);
     const ownedTrailerTypes = State.trailers ? [...new Set(State.trailers.map((tr) => tr.typeId))] : [];
     let cargoPool = DATA.cargoTypes;
     if (ownedTrailerTypes.length > 0 && Math.random() < 0.7) {
@@ -24412,6 +24737,34 @@ const JobManager = {
           c.requiresTrailer.some((rt) => ownedTrailerTypes.includes(rt)),
       );
       if (matches.length > 0) cargoPool = matches;
+    }
+    // v2.92: Laender-Frachten — Spezialitaeten (Tulpen, Pils, Kohle …) gibt es nur,
+    // wenn der Beladeort im passenden Land liegt.
+    cargoPool = cargoPool.filter((c) => !c.countries || c.countries.includes(fromCountry));
+    // v2.92: Branchen-Logik — Stammkunden verschicken nur, was zu ihrer Branche passt
+    // (kein Maschinenbauer bestellt Backwaren). Logistik-Dienstleister und unbekannte
+    // Branchen (Alt-Saves) duerfen alles; leerer Schnitt -> Auftrag laeuft als Spot
+    // und bekommt unten einen passenden Absender.
+    if (customer && "spot" !== customer.id) {
+      const _ind = customer.industry || ((DATA.companyNames || []).find((co) => co.name === customer.name) || {}).industry;
+      if (_ind && "Logistik-Dienstleister" !== _ind) {
+        const _fit = cargoPool.filter((c) => this._indMatch(_ind, c.name));
+        if (_fit.length > 0) cargoPool = _fit;
+        else customer = { name: "", id: "spot", relationship: 50 };
+      }
+    }
+    // v2.92: Lokal-Bonus — zu 35 % faehrt eine Landes-Spezialitaet, wenn eine passt.
+    if (Math.random() < 0.35) {
+      const _locals = cargoPool.filter((c) => c.countries && c.countries.includes(fromCountry));
+      if (_locals.length > 0) cargoPool = _locals;
+    }
+    // v2.92: Skill-Matching (Spieltest-Befund "keine Stufe-1-Auftraege") — wie beim
+    // Gewichts-/Auflieger-Gate passt sich der Markt der Flotte an: 60 % der Auftraege
+    // sind mit der besten Fahrer-Stufe fahrbar, der Rest bleibt Zufall (Anreiz).
+    const fleetSkill = this._fleetMaxSkill();
+    if (fleetSkill < 5 && Math.random() < 0.6) {
+      const drivable = cargoPool.filter((c) => (c.skill || 2) <= fleetSkill);
+      if (drivable.length > 0) cargoPool = drivable;
     }
     let cargo = Utils.pick(cargoPool);
     let weight;
@@ -24426,6 +24779,8 @@ const JobManager = {
     } else {
       weight = cargo.minWeight + Math.random() * (cargo.maxWeight - cargo.minWeight);
     }
+    // v2.92: Spot-Absender passend zu Fracht UND Land des Beladeorts (statt Zufallsname)
+    if (customer && "spot" === customer.id) customer = { name: this._companyFor(cargo, fromCountry).name, id: "spot", relationship: 50 };
     const loadFactor = cargo.maxWeight > 0 ? Math.min(1, weight / cargo.maxWeight) : 1;
     const cargoClass = Utils.clamp(Math.sqrt(cargo.perKg / 0.28), 0.75, 2.2);
     const basePrice = 1.75 * km * Game.diffMod("price", 1) * (void 0 !== SeasonCalendar ? SeasonCalendar.priceMultiplier() : 1) * cargoClass * (0.85 + 0.15 * loadFactor);
@@ -26913,7 +27268,11 @@ const CustomerManager = {
     if (!c) return null;
     const used = new Set((State.customers || []).map((x) => x.name));
     const free = DATA.companyNames.filter((co) => !used.has(co.name));
-    const co = Utils.pick(free.length ? free : DATA.companyNames);
+    // v2.92: Firmen aus dem Land der Stadt bevorzugen (Logistiker gehen ueberall)
+    const _pool0 = free.length ? free : DATA.companyNames;
+    const _cc2 = void 0 !== JobManager && JobManager._cityCountry ? JobManager._cityCountry(c.id) : "DE";
+    const _local = _pool0.filter((co2) => (co2.country || "DE") === _cc2 || "Logistik-Dienstleister" === co2.industry);
+    const co = Utils.pick(_local.length > 0 ? _local : _pool0);
     return {
       id: Utils.uid("C"),
       name: co.name,
@@ -35109,7 +35468,7 @@ const UI = {
         section(
           "Häufige Fragen (FAQ)",
           "❓",
-          `\n        ${faq("Wie gewinne ich?", "Ziel ist <b>100% Bekanntheit</b> plus je nach Schwierigkeit Mindestwerte bei Reputation, Flotte und Standorten (Einfach: Rep 75 · 8 LKW · 2 Standorte — Mittel: 85 · 15 · 3 — Schwer: 90 · 25 · 5). Bekanntheit steigt durch pünktliche Lieferungen, Reputation, Marketing und Expansion. <b>Insolvenz</b> droht unter −50.000 € Kontostand — die Bank verrechnet vorher automatisch Ihr Tagesgeld gegen die Überziehung (Pfandrecht). Auch ohne −50.000 € ist Schluss, wenn Sie keinen LKW mehr haben und Kasse + restlicher Kreditrahmen keinen Neustart mehr hergeben.")}\n        ${faq("Warum nehmen meine LKW keine Aufträge an?", "Prüfen Sie: 1) Hat der LKW einen Fahrer? 2) Ist der Fahrer aktiv (nicht krank/Urlaub/Schulung)? 3) Passt die Kapazität? 4) Ist der LKW im Umbau (Tuning)? Im Fuhrpark sehen Sie den genauen Status.")}\n        ${faq("Mein Geld wird weniger obwohl ich Aufträge fahre — warum?", "Feste Kosten laufen täglich: Miete, Gehälter (monatlich), Versicherungen, Zinsen auf Schulden. Prüfen Sie unter Bilanz → Kosten welcher Bereich am meisten kostet. Oft sind es Gehälter bei zu vielen Mitarbeitern oder hohe Schuldzinsen.")}
+          `\n        ${faq("Wie gewinne ich?", "Ziel ist <b>100% Bekanntheit</b> plus je nach Schwierigkeit Mindestwerte bei Reputation, Flotte und Standorten (Einfach: Rep 75 · 8 LKW · 2 Standorte — Mittel: 85 · 15 · 3 — Schwer: 90 · 25 · 5). Bekanntheit steigt durch pünktliche Lieferungen, Reputation, Marketing und Expansion. <b>Insolvenz</b> droht unter −50.000 € Kontostand — die Bank verrechnet vorher automatisch Ihr Tagesgeld gegen die Überziehung (Pfandrecht). Auch ohne −50.000 € ist Schluss, wenn Sie keinen LKW mehr haben und Kasse + restlicher Kreditrahmen keinen Neustart mehr hergeben.")}\n        ${faq("Warum nehmen meine LKW keine Aufträge an?", "Prüfen Sie: 1) Hat der LKW einen Fahrer? 2) Ist der Fahrer aktiv (nicht krank/Urlaub/Schulung)? 3) Passt die Kapazität? 4) Ist der LKW im Umbau (Tuning)? 5) Reicht die <b>Erfahrungsstufe</b> des Fahrers? Berufseinsteiger (Stufe 1) fahren Standardware wie Paletten, Getränke, Baustoffe oder Retouren mit Standard-Auflieger (Plane/Koffer) — Spezialauflieger und anspruchsvollere Fracht verlangen erfahrene Fahrer. Der Markt richtet sich dabei nach Ihrer Flotte: Der Großteil der Angebote ist mit Ihrer besten Fahrer-Stufe (Sie selbst am Steuer zählen mit) fahrbar. Im Fuhrpark sehen Sie den genauen Status.")}\n        ${faq("Mein Geld wird weniger obwohl ich Aufträge fahre — warum?", "Feste Kosten laufen täglich: Miete, Gehälter (monatlich), Versicherungen, Zinsen auf Schulden. Prüfen Sie unter Bilanz → Kosten welcher Bereich am meisten kostet. Oft sind es Gehälter bei zu vielen Mitarbeitern oder hohe Schuldzinsen.")}
         ${faq("Was passiert mit überfälligen Rechnungen — und hilft mein Anwalt?", "Jede Lieferung wird zur <b>Forderung</b> mit Zahlungsziel je Kundenbeziehung (Premium-Kunde 7–14 Tage, Stammkunde 21–45, Neukunde 45–90, Spot 14–30). Ihre <b>Buchhaltung</b> entscheidet, wie das läuft: Ohne sie gehen Rechnungen ~3 Wochen später raus und ~10% der Forderungen fallen <b>endgültig aus</b>; voll besetzt fakturiert sie 3 Tage schneller, treibt Überfällige telefonisch ein, kassiert bei Verspätung die gesetzliche 40-€-Pauschale plus ~11% Verzugszins p.a. (§ 288 BGB) und drückt das Ausfallrisiko auf ~2%. Eine <b>Rechtsabteilung</b> senkt Ausfälle zusätzlich (×0,6), die <b>Mahnwesen-Direktive</b> nochmal — kostet aber monatlich Kundenbeziehung. In der <b>Rezession</b> kürzen klamme Kunden zusätzlich Rechnungen. Wer nicht warten will: <b>Factoring</b> verkauft Forderungen sofort gegen Gebühr.")}\n        ${faq("Was bringt ein Disponent?", "Ein Disponent nimmt automatisch passende Aufträge für freie LKW an — ohne dass Sie manuell eingreifen müssen. Außerdem reagiert er bei Fahrerkrankheit: Er sucht selbstständig einen Ersatzfahrer und weist ihn dem betroffenen LKW zu.")}\n        ${faq("Warum kann ich keinen Sattelauflieger an meinen Iveco Daily hängen?", "Der Iveco Daily ist ein Kleintransporter (3,5t) — er kann physisch keinen 25t-Auflieger ziehen. Für Sattelauflieger brauchen Sie eine Sattelzugmaschine (z.B. 4x2 oder 6x2). Für den Daily gibt es leichte Kastenanhänger (bis 3,5t) im Hänger-Markt.")}\n        ${faq("Was ist der Unterschied zwischen Teilkasko und Vollkasko?", "Teilkasko deckt Diebstahl, Glasbruch, Wildschaden. Vollkasko deckt zusätzlich selbstverschuldete Unfälle. Bei einem gestohlenen LKW erstatten beide den Wiederbeschaffungswert abzüglich Selbstbeteiligung (Teilkasko 800 €, Vollkasko 300 €). Haftpflicht allein deckt nur Fremdschäden — keinen Diebstahl, keinen Eigenschaden. Wichtig seit den <b>SF-Klassen</b>: Regulierte <b>Vollkasko-Unfälle</b> stufen Ihre Flotten-SF-Klasse zurück (Prämien steigen), Teilkasko-Schäden wie Diebstahl oder Glas sind SF-frei — genau wie im echten deutschen System.")}\n        ${faq("Wie sammle ich XP für Fahrer-Skills?", 'Fahrer sammeln automatisch XP bei jedem abgeschlossenen Auftrag: 5 Basis-XP + 1 XP pro 100 gefahrene km, plus 30% Bonus bei pünktlicher Lieferung. Bei 100–200 XP können Sie Tier-1-Skills in der Logistik-Zentrale unter „Fahrer-Skills" kaufen.')}\n        ${faq("Was ist Diesel-Hedging und wann lohnt es sich?", "Beim Diesel-Hedging kaufen Sie Kraftstoff auf Vorrat oder sichern sich über Kontrakte gegen Preissteigerungen ab. Lohnt sich ab ca. 3+ LKW wenn der Dieselpreis über 1,80 €/L steigt. NEU dort: <b>tagesaktuelle Länderpreise</b> (Polen, Tschechien und Österreich liegen wie in echt unter Deutschland) und die <b>Tank-Taktik</b> — auf Auslandstouren gezielt im Billigland volltanken (Tanktourismus), nach Bedarf tanken oder nur im Heimatland. Wirkt direkt auf die Tankkosten Ihrer Touren.")}\n        ${faq("Wie wechsle ich die Rechtsform?", "Unter ⚖️ Rechtsform & GF können Sie die Gesellschaftsform ändern. Als e.K. starten Sie — für beschränkte Haftung empfiehlt sich ab Tag 30 der Wechsel zur UG oder GmbH (25.000 € Mindestkapital). Das GF-Gehalt ist bei Kapitalgesellschaften steuerlich absetzbar.")}\n        ${faq("Was passiert wenn ein Fahrer krank wird?", "Der Disponent (falls vorhanden) reagiert automatisch und sucht einen freien Ersatzfahrer im Personalbestand. Gibt es keinen, bleibt der LKW stehen. Unter Personal sehen Sie auf jeder Mitarbeiterkarte den Krankheitsstatus und die verbleibenden Tage.")}\n        ${faq("Wie funktioniert die Frachtenbörse (Spot-Markt)?", "Die Frachtenbörse öffnet täglich von 8:00 bis 18:00 Uhr. Preise steigen wenn kaum Angebote da sind, sinken bei viel Konkurrenz; Skill-, Gefahrgut- und Auflagen-Fracht zahlt Zuschläge, gute Reputation öffnet teurere Listings. Sie können Spot-Aufträge unbegrenzt annehmen, solange die Börse geöffnet ist. Hochpreisige Güter erscheinen oft am Morgen — früh buchen lohnt sich. Achtung: Bei einem <b>IT-Systemausfall</b> (Risiko ohne IT-Personal ab 6 Fahrzeugen) bleiben Börse und automatische Disposition einen Tag offline.")}\n        ${faq("Wie eröffne ich eine Niederlassung?", "Im Betrieb-Tab unter Niederlassungen. Sie brauchen mindestens einen Manager als Niederlassungsleiter. Dieser stellt dann selbstständig Personal ein und managt die Filiale. Als GF sehen Sie monatliche Umsatz- und Gewinnberichte pro Standort.")}\n        ${faq("Was bedeutet die Spielgeschwindigkeit?", "1× = 1 Echtminute pro Spielstunde (ein Tag dauert ~48 Min. in Echtzeit). 2× = doppelt so schnell. Bis 32× für schnelles Vorspulen. Mit +1 Tag überspringen Sie sofort einen Tag. ⏸ pausiert das Spiel — nützlich zum Analysieren von Reports.")}\n        ${faq("Was sind Pendel-Lanen und wie bekomme ich eine?", "Eine <b>Pendel-Lane</b> ist ein Rahmenvertrag über eine feste Route: Hin-Tour im festen Takt zu fester Rate (leicht unter Spot-Niveau) und <b>85% garantierte Rückladung</b> zu 87% der Rate — der wirksamste Hebel gegen Leerfahrten. Abschluss im <b>Kundenportal</b> bei Stammkunden mit Beziehung ≥ 70% und mindestens 80 km Distanz, Laufzeit 120 Tage. Lane-Touren haben Vertragskunden-Priorität in der Disposition und dürfen als zweite Folgetour fest eingeplant werden. Aber: 3 verfallene Touren und der Kunde kündigt (Beziehung −10) — nur Lanen abschließen, die die Flotte auch schafft. Das Limit wächst mit dem Vertrieb (Basis 1, +1 je 2 Vertriebler, Rahmenvertrags-Fokus +2).")}\n        ${faq("Wie lege ich Geld an (Tagesgeld und Festgeld)?", "Unter <b>Finanzen → Kredite → Geldanlage</b>. Das <b>Tagesgeldkonto</b> ist täglich verfügbar und variabel verzinst (Leitzins − 0,65 Punkte), der Zins wird monatlich direkt dem Konto gutgeschrieben. <b>Festgeld</b> gibt es über 6/12/24 Monate — der Zins wird bei Abschluss festgeschrieben (Leitzins + 0,10/0,35/0,55). Der Leitzins folgt der Konjunktur wie der echte EZB-Einlagensatz: Rezession 0,75% bis Hochkonjunktur 3,25%. Wer im Boom langes Festgeld sichert, nimmt die hohen Zinsen mit in die Rezession. Vorzeitige Auflösung kostet den kompletten Zins. Rutscht die Kasse Richtung Insolvenz, verrechnet die Bank zuerst Ihr Tagesgeld (Pfandrecht) — gebundenes Festgeld rettet Sie dagegen nicht automatisch.")}\n        ${faq("Was ist die SF-Klasse und wie schone ich sie?", "Ihre Flottenpolice hat eine <b>Schadenfreiheitsklasse</b>: Jedes schadenfreie Versicherungsjahr stuft hoch — der Prämien-Rabatt wächst bis −45% (SF 8). Jeder <b>regulierte Vollkasko-Unfall</b> stuft um zwei Klassen zurück, bis in die Malus-Klasse (+30%). Teilkasko-Schäden (Diebstahl, Glas, Wild) sind SF-frei. Schonen heißt: Unfallrisiko senken — ruhige Fahrer, Assistenzsysteme, Defensiv-Kurs, gute Fahrzeugzustände. Den Stand sehen Sie im Versicherungs-Tab neben der Schadenquote.")}\n        ${faq("Warum dauert meine Reparatur mehrere Tage?", "Hof-Reparaturen brauchen echte <b>Werkstatt-Termine</b>: rund 1 Tag je 30 Zustandspunkte. Ohne eigene Werkstatt-Crew kommen +3 Tage Wartezeit dazu, unterbesetzt +1; volle Besetzung spart 1 Tag, die Schnell-Reparatur-Direktive noch einen — eine ausgebaute Werkstatt mit KFZ-Meister repariert kleinere Schäden also weiterhin am selben Tag UND bis zu 50% günstiger. Während des Termins ist das Fahrzeug nicht disponierbar (Flottenkarte zeigt den Fertigstellungstag). Pannenhilfe unterwegs bleibt mobiler Sofort-Service.")}\n        ${faq("Was bringen Abteilungs-Direktiven?", "Jede Abteilung mit <b>Abteilungsleiter</b> kann eine Direktive fahren (Zentrale → Abteilungen → Anweisung) — mit echten, messbaren Effekten und ehrlichen Trade-offs. Beispiele: <b>Eco-Routing</b> spart 8% Diesel, kostet 5% Tagesleistung · <b>Kosten-Audit</b> verhandelt Miete und Kfz-Prämien (−5%) · <b>Mahnwesen</b> beschleunigt Zahlungen, drückt aber die Kundenstimmung · <b>IT-Sicherheits-Modus</b> senkt das Cyber-Risiko um 90% · <b>Präventiv-Compliance</b> schickt ungeschulte Fahrer automatisch in den Defensiv-Kurs. Direktiven enden je nach Typ nach 60–120 Tagen oder laufen dauerhaft.")}\n        ${faq("Was bedeutet der ⭐ bei manchen Aufträgen?", "Premium-Aufträge: Mit voll besetztem Vertrieb holt Ihr Team bei ~15% der Direktaufträge bessere Konditionen heraus — <b>+25% Preis</b> bei einen Tag knapperer Frist. Gut bezahlte Arbeit für eine zuverlässige Flotte; riskant, wenn Ihre Touren ohnehin oft zu spät sind.")}\n        ${faq("Warum sehe ich beim Einstellen nur 2 Bewerber?", "Der Bewerberpool hängt an Ihrer Personalabteilung: ohne HR-Personal sehen Sie nur 2 Kandidaten, normal 3, mit laufender Einstellungs-Offensive 4. HR-Vollbesetzung und die Offensive heben außerdem die Qualität der Bewerber (Zuverlässigkeit, Pünktlichkeit, Motivation um 8–15%). Einstellen kostet seitdem auch real Anwerbung (halbes Monatsgehalt, mit HR günstiger).")}\n        ${faq("Was sind Fahrer-Anrufe und Unterwegs-Richtlinien?", "Auf Tour passiert das echte Speditionsleben: <b>Lenkzeit am Limit</b> kurz vorm Ziel, <b>Vollsperrungen</b> mit konkreter Ursache, stundenlanges Warten <b>an der Rampe</b> (Standgeld fordern?), <b>Bagatellschäden</b> (Polizei oder Daten austauschen?) und <b>Tankpreis-Taktik</b>. Maximal ein Anruf pro Tag, jede Option hat echte Folgen (Zeit, Geld, Fahrer-Stress, Kundenbeziehung, Bußgeldrisiko). Seit Welle 2 zusätzlich: <b>Annahmeverweigerung</b> (CMR-Weisung: einlagern, zurückführen, bei verderblicher Ware notverkaufen), <b>Überladung an der Waage</b>, <b>Kühlaggregat-Störung</b> (nur mit Kühlauflieger), <b>Übernachtungs-Parkplatz</b> mit Planenschlitzer-Risiko (nur mit Planenzug und wertvoller Ladung), <b>Beiladungs-Anfragen</b>, <b>private Notfälle der Fahrer</b> und <b>Grenz-/Zollstaus</b> auf Auslandsrouten. Unter <b>Zentrale → Automatik</b> setzen Sie für alle 12 Familien Richtlinien — mit aktivem Disponenten läuft Routine dann automatisch nach Ihrer Linie. Pannen und Staus haben außerdem konkrete Ursachen (defekter Turbolader, Gefahrgut-Unfall, Bauernprotest …) statt Einheitsmeldungen.")}\n        ${faq("Kann ich mit meinen Leuten richtig sprechen?", "Ja — Telefonate sind echte <b>Gespräche mit Verlauf</b>: Bei Fahrer-Anrufen auf Tour können Sie vor der Entscheidung <b>nachfragen</b> — zuverlässige Fahrer (Zuverlässigkeit ≥ 70%) nennen ehrliche Zahlen und Risiken, unzuverlässige beschönigen; wer seine Leute kennt, entscheidet besser. Nach der Entscheidung antwortet der Fahrer je nach Persönlichkeit, Motivation und Vorgeschichte. Aktiv ansprechen: <b>Zentrale-Übersicht („Direkter Draht“)</b>, <b>Telefon-Tab</b> oder <b>Personal-Karte (🗣 Gespräch)</b>. Die <b>Buchhaltung</b> nennt die echten überfälligen Forderungen und die Steuer-Schätzung zum Monatsende, der <b>Disponent</b> die Tageslage (Börse, freie LKW, Kapazität) und nimmt Richtlinien-Anweisungen an, der <b>Niederlassungsleiter</b> berichtet Filial-KPIs und Bedarf, und im <b>Fahrer-Einzelgespräch</b> gibt es Lob (nutzt sich bei Spam ab), Kritik (hilft nur bei wirklich Unzuverlässigen) und Gehaltsverhandlungen nach dem echten Gehaltswunsch. Die Richtlinien-Automatik bleibt: Wer nicht reden will, lässt den Disponenten entscheiden.")}\n      `,
         ) +
         section(
@@ -35184,7 +35543,7 @@ const UI = {
         section(
           "Kernbetrieb",
           "🏢",
-          `\n        ${sys("auftraege", "📦", "Aufträge", "100 Ladungstypen. Jeder Auftrag hat Startort, Ziel, Preis, Deadline, Gewicht und Cargo-Typ. Routenwahl (schnell/günstig/mautfrei) beeinflusst Kosten und Ankunftszeit.")}\n        ${sys("fuhrpark", "🚛", "Fuhrpark", "15 Fahrzeugklassen von Iveco Daily (3,5t) bis Modultransporter (120t). Kaufen, verkaufen, tunen. Jeder LKW hat Zustand, km-Stand, Versicherung und Lebenszeit-KPIs.")}\n        ${sys("anhaenger", "🚚", "Anhänger", "15 Typen. Sattelauflieger nur für Sattelzüge. Leichte Anhänger (bis 3,5t) für Vans. Kühlauflieger für Temperaturware, Kippmulde für Schüttgut etc.")}\n        ${sys("personal", "👷", "Personal", "20 Rollen. Fahrer mit Persönlichkeit, Fahrstil, Hobbies, Alter, Heimatort. Disponenten automatisieren die Jobvergabe. Buchhalter senken Steuern. Anwälte verbessern Verträge.")}\n        ${sys("routen", "🛣", "Routen", "Pathfinding über 110 europäische Städte in 25 Ländern. Drei Routenoptionen pro Auftrag. Maut, Staugefahr und Fahrzeit variieren je Route.")}\n      `,
+          `\n        ${sys("auftraege", "📦", "Aufträge", "112 Ladungstypen von Paletten bis CASTOR. Auftraggeber passen zu Branche und Land: Der Maschinenbauer verschickt Maschinenteile, die Prager Brauerei Pils — Länder-Spezialitäten (Tulpen, Steinkohle, Uhren …) erscheinen nur in ihrer Heimat. Routenwahl (schnell/günstig/mautfrei) beeinflusst Kosten und Ankunftszeit.")}\n        ${sys("fuhrpark", "🚛", "Fuhrpark", "15 Fahrzeugklassen von Iveco Daily (3,5t) bis Modultransporter (120t). Kaufen, verkaufen, tunen. Jeder LKW hat Zustand, km-Stand, Versicherung und Lebenszeit-KPIs.")}\n        ${sys("anhaenger", "🚚", "Anhänger", "15 Typen. Sattelauflieger nur für Sattelzüge. Leichte Anhänger (bis 3,5t) für Vans. Kühlauflieger für Temperaturware, Kippmulde für Schüttgut etc.")}\n        ${sys("personal", "👷", "Personal", "20 Rollen. Fahrer mit Persönlichkeit, Fahrstil, Hobbies, Alter, Heimatort. Disponenten automatisieren die Jobvergabe. Buchhalter senken Steuern. Anwälte verbessern Verträge.")}\n        ${sys("routen", "🛣", "Routen", "Pathfinding über 110 europäische Städte in 25 Ländern. Drei Routenoptionen pro Auftrag. Maut, Staugefahr und Fahrzeit variieren je Route.")}\n      `,
         ) +
         section(
           "Erweiterte Systeme",
@@ -35262,7 +35621,7 @@ const UI = {
     } else if ("log" === tab) {
       const v = (ver, date, changes) =>
         `\n        <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:10px;">\n          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">\n            <div style="font-family:'JetBrains Mono'; font-size:16px; font-weight:700; color:var(--accent);">${ver}</div>\n            <div style="font-size:10px; color:var(--muted);">${date}</div>\n          </div>\n          <div style="font-size:11px; line-height:1.9; color:var(--muted2);">${changes}</div>\n        </div>`;
-      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.91.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Haftpflicht-Realismus (Spieltest-Befund).</b> Der Vorfall „Stapler beschädigt Ware eines Kunden“ beim Haftpflichtschaden war doppelt schief: Beim Entladen an der Zielrampe ist nach § 412 HGB der <b>Empfänger</b> zuständig (sein Stapler, sein Risiko) — und Schäden am <b>Transportgut</b> wären ohnehin ein Fall der Frachtführer-Haftung (CMR), nicht der Betriebshaftpflicht (die deckt Drittschäden NEBEN dem Gut). Jetzt: Die Schadens-Variante ist ein echter Drittschaden (Mitnahmestapler rammt ein Regal mit eingelagerter Kundenware), und als Gegenstück gibt es ein neues Zustell-Ereignis: Der <b>Stapler des Empfängers</b> beschädigt die Ladung an der Zielrampe — seine Versicherung reguliert, Sie lesen nur die gute Nachricht (kein Kosten-Effekt, bewusst ohne Modal).')}\n        ${v("v2.91.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Gesprächs-System — Ihre Leute antworten jetzt wirklich.</b> <b>Tour-Anrufe als Gespräch:</b> Alle 12 Fahrer-Dilemmata laufen als Chat-Dialog mit Verlauf. Vor der Entscheidung können Sie <b>nachfragen</b>: Zuverlässige Fahrer (≥ 70%) nennen die ehrlichen Zahlen — echte Wartezeit-Chancen, Schadenshöhen, Kontroll- und Risiko-Quoten direkt aus der Spielmechanik —, unzuverlässige beschönigen die Lage. Nach der Entscheidung reagiert der Fahrer je nach Persönlichkeit, Motivation und Vorgeschichte; ein ignorierter Familien-Notfall hallt eine Woche nach (knappe Antworten). Richtlinien-Automatik, Laptop-Fernzugriff und alte Spielstände bleiben voll kompatibel. <b>Büro-Gespräche:</b> Die <b>Buchhaltung</b> nennt die echten Top-Überfälligen samt Ausfallquote und schätzt die Steuer nach der Monatsabschluss-Formel (inkl. Verlustvortrag und e.K.-Progression) — Mahnwesen- und Steuer-Direktive lassen sich direkt im Gespräch anweisen (braucht den Abteilungsleiter, wie in der Abteilungs-Ansicht). Der <b>Disponent</b> berichtet die Tageslage (Börse, Flotte, Dispo-Kapazität, offene Rücksprachen, TMS-Status) und nimmt Lenkzeit-/Stau-Anweisungen entgegen. Der <b>Niederlassungsleiter</b> liefert Monats-KPIs und Bedarfsanalyse seiner Filiale. Im <b>Fahrer-Einzelgespräch</b>: Lob (+Motivation, nutzt sich bei Spam ab), Kritik (verbessert nur wirklich unzuverlässige Fahrer — bei zu Unrecht Kritisierten kostet sie Loyalität) und Gehaltsverhandlung über den echten Gehaltswunsch (voll erfüllen, 5% anbieten oder ablehnen — Reaktion je Persönlichkeit). Einstiege: Zentrale-Übersicht („Direkter Draht“), Telefon-Tab und Personal-Karten (🗣).')}\n        ${v("v2.90.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Unterwegs-Paket Welle 2 — sieben weitere Situationen, in denen der Chef ran muss.</b> <b>Annahmeverweigerung:</b> Der Empfänger nimmt nicht an — nach CMR entscheiden Sie über Einlagern (90 % Fracht), Rückführung (volle Fracht, Tour verlängert) oder Notverkauf verderblicher Ware. <b>Überladung an der Waage:</b> umladen oder mit Bußgeldrisiko weiterfahren. <b>Kühlaggregat-Störung</b> (nur mit Kühlauflieger): Notdienst zahlen oder die Kühlkette riskieren — Frachtversicherung reguliert, wenn abgeschlossen. <b>Übernachtungs-Parkplatz</b> (nur Planenzug mit wertvoller Ladung): bewacht parken oder das Planenschlitzer-Risiko tragen. <b>Beiladungs-Anfragen</b> bringen Extraumsatz gegen Zeitrisiko. <b>Private Notfälle:</b> Fahrer heimschicken (kostet einen Tag, zahlt auf Loyalität ein) oder die Tour durchziehen lassen. <b>Grenz-/Zollstaus</b> auf Auslandsrouten — an der Schweizer Grenze mit echter Zollabfertigung. Alle 12 Ereignis-Familien haben Richtlinien im Automatik-Tab; der selbstfahrende Geschäftsführer bekommt Parkplatz-Wahl und Grenzstau ebenfalls zu spüren.')}\n        ${v("v2.89.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Länder-Dieselpreise & Tank-Taktik</b> (direkt aus der Speditions-Praxis: gezielt dort tanken, wo es günstig ist). Jedes Land hat jetzt einen tagesaktuellen Dieselpreis mit realen Niveaus — Polen, Tschechien und Österreich liegen unter Deutschland, Benelux, Italien und die Schweiz darüber. Unter Diesel-Hedging wählen Sie die Tank-Taktik: nach Bedarf entlang der Route, gezielt im günstigsten Land der Tour volltanken (Tanktourismus) oder nur im Heimatland — die Wahl wirkt direkt auf die echten Tankkosten jeder Tour (auch beim Vorratslager-Verbrauch und beim Tankstopp des selbstfahrenden Geschäftsführers). Außerdem: Planen-Ereignisse (gerissene Plane) treffen jetzt nur noch Züge, die tatsächlich einen Planenauflieger ziehen — Vorarbeit für die Planenschlitzer-Events aus Welle 2.')}\n        ${v("v2.88.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Unterwegs-Paket (Welle 1) — das Leben auf der Straße wird erlebbar.</b> Schluss mit Einheitsmeldungen: Pannen haben jetzt ein konkretes Defektteil (18 Varianten vom pfeifenden Turbolader bis zur heißgelaufenen Aufliegerbremse), Staus eine echte Ursache (10 Varianten: Gefahrgut-Unfall, Bauernprotest, Brückensperrung …) und das Wetter eine konkrete, saisonale Lage (8 Varianten von überfrierender Nässe bis Hitzewelle) — mit Anti-Wiederholungs-Gedächtnis. NEU für die Flotte: <b>Fahrer-Anrufe</b> — maximal ein echtes Dilemma pro Tag: Lenkzeit am Limit kurz vorm Ziel, Vollsperrung (umfahren oder aussitzen?), Standgeld an der Rampe (§ 412 HGB: Geld oder Kundenbeziehung?), Bagatellschaden (Polizei oder Daten tauschen?) und Tankpreis-Taktik. Jede Option hat echte Folgen in Zeit, Geld, Stress, Beziehung und Bußgeldrisiko. Dazu <b>Unterwegs-Richtlinien</b> im Automatik-Tab: Mit Disponent läuft Routine automatisch nach Ihrer Linie. Die Selbstfahrt des Geschäftsführers nutzt dieselben Kataloge und bekommt zwei neue Momente (Rampen-Standgeld, Bagatell-Unfall) plus echte Tankbeträge nach aktuellem Dieselpreis.')}\n        ${v("v2.87.0", "Juni 2026", '<span style="color:var(--accent2);">INFO:</span> <b>Hilfe-Bereich komplett auf den aktuellen Stand gebracht.</b> Die FAQ beschrieb teils noch Alt-Systeme (Mahnwesen, „max. 3 Spot-Buchungen") — korrigiert und um 7 neue Fragen erweitert (Pendel-Lanen, Geldanlage, SF-Klassen, Werkstatt-Termine, Direktiven, ⭐-Aufträge, Bewerberpool). Der Einstieg erklärt jetzt den echten Owner-Operator-Start (ein LKW, selbst fahren, €/Tag-Denken, Miet-Karenz). Die Systeme-Übersicht kennt 5 neue Spielsysteme mit Entdeckt-Status. Tipps mit echten Zahlen statt Schätzwerten (Kreditzinsen 4,5–9%, Buchhaltungs-Effekte) plus 5 neuen Strategien und 2 neuen Fehler-Warnungen. Das Glossar wächst von 10 auf 26 Begriffe — neu u. a. SF-Klasse, Kontokorrent, Tagesgeld/Festgeld, EZB-Leitzins, Verzugszins (§ 288 BGB), Factoring, AfA, Umsatzsteuer, Pönale, Lane/Backhaul, Leerfahrt, Lenk- &amp; Ruhezeiten (VO 561/2006), Kabotage — alle real korrekt erklärt, mit Spielbezug. Ab jetzt gilt: Jede spielersichtbare Änderung aktualisiert die Hilfe im selben Update.')}\n        ${v("v2.86.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Geldanlage — Tagesgeld und Festgeld zu realen Eurozonen-Konditionen</b> (Spieler-Wunsch). Rücklagen liegen nicht mehr zinslos herum: Das Rücklagenkonto ist jetzt ein <b>Tagesgeldkonto</b> (jederzeit ein-/auszahlen, Zins monatlich direkt aufs Konto), dazu <b>Festgeld</b> über 6/12/24 Monate mit bei Abschluss festgeschriebenem Zins — vorzeitige Auflösung kostet den kompletten Zins. Die Zinssätze folgen der Konjunktur wie der echte EZB-Leitzins (Stabilität: Tagesgeld ~1,35%, Festgeld 12M ~2,35% — reale 2025/26-Niveaus; im Boom deutlich mehr, in der Rezession fast nichts): Wer im Boom langes Festgeld sichert, betreibt echtes Zins-Timing. Zinserträge laufen als steuerpflichtiger Finanzertrag in die GuV, Anlagen stehen als Aktivposten in der Bilanz (Aktiva = Passiva bleibt exakt). Realistisches Detail: Rutscht die Kasse Richtung Insolvenz, verrechnet die Bank zuerst das Tagesgeld (Pfandrecht), bevor sie den Stecker zieht. Zu finden unter Finanzen → Kredite („Geldanlage").')}\n        ${v("v2.85.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz stimmt jetzt auch bei überzogener Kasse und gebildeten Rücklagen</b> (Spieltest-Befund: Kassenbestand negativ, Bilanz positiv). Drei Ursachen behoben: Eine Kontoüberziehung stand als negativer Kassenbestand in den AKTIVA — handelsrechtlich falsch; sie erscheint jetzt als „Kontokorrent (Überziehung)" auf der Passivseite, die Aktiv-Kasse zeigt 0. Das Rücklagenkonto (Jahresabschluss-Option „Rücklage bilden") floss ins Eigenkapital, fehlte aber auf der Aktivseite — die Bilanz ging exakt um die Rücklage nicht auf; es steht jetzt als eigener Aktivposten drin. Und: Die monatlichen Cash-Abbuchungen (Gehälter, Miete, Versicherung) aktualisierten eine offene Finanzen-Ansicht nicht — der Kopfzeilen-Kontostand tickte live ins Minus, während die Bilanz einen alten Stand zeigte. Aktiva = Passiva geht jetzt in jeder Lage exakt auf.')}\n        ${v("v2.85.0", "Juni 2026", '<span style="color:var(--accent2);">PERF:</span> <b>Abteilungs-Effekte gecacht (Spätspiel-Glättung).</b> Die zentrale Effekt-Berechnung der Abteilungen läuft seit der Direktiven-Aktivierung in vielen heißen Pfaden (Straßen-Events, Tourenabrechnung, Forderungen, Flottenkarten) — sie wird jetzt pro Spieltag zwischengespeichert und nur bei echten Änderungen (Personal, Direktiven, Fahrzeuge, Standorte) neu berechnet. Bei großen Flotten mit vielen Mitarbeitern spürbar flüssiger, identisches Verhalten.')}\n        ${v("v2.84.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Werkstatt-Termine — Reparaturen brauchen Zeit.</b> Hof-Reparaturen dauern jetzt echte Werkstatt-Tage (je 30 Zustandspunkte ein Tag): ohne eigene Werkstatt-Crew +3 Tage Wartezeit, unterbesetzt +1, voll besetzt −1, Schnell-Reparatur-Direktive −1 — eine voll ausgebaute Werkstatt mit Schnell-Modus schafft kleinere Reparaturen weiterhin am selben Tag. Während des Werkstatt-Aufenthalts ist das Fahrzeug nicht disponierbar (die Flottenkarte zeigt den Fertigstellungstag). Pannenhilfe unterwegs bleibt mobiler Sofort-Service. Damit lohnt sich die eigene Werkstatt doppelt (billiger UND schneller) und Dauerverschleiß kostet real Einsatzzeit statt nur Geld.')}\n        ${v("v2.83.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>SF-Klassen — Schadenfreiheitsrabatt nach deutschem Vorbild.</b> Die Flottenpolice hat jetzt eine firmenweite SF-Klasse: jedes schadenfreie Versicherungsjahr stuft hoch (Prämien-Rabatt wächst bis −45% bei SF 8), jeder regulierte Vollkasko-Unfall stuft um zwei Klassen zurück — bis in die Malus-Klasse (+30%). Wie im echten System stufen Teilkasko-Schäden (Diebstahl, Glas, Wildunfall) NICHT zurück. Damit wird die Vollkasko-Entscheidung dynamisch: wer viel crasht, zahlt doppelt — über Selbstbeteiligungen UND steigende Prämien. Der Versicherungs-Tab zeigt SF-Klasse, aktuellen Rabatt und die Vollkasko-Schäden des laufenden Jahres neben der Schadenquote.')}\n        ${v("v2.82.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Pendel-Lanen — Rahmenvertrags-Routen mit garantierter Rückfracht.</b> Mit Stammkunden (Beziehung ab 70%) lassen sich im Kundenportal feste Pendel-Lanen abschließen: Hin-Tour im festen Takt zu fester Rate (~1,90 €/km, leicht unter Spot-Niveau) und 85% garantierte Rückladung zu 87% der Rate — der reale Weg, die strukturellen ~50% Leerfahrten eines Spot-Einzel-LKW zu senken. Lane-Touren haben Vertragskunden-Priorität in der Disposition. Wer liefert, baut die Lane aus; wer Touren verfallen lässt, kassiert Strikes — nach drei Ausfällen kündigt der Kunde (Beziehung −10). Lane-Anzahl wächst mit dem Vertrieb (Basis 1, +1 je 2 Vertriebler, Rahmenvertrags-Fokus +2). Laufzeit 120 Tage.')}\n        ${v("v2.81.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Vertrieb, Recht &amp; IT wirken (Backlog B, Teil 5 — Abschluss der Direktiven-Aktivierung).</b> Die Wachstums-Offensive gewinnt echte Neukunden statt einer Schein-Meldung. Voller Vertrieb bringt Premium-Aufträge (⭐, +25% Preis, knappere Frist), der Rahmenvertrags-Fokus hebt das Vertrags-Limit und die Vertragsumsätze real (+15%). Die Vertragsoptimierung der Rechtsabteilung deckelt Verspätungs-Pönalen, SLA-Strafen und Entschädigungen (−20%); eine besetzte Rechtsabteilung senkt zusätzlich den Eigenanteil bei Unfall-Regulierungen. NEU: IT-Systemausfall — ab 6 Fahrzeugen ohne IT-Personal fällt das TMS gelegentlich aus (Disposition und Frachtenbörse einen Tag offline, 5%/Tag; IT-Sicherheits-Modus senkt das auf ein Drittel). Struktur-Fix: die Personalmangel-Mali von Recht und IT griffen nie (falsche Bedingung), die IT-Berichtsgenauigkeit war als Absolutwert in eine additive Rechnung geraten (volle IT hätte 180% angezeigt). Frachtenbörsen-Volumen folgt jetzt der echten Saison (toter SeasonalitySystem-Verweis ersetzt).')}\n        ${v("v2.80.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Fuhrpark &amp; Werkstatt wirken (Backlog B, Teil 4).</b> Eco-Routing senkt jetzt real die Tagesleistung (600 → 570 km beladen) — die Tagesleistung steckt neu in EINER zentralen Stelle und gilt identisch für Planung, Tourstart, Warteschlange, Rückfracht und alle Anzeigen. Die Auslastungs-Direktive senkt die Leer-Anfahrtskilometer um 15% (ohne Fuhrpark-Abteilung fallen +20% an) und kostet dafür etwas mehr Verschleiß. IT-Telematik spart real 4% Diesel auf allen Touren. Die Qualitäts-Werkstatt macht frisch reparierte Fahrzeuge 30 Tage lang 20% pannensicherer. Fuhrpark-Management skaliert die nutzbare Dispositions-Leistung (volle Abteilung +10%, ohne Personal −25%).')}\n        ${v("v2.79.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Buchhaltung wirkt aufs echte Forderungssystem (Backlog B, Teil 3).</b> Ohne Buchhaltung gehen Rechnungen jetzt ~3 Wochen später raus und ~10% der Forderungen fallen endgültig aus; volle Buchhaltung fakturiert 3 Tage schneller, treibt Überfällige telefonisch ein und kassiert bei Zahlungsverzug die gesetzliche 40-€-Pauschale plus ~11% Verzugszins p.a. (§ 288 BGB). Eine Rechtsabteilung senkt das Ausfallrisiko zusätzlich (×0,6). Die Mahnwesen-Direktive beschleunigt die Fakturierung und senkt Ausfälle, kostet aber monatlich Kundenbeziehung; das Kosten-Audit verhandelt real Miete und Kfz-Flottentarife (−5%); der Digitalisierungs-Sprint erhöht die Dispositions-Kapazität (+5%). Rezessions-Forderungsausfälle treffen jetzt das lebende Forderungssystem statt einer leeren Alt-Tabelle — Abschwung tut spürbar weh. Alle Ausfälle laufen als ordentlicher GuV-Aufwand (Wertberichtigung), Verzugszinsen als nicht-umsatzsteuerbarer Ertrag.')}\n        ${v("v2.78.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Personalabteilung wirkt (Backlog B, Teil 2 — HR).</b> Der Bewerberpool hängt jetzt an der HR-Arbeit: ohne Personalabteilung nur 2 Kandidaten, mit Einstellungs-Offensive ein vierter; HR-Vollbesetzung und Offensive heben Zuverlässigkeit, Pünktlichkeit und Motivation der Bewerber spürbar. Der Weiterbildungs-Fokus senkt Kurs- und Skill-Schulungskosten real um 20% und beschleunigt den XP-Gewinn (+5%) — ohne Personalabteilung kosten Kurse dagegen +30%. Die Präventiv-Compliance-Direktive schickt jeden Monat bis zu zwei ungeschulte Fahrer verbindlich in den Defensiv-Kurs (echte Kosten und Ausfalltage, danach dauerhaft −25% Unfallrisiko). Kurs- und Skillkosten laufen jetzt vollständig durch die Buchführung (GuV, Steuerbasis und Kontoauszug — vorher Kasse-direkt bzw. ohne Kontoauszug).')}\n        ${v("v2.77.0", "Juni 2026", '<span style="color:var(--accent2);">FIX:</span> <b>Abteilungs-Direktiven wirken jetzt wirklich (Backlog B, Teil 1).</b> Der Direktiven-Kern reichte etliche gesetzte Effekte nie an die Spielmechanik durch — der IT-Sicherheits-Modus (−90% Cyber-Risiko) blieb komplett wirkungslos, ebenso der Gehaltskosten-Aufschlag der Einstellungs-Offensive. Jetzt werden ALLE Direktiv-Effekte durchgereicht; die restlichen Mechanik-Anbindungen folgen in den nächsten Updates. Buchführung: Externe Werkstattaufträge zählen als Werkstatt-Umsatz in der GuV, Anwaltskosten der Rechtsverfolgung laufen über die ordentliche Buchung (vorher beides Kasse-direkt am Monatsbericht vorbei). Der Einstellungsstopp gibt keine Fantasie-Gutschrift mehr (+2.000€ ohne Gegenbuchung) — er spart real die Anwerbungskosten. Direktiven-Beschreibungen an die tatsächliche Mechanik angeglichen.')}\n        ${v("v2.76.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Letzte Audit-Reste: Frachtenbörse realistisch bepreist, saubere Spielenden, ehrliche Heimkehr</b> — (1) Spot-Aufträge berücksichtigen jetzt Qualifikation, Gefahrgut, Auflagen und Dieselpreis wie das Auftragsbuch — und respektieren denselben Reputations-Preisdeckel (keine Früh-Arbitrage mehr). (2) Selbstfahrer-Touren zählen in der Statistik (Aufträge + Kilometer). (3) Ohne LKW und ohne realistische Chance auf einen neuen (Kasse + Kreditrahmen unter 15.000 €) endet das Spiel sauber mit Insolvenz statt in einer ewigen Hängepartie. (4) Die Heimkehr vorausgeplanter Fahrer ist jetzt ehrlich: Leerfahrt-Sprit wird gebucht, der LKW steht danach wirklich an seiner Heimat-Niederlassung, und nach langen Einsätzen gilt auch hier die 45h-Wochenruhe.')}\n        ${v("v2.75.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realismus-Feinschliff (Audit Teil 6 — Abschluss des Audit-Programms)</b> — (1) EIN Kalender: Das LKW-Fahrverbot gilt jetzt am echten Kalender-Sonntag und an echten Feiertagen (vorher lief ein Parallel-Kalender, dessen „Sonntag" auf einen Werktag fiel). (2) BAG-Fahrverbot und Krankmeldungen stoppen jetzt auch laufende Touren — es wird sofort eine Vertretung organisiert. (3) Kunden-Insolvenz bedeutet echten Forderungsausfall: offene Rechnungen werden als Verlust ausgebucht (sichtbar in der GuV) — Factoring hat damit einen realen Sinn. (4) Selbstfahrer zahlen Maut wie jeder andere LKW und tragen ein Grundrisiko auch ohne Skill-Lücke. (5) Fahrer-Risiko steigt stetig mit sinkender Motivation statt an einer unsichtbaren Klippe. (6) Wetter & Baustellen wirken jetzt wirklich: Umwege kosten Sprit, Unwetter erhöhen das Unfallrisiko auf der betroffenen Route. (7) Die IT-Sicherheits-Direktive senkt die Cyberangriff-Wahrscheinlichkeit tatsächlich (−90 %). (8) Lange verfallene vorgeplante Aufträge räumen sich aus der Warteschlange; der Diebstahl-Anwalt holt nur bei bestehender Deckung mehr heraus; Büroschäden skalieren mit der Betriebsgröße.')}\n        ${v("v2.74.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV-Details auch für Selbstfahrer vollständig</b> — Kraftstoff der eigenen Touren (inkl. Leerfahrt heim) und Reparaturen aus Selbstfahr-Zwischenfällen erscheinen jetzt in den GuV-Detailzeilen „Kraftstoff & Maut" und „Reparaturen" (die Summen stimmten bereits, die Aufschlüsselung zeigte 0).')}\n        ${v("v2.74.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Echte Buchhaltung: Abschreibung (AfA) und Umsatzsteuer (Audit Teil 5, „Paket D2")</b> — (1) Fahrzeugkäufe sind jetzt erfolgsneutral: Der Kaufpreis ist kein Sofort-Aufwand mehr, sondern aktiviert das Fahrzeug — abgeschrieben wird linear über 8 Jahre (15 % Restwert), als eigene GuV-Position „Abschreibungen". Kein künstlicher Riesen-Verlust mehr im Kaufmonat. (2) Beim Verkauf oder Diebstahl wird der Restbuchwert ausgebucht — die GuV zeigt den echten Buchgewinn oder -verlust. (3) 19 % Umsatzsteuer als durchlaufender Posten: Erlöse werden brutto vereinnahmt, vorsteuerfähige Ausgaben (Diesel, Maut, Reparaturen, Fahrzeuge, Verwaltung) brutto bezahlt, und am Monatsersten wird die Zahllast ans Finanzamt abgeführt — im Investitionsmonat gibt es wie real eine Vorsteuer-Erstattung. Der Gewinn bleibt davon unberührt, aber die Liquidität verhält sich wie im echten Unternehmen. (4) Bilanz-Buchwert jetzt konsistent linear zur AfA; der Markt-Wiederverkaufswert bleibt davon getrennt.')}\n        ${v("v2.73.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Wochenruhe wie im echten Fahrerleben (Audit Teil 4)</b> — Die gesetzliche 45-Stunden-Wochenruhe wird jetzt aufs Wochenende gelegt, wie es reale Disponenten planen: Sie blockiert effektiv einen Arbeitstag statt zwei — denn sonntags ruht der LKW wegen des Fahrverbots ohnehin. Ergebnis: spürbar mehr Touren pro Monat (+27 % gemessen) und mehr pünktliche Lieferungen, ohne die Lenk- und Ruhezeiten-Regeln aufzuweichen.')}\n        ${v("v2.72.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Reale Marktpreise & Durchsatz (Audit Teil 3): Frachtraten, Tagesleistung, Disposition und Pönalen wie in der echten Branche</b> — (1) Frachtraten auf reales Niveau (~2,10 €/km für Komplettladungen auf „mittel", Board und Frachtenbörse). (2) Reale Tagesleistung: kurze Anfahrt + Beladung passen in einen Tag (bis ~580 km Gesamtstrecke) — LKW schaffen spürbar mehr Touren. (3) Nachmittags-Disposition: heute frei gewordene LKW bekommen noch am selben Tag die nächste Ladung. (4) Disponenten verplanen maximal eine Folgetour pro LKW — keine wochenlangen Warteschlangen mehr, deutlich mehr pünktliche Lieferungen. (5) Verspätungs-Pönale gestaffelt wie in echten Verträgen (~8 % plus 6 % je Tag, Deckel 40 %) statt pauschal 40 %. (6) Kontrolldichte (Bußgelder) auf reales Maß reduziert. (7) Werkstattkosten kalibriert (~0,13 €/km Routine-Instandhaltung) und Pannen kosten Zustand in realistischem Umfang. Gemessen: Umsatz je LKW verzehnfacht, Erlös exakt im realen Korridor — der Aufbau einer profitablen Flotte bleibt eine echte unternehmerische Aufgabe (Auslastung, Verträge, Werkstatt, Compliance).')}\n        ${v("v2.71.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Exploit-Schließung (Audit Teil 2): Geld-Drucker abgeschaltet, Markt verhält sich realistisch</b> — (1) Leasing-Ende konsequent: Ein ausgelaufener Vertrag fährt nicht weiter und zählt nicht als Eigentum, bis Sie sich entscheiden; die Restwert-Übernahme wird sauber gebucht und der Buchwert ist der Übernahmepreis — der „Leasen→Übernehmen→Teuer-Verkaufen"-Trick ist Geschichte. (2) Reparaturkosten skalieren mit der Fahrzeugklasse (ein Sattelzug kostet in der Werkstatt real mehr als ein Transporter) und der Wiederverkaufswert hängt stärker an Alter und Laufleistung — „vor dem Verkauf billig hochreparieren" lohnt nicht mehr; mit eigener Werkstatt samt Meister bleibt Aufbereitung ein ehrliches, begrenztes Geschäft. (3) Händler-Verhandlungen: maximal 2 Runden, Schmerzgrenze ~12 %; Anhänger-Händler akzeptieren keine 70-%-Abschläge mehr. (4) Marketing-Kampagnen sind nicht mehr stapelbar. (5) Frachtraten-Aufschläge aus Ereignissen bauen sich realistisch wieder ab. (6) Einstellungen kosten Anwerbung/Ausstattung (HR-Abteilung senkt das wirklich). (7) Diesel-Lager/Kontrakte und LKW-Käufe erscheinen jetzt vollständig in GuV und Kontoauszug. (8) Disponenten-Rücksprachen verbrennen keine Tageskapazität mehr; Sofortstarts überholen weder Warteschlange noch Fahrer-Heimkehr.')}\n        ${v("v2.70.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Großes Korrektheits-Update (Audit Teil 1): Versicherung zahlt wirklich, Buchhaltung stimmt, keine Karteileichen</b> — (1) Diebstahl: Teil-/Vollkasko zahlen jetzt tatsächlich den Wiederbeschaffungswert minus Selbstbeteiligung aus (vorher wurde die Erstattung nur angezeigt); unversicherter Diebstahl wird nicht mehr doppelt belastet. (2) Frachtversicherung zahlte jede Entschädigung doppelt — behoben. (3) Betriebsversicherungen (Haftpflicht, Cyber, D&O …) kosten jetzt wirklich ihre Monatsprämie statt einmalig. (4) Schwere Unfälle werden sofort nach Versicherungslage reguliert — nicht mehr abhängig davon, welche Antwort Sie anklicken. (5) Kündigungen kosten genau einmal: regulär 2 Monatsgehälter Abfindung, fristlos (nach Abmahnungen) wie im echten Arbeitsrecht keine. (6) Fahrer ohne LKW oder zu Hause sammeln keine „Tage unterwegs" mehr — Ersatzfahrer verkümmern nicht mehr. (7) Auftrags-Storno räumt jetzt sauber auf: Anhänger wieder verfügbar, Karte zeigt keine Geistertour, LKW steht an plausibler Position. (8) Vorgeplante Aufträge berechnen die Anfahrt korrekt von der tatsächlichen LKW-Position. (9) Automatische Rückfracht respektiert Anhänger-Typ, Gefahrgut, Fahrer-Qualifikation und Genehmigungspflichten. (10) Hilfe/FAQ und Versicherungsanzeigen sagen jetzt überall die Wahrheit (Deckung, Diebstahl-Erstattung, Frachtenbörse ohne Tageslimit).')}\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
+      el.innerHTML = `\n        <div style="font-size:11px; color:var(--muted2); margin-bottom:12px;">\n          Alle Änderungen seit dem ersten Release — neueste Version zuerst.\n        </div>\n        ${v("v2.92.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Einsteiger-Frachten + Skill-Matching (Spieltest-Befund).</b> Bisher gab es im ganzen Spiel <b>keine einzige Stufe-1-Fracht</b> — ein frisch eingestellter Berufseinsteiger konnte buchstäblich nichts fahren. Jetzt: 13 echte Standardfrachten (Paletten, Getränkekisten, Konserven, Bauholz/Leergut, Baustoffe, Ziegel, Textilien, Büromaterial, Spielzeug, Sportartikel, Isoliermaterial, Altpapier, E-Commerce-Retouren) sind Stufe 1 — wie in der Realität, wo Einsteiger palettierte Trockenware fahren und erst Gefahrgut, Schwerlast und Spezialfracht Erfahrung verlangen. Preisneutral: Der Skill-Zuschlag der Preisformel beginnt erst ab Stufe 3. Auch die Standard-Auflieger sind jetzt Einsteiger-tauglich: Planen- und Kofferauflieger verlangen Stufe 1 (ein frischer CE-Fahrer fährt real selbstverständlich Standard-Sattelzüge) — Kühl-, Tank-, Kipper-, Tieflader- und andere Spezialauflieger verlangen weiterhin Erfahrung. Zusätzlich richtet sich der Markt jetzt nach der Flotte: 60 % der neuen Aufträge UND Börsen-Angebote sind mit der besten Fahrer-Stufe fahrbar (der GF am Steuer zählt mit), der Rest bleibt Zufall — höherwertige Fracht bleibt als Anreiz sichtbar. Gleiches Muster wie die bestehende Gewichts-/Auflieger-Anpassung des Markts. <b>Branchen + Länder:</b> Auftraggeber passen jetzt zur Ware — der Firmenpool wächst von 20 auf 85 Firmen in 15 Branchen (neu u. a. Landwirtschaft, Entsorgung, Energie, Häfen, Kunst/Wertlogistik, öffentliche Hand — und die GNS Nuklear-Service als realistischer CASTOR-Auftraggeber: real beauftragt die Gesellschaft der AKW-Betreiber, der Staat genehmigt nur). Stammkunden verschicken nur Fracht ihrer Branche, Spot-Aufträge bekommen einen Absender passend zu Ware UND Land des Beladeorts (25 Auslandsfirmen für PL/CZ/AT/FR/NL/IT/CH/DK), Speditionen bleiben der Alles-Joker. Dazu 12 neue Länder-Spezialitäten (Schnittblumen ab NL, Pils ab CZ, Steinkohle ab PL, Uhren ab CH, Frischfisch ab DK …), die nur in ihrer Heimat beladen werden. Pendel-Lanen wählen ihre Fracht ebenfalls branchengerecht — und abwechslungsreich statt immer Mehl-Paletten. <b>Bugfix Eilaufträge:</b> Ein Anruf, der vor einem Speichern/Laden in der Leitung wartete, blieb als Datenleiche liegen — „Annehmen“ klickte ins Leere und der Eilauftrag entstand nie. Jetzt verfallen solche Anrufe beim Laden ehrlich („Verpasster Anruf“ in den Ereignissen — der Kunde hat anderweitig vergeben), und tote Aktions-Knöpfe geladener Posteingangs-Nachrichten werden bereinigt.')}\n        ${v("v2.91.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Haftpflicht-Realismus (Spieltest-Befund).</b> Der Vorfall „Stapler beschädigt Ware eines Kunden“ beim Haftpflichtschaden war doppelt schief: Beim Entladen an der Zielrampe ist nach § 412 HGB der <b>Empfänger</b> zuständig (sein Stapler, sein Risiko) — und Schäden am <b>Transportgut</b> wären ohnehin ein Fall der Frachtführer-Haftung (CMR), nicht der Betriebshaftpflicht (die deckt Drittschäden NEBEN dem Gut). Jetzt: Die Schadens-Variante ist ein echter Drittschaden (Mitnahmestapler rammt ein Regal mit eingelagerter Kundenware), und als Gegenstück gibt es ein neues Zustell-Ereignis: Der <b>Stapler des Empfängers</b> beschädigt die Ladung an der Zielrampe — seine Versicherung reguliert, Sie lesen nur die gute Nachricht (kein Kosten-Effekt, bewusst ohne Modal).')}\n        ${v("v2.91.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Gesprächs-System — Ihre Leute antworten jetzt wirklich.</b> <b>Tour-Anrufe als Gespräch:</b> Alle 12 Fahrer-Dilemmata laufen als Chat-Dialog mit Verlauf. Vor der Entscheidung können Sie <b>nachfragen</b>: Zuverlässige Fahrer (≥ 70%) nennen die ehrlichen Zahlen — echte Wartezeit-Chancen, Schadenshöhen, Kontroll- und Risiko-Quoten direkt aus der Spielmechanik —, unzuverlässige beschönigen die Lage. Nach der Entscheidung reagiert der Fahrer je nach Persönlichkeit, Motivation und Vorgeschichte; ein ignorierter Familien-Notfall hallt eine Woche nach (knappe Antworten). Richtlinien-Automatik, Laptop-Fernzugriff und alte Spielstände bleiben voll kompatibel. <b>Büro-Gespräche:</b> Die <b>Buchhaltung</b> nennt die echten Top-Überfälligen samt Ausfallquote und schätzt die Steuer nach der Monatsabschluss-Formel (inkl. Verlustvortrag und e.K.-Progression) — Mahnwesen- und Steuer-Direktive lassen sich direkt im Gespräch anweisen (braucht den Abteilungsleiter, wie in der Abteilungs-Ansicht). Der <b>Disponent</b> berichtet die Tageslage (Börse, Flotte, Dispo-Kapazität, offene Rücksprachen, TMS-Status) und nimmt Lenkzeit-/Stau-Anweisungen entgegen. Der <b>Niederlassungsleiter</b> liefert Monats-KPIs und Bedarfsanalyse seiner Filiale. Im <b>Fahrer-Einzelgespräch</b>: Lob (+Motivation, nutzt sich bei Spam ab), Kritik (verbessert nur wirklich unzuverlässige Fahrer — bei zu Unrecht Kritisierten kostet sie Loyalität) und Gehaltsverhandlung über den echten Gehaltswunsch (voll erfüllen, 5% anbieten oder ablehnen — Reaktion je Persönlichkeit). Einstiege: Zentrale-Übersicht („Direkter Draht“), Telefon-Tab und Personal-Karten (🗣).')}\n        ${v("v2.90.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Unterwegs-Paket Welle 2 — sieben weitere Situationen, in denen der Chef ran muss.</b> <b>Annahmeverweigerung:</b> Der Empfänger nimmt nicht an — nach CMR entscheiden Sie über Einlagern (90 % Fracht), Rückführung (volle Fracht, Tour verlängert) oder Notverkauf verderblicher Ware. <b>Überladung an der Waage:</b> umladen oder mit Bußgeldrisiko weiterfahren. <b>Kühlaggregat-Störung</b> (nur mit Kühlauflieger): Notdienst zahlen oder die Kühlkette riskieren — Frachtversicherung reguliert, wenn abgeschlossen. <b>Übernachtungs-Parkplatz</b> (nur Planenzug mit wertvoller Ladung): bewacht parken oder das Planenschlitzer-Risiko tragen. <b>Beiladungs-Anfragen</b> bringen Extraumsatz gegen Zeitrisiko. <b>Private Notfälle:</b> Fahrer heimschicken (kostet einen Tag, zahlt auf Loyalität ein) oder die Tour durchziehen lassen. <b>Grenz-/Zollstaus</b> auf Auslandsrouten — an der Schweizer Grenze mit echter Zollabfertigung. Alle 12 Ereignis-Familien haben Richtlinien im Automatik-Tab; der selbstfahrende Geschäftsführer bekommt Parkplatz-Wahl und Grenzstau ebenfalls zu spüren.')}\n        ${v("v2.89.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Länder-Dieselpreise & Tank-Taktik</b> (direkt aus der Speditions-Praxis: gezielt dort tanken, wo es günstig ist). Jedes Land hat jetzt einen tagesaktuellen Dieselpreis mit realen Niveaus — Polen, Tschechien und Österreich liegen unter Deutschland, Benelux, Italien und die Schweiz darüber. Unter Diesel-Hedging wählen Sie die Tank-Taktik: nach Bedarf entlang der Route, gezielt im günstigsten Land der Tour volltanken (Tanktourismus) oder nur im Heimatland — die Wahl wirkt direkt auf die echten Tankkosten jeder Tour (auch beim Vorratslager-Verbrauch und beim Tankstopp des selbstfahrenden Geschäftsführers). Außerdem: Planen-Ereignisse (gerissene Plane) treffen jetzt nur noch Züge, die tatsächlich einen Planenauflieger ziehen — Vorarbeit für die Planenschlitzer-Events aus Welle 2.')}\n        ${v("v2.88.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Unterwegs-Paket (Welle 1) — das Leben auf der Straße wird erlebbar.</b> Schluss mit Einheitsmeldungen: Pannen haben jetzt ein konkretes Defektteil (18 Varianten vom pfeifenden Turbolader bis zur heißgelaufenen Aufliegerbremse), Staus eine echte Ursache (10 Varianten: Gefahrgut-Unfall, Bauernprotest, Brückensperrung …) und das Wetter eine konkrete, saisonale Lage (8 Varianten von überfrierender Nässe bis Hitzewelle) — mit Anti-Wiederholungs-Gedächtnis. NEU für die Flotte: <b>Fahrer-Anrufe</b> — maximal ein echtes Dilemma pro Tag: Lenkzeit am Limit kurz vorm Ziel, Vollsperrung (umfahren oder aussitzen?), Standgeld an der Rampe (§ 412 HGB: Geld oder Kundenbeziehung?), Bagatellschaden (Polizei oder Daten tauschen?) und Tankpreis-Taktik. Jede Option hat echte Folgen in Zeit, Geld, Stress, Beziehung und Bußgeldrisiko. Dazu <b>Unterwegs-Richtlinien</b> im Automatik-Tab: Mit Disponent läuft Routine automatisch nach Ihrer Linie. Die Selbstfahrt des Geschäftsführers nutzt dieselben Kataloge und bekommt zwei neue Momente (Rampen-Standgeld, Bagatell-Unfall) plus echte Tankbeträge nach aktuellem Dieselpreis.')}\n        ${v("v2.87.0", "Juni 2026", '<span style="color:var(--accent2);">INFO:</span> <b>Hilfe-Bereich komplett auf den aktuellen Stand gebracht.</b> Die FAQ beschrieb teils noch Alt-Systeme (Mahnwesen, „max. 3 Spot-Buchungen") — korrigiert und um 7 neue Fragen erweitert (Pendel-Lanen, Geldanlage, SF-Klassen, Werkstatt-Termine, Direktiven, ⭐-Aufträge, Bewerberpool). Der Einstieg erklärt jetzt den echten Owner-Operator-Start (ein LKW, selbst fahren, €/Tag-Denken, Miet-Karenz). Die Systeme-Übersicht kennt 5 neue Spielsysteme mit Entdeckt-Status. Tipps mit echten Zahlen statt Schätzwerten (Kreditzinsen 4,5–9%, Buchhaltungs-Effekte) plus 5 neuen Strategien und 2 neuen Fehler-Warnungen. Das Glossar wächst von 10 auf 26 Begriffe — neu u. a. SF-Klasse, Kontokorrent, Tagesgeld/Festgeld, EZB-Leitzins, Verzugszins (§ 288 BGB), Factoring, AfA, Umsatzsteuer, Pönale, Lane/Backhaul, Leerfahrt, Lenk- &amp; Ruhezeiten (VO 561/2006), Kabotage — alle real korrekt erklärt, mit Spielbezug. Ab jetzt gilt: Jede spielersichtbare Änderung aktualisiert die Hilfe im selben Update.')}\n        ${v("v2.86.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Geldanlage — Tagesgeld und Festgeld zu realen Eurozonen-Konditionen</b> (Spieler-Wunsch). Rücklagen liegen nicht mehr zinslos herum: Das Rücklagenkonto ist jetzt ein <b>Tagesgeldkonto</b> (jederzeit ein-/auszahlen, Zins monatlich direkt aufs Konto), dazu <b>Festgeld</b> über 6/12/24 Monate mit bei Abschluss festgeschriebenem Zins — vorzeitige Auflösung kostet den kompletten Zins. Die Zinssätze folgen der Konjunktur wie der echte EZB-Leitzins (Stabilität: Tagesgeld ~1,35%, Festgeld 12M ~2,35% — reale 2025/26-Niveaus; im Boom deutlich mehr, in der Rezession fast nichts): Wer im Boom langes Festgeld sichert, betreibt echtes Zins-Timing. Zinserträge laufen als steuerpflichtiger Finanzertrag in die GuV, Anlagen stehen als Aktivposten in der Bilanz (Aktiva = Passiva bleibt exakt). Realistisches Detail: Rutscht die Kasse Richtung Insolvenz, verrechnet die Bank zuerst das Tagesgeld (Pfandrecht), bevor sie den Stecker zieht. Zu finden unter Finanzen → Kredite („Geldanlage").')}\n        ${v("v2.85.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz stimmt jetzt auch bei überzogener Kasse und gebildeten Rücklagen</b> (Spieltest-Befund: Kassenbestand negativ, Bilanz positiv). Drei Ursachen behoben: Eine Kontoüberziehung stand als negativer Kassenbestand in den AKTIVA — handelsrechtlich falsch; sie erscheint jetzt als „Kontokorrent (Überziehung)" auf der Passivseite, die Aktiv-Kasse zeigt 0. Das Rücklagenkonto (Jahresabschluss-Option „Rücklage bilden") floss ins Eigenkapital, fehlte aber auf der Aktivseite — die Bilanz ging exakt um die Rücklage nicht auf; es steht jetzt als eigener Aktivposten drin. Und: Die monatlichen Cash-Abbuchungen (Gehälter, Miete, Versicherung) aktualisierten eine offene Finanzen-Ansicht nicht — der Kopfzeilen-Kontostand tickte live ins Minus, während die Bilanz einen alten Stand zeigte. Aktiva = Passiva geht jetzt in jeder Lage exakt auf.')}\n        ${v("v2.85.0", "Juni 2026", '<span style="color:var(--accent2);">PERF:</span> <b>Abteilungs-Effekte gecacht (Spätspiel-Glättung).</b> Die zentrale Effekt-Berechnung der Abteilungen läuft seit der Direktiven-Aktivierung in vielen heißen Pfaden (Straßen-Events, Tourenabrechnung, Forderungen, Flottenkarten) — sie wird jetzt pro Spieltag zwischengespeichert und nur bei echten Änderungen (Personal, Direktiven, Fahrzeuge, Standorte) neu berechnet. Bei großen Flotten mit vielen Mitarbeitern spürbar flüssiger, identisches Verhalten.')}\n        ${v("v2.84.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Werkstatt-Termine — Reparaturen brauchen Zeit.</b> Hof-Reparaturen dauern jetzt echte Werkstatt-Tage (je 30 Zustandspunkte ein Tag): ohne eigene Werkstatt-Crew +3 Tage Wartezeit, unterbesetzt +1, voll besetzt −1, Schnell-Reparatur-Direktive −1 — eine voll ausgebaute Werkstatt mit Schnell-Modus schafft kleinere Reparaturen weiterhin am selben Tag. Während des Werkstatt-Aufenthalts ist das Fahrzeug nicht disponierbar (die Flottenkarte zeigt den Fertigstellungstag). Pannenhilfe unterwegs bleibt mobiler Sofort-Service. Damit lohnt sich die eigene Werkstatt doppelt (billiger UND schneller) und Dauerverschleiß kostet real Einsatzzeit statt nur Geld.')}\n        ${v("v2.83.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>SF-Klassen — Schadenfreiheitsrabatt nach deutschem Vorbild.</b> Die Flottenpolice hat jetzt eine firmenweite SF-Klasse: jedes schadenfreie Versicherungsjahr stuft hoch (Prämien-Rabatt wächst bis −45% bei SF 8), jeder regulierte Vollkasko-Unfall stuft um zwei Klassen zurück — bis in die Malus-Klasse (+30%). Wie im echten System stufen Teilkasko-Schäden (Diebstahl, Glas, Wildunfall) NICHT zurück. Damit wird die Vollkasko-Entscheidung dynamisch: wer viel crasht, zahlt doppelt — über Selbstbeteiligungen UND steigende Prämien. Der Versicherungs-Tab zeigt SF-Klasse, aktuellen Rabatt und die Vollkasko-Schäden des laufenden Jahres neben der Schadenquote.')}\n        ${v("v2.82.0", "Juni 2026", '<span style="color:var(--accent);">NEU:</span> <b>Pendel-Lanen — Rahmenvertrags-Routen mit garantierter Rückfracht.</b> Mit Stammkunden (Beziehung ab 70%) lassen sich im Kundenportal feste Pendel-Lanen abschließen: Hin-Tour im festen Takt zu fester Rate (~1,90 €/km, leicht unter Spot-Niveau) und 85% garantierte Rückladung zu 87% der Rate — der reale Weg, die strukturellen ~50% Leerfahrten eines Spot-Einzel-LKW zu senken. Lane-Touren haben Vertragskunden-Priorität in der Disposition. Wer liefert, baut die Lane aus; wer Touren verfallen lässt, kassiert Strikes — nach drei Ausfällen kündigt der Kunde (Beziehung −10). Lane-Anzahl wächst mit dem Vertrieb (Basis 1, +1 je 2 Vertriebler, Rahmenvertrags-Fokus +2). Laufzeit 120 Tage.')}\n        ${v("v2.81.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Vertrieb, Recht &amp; IT wirken (Backlog B, Teil 5 — Abschluss der Direktiven-Aktivierung).</b> Die Wachstums-Offensive gewinnt echte Neukunden statt einer Schein-Meldung. Voller Vertrieb bringt Premium-Aufträge (⭐, +25% Preis, knappere Frist), der Rahmenvertrags-Fokus hebt das Vertrags-Limit und die Vertragsumsätze real (+15%). Die Vertragsoptimierung der Rechtsabteilung deckelt Verspätungs-Pönalen, SLA-Strafen und Entschädigungen (−20%); eine besetzte Rechtsabteilung senkt zusätzlich den Eigenanteil bei Unfall-Regulierungen. NEU: IT-Systemausfall — ab 6 Fahrzeugen ohne IT-Personal fällt das TMS gelegentlich aus (Disposition und Frachtenbörse einen Tag offline, 5%/Tag; IT-Sicherheits-Modus senkt das auf ein Drittel). Struktur-Fix: die Personalmangel-Mali von Recht und IT griffen nie (falsche Bedingung), die IT-Berichtsgenauigkeit war als Absolutwert in eine additive Rechnung geraten (volle IT hätte 180% angezeigt). Frachtenbörsen-Volumen folgt jetzt der echten Saison (toter SeasonalitySystem-Verweis ersetzt).')}\n        ${v("v2.80.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Fuhrpark &amp; Werkstatt wirken (Backlog B, Teil 4).</b> Eco-Routing senkt jetzt real die Tagesleistung (600 → 570 km beladen) — die Tagesleistung steckt neu in EINER zentralen Stelle und gilt identisch für Planung, Tourstart, Warteschlange, Rückfracht und alle Anzeigen. Die Auslastungs-Direktive senkt die Leer-Anfahrtskilometer um 15% (ohne Fuhrpark-Abteilung fallen +20% an) und kostet dafür etwas mehr Verschleiß. IT-Telematik spart real 4% Diesel auf allen Touren. Die Qualitäts-Werkstatt macht frisch reparierte Fahrzeuge 30 Tage lang 20% pannensicherer. Fuhrpark-Management skaliert die nutzbare Dispositions-Leistung (volle Abteilung +10%, ohne Personal −25%).')}\n        ${v("v2.79.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Buchhaltung wirkt aufs echte Forderungssystem (Backlog B, Teil 3).</b> Ohne Buchhaltung gehen Rechnungen jetzt ~3 Wochen später raus und ~10% der Forderungen fallen endgültig aus; volle Buchhaltung fakturiert 3 Tage schneller, treibt Überfällige telefonisch ein und kassiert bei Zahlungsverzug die gesetzliche 40-€-Pauschale plus ~11% Verzugszins p.a. (§ 288 BGB). Eine Rechtsabteilung senkt das Ausfallrisiko zusätzlich (×0,6). Die Mahnwesen-Direktive beschleunigt die Fakturierung und senkt Ausfälle, kostet aber monatlich Kundenbeziehung; das Kosten-Audit verhandelt real Miete und Kfz-Flottentarife (−5%); der Digitalisierungs-Sprint erhöht die Dispositions-Kapazität (+5%). Rezessions-Forderungsausfälle treffen jetzt das lebende Forderungssystem statt einer leeren Alt-Tabelle — Abschwung tut spürbar weh. Alle Ausfälle laufen als ordentlicher GuV-Aufwand (Wertberichtigung), Verzugszinsen als nicht-umsatzsteuerbarer Ertrag.')}\n        ${v("v2.78.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Personalabteilung wirkt (Backlog B, Teil 2 — HR).</b> Der Bewerberpool hängt jetzt an der HR-Arbeit: ohne Personalabteilung nur 2 Kandidaten, mit Einstellungs-Offensive ein vierter; HR-Vollbesetzung und Offensive heben Zuverlässigkeit, Pünktlichkeit und Motivation der Bewerber spürbar. Der Weiterbildungs-Fokus senkt Kurs- und Skill-Schulungskosten real um 20% und beschleunigt den XP-Gewinn (+5%) — ohne Personalabteilung kosten Kurse dagegen +30%. Die Präventiv-Compliance-Direktive schickt jeden Monat bis zu zwei ungeschulte Fahrer verbindlich in den Defensiv-Kurs (echte Kosten und Ausfalltage, danach dauerhaft −25% Unfallrisiko). Kurs- und Skillkosten laufen jetzt vollständig durch die Buchführung (GuV, Steuerbasis und Kontoauszug — vorher Kasse-direkt bzw. ohne Kontoauszug).')}\n        ${v("v2.77.0", "Juni 2026", '<span style="color:var(--accent2);">FIX:</span> <b>Abteilungs-Direktiven wirken jetzt wirklich (Backlog B, Teil 1).</b> Der Direktiven-Kern reichte etliche gesetzte Effekte nie an die Spielmechanik durch — der IT-Sicherheits-Modus (−90% Cyber-Risiko) blieb komplett wirkungslos, ebenso der Gehaltskosten-Aufschlag der Einstellungs-Offensive. Jetzt werden ALLE Direktiv-Effekte durchgereicht; die restlichen Mechanik-Anbindungen folgen in den nächsten Updates. Buchführung: Externe Werkstattaufträge zählen als Werkstatt-Umsatz in der GuV, Anwaltskosten der Rechtsverfolgung laufen über die ordentliche Buchung (vorher beides Kasse-direkt am Monatsbericht vorbei). Der Einstellungsstopp gibt keine Fantasie-Gutschrift mehr (+2.000€ ohne Gegenbuchung) — er spart real die Anwerbungskosten. Direktiven-Beschreibungen an die tatsächliche Mechanik angeglichen.')}\n        ${v("v2.76.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Letzte Audit-Reste: Frachtenbörse realistisch bepreist, saubere Spielenden, ehrliche Heimkehr</b> — (1) Spot-Aufträge berücksichtigen jetzt Qualifikation, Gefahrgut, Auflagen und Dieselpreis wie das Auftragsbuch — und respektieren denselben Reputations-Preisdeckel (keine Früh-Arbitrage mehr). (2) Selbstfahrer-Touren zählen in der Statistik (Aufträge + Kilometer). (3) Ohne LKW und ohne realistische Chance auf einen neuen (Kasse + Kreditrahmen unter 15.000 €) endet das Spiel sauber mit Insolvenz statt in einer ewigen Hängepartie. (4) Die Heimkehr vorausgeplanter Fahrer ist jetzt ehrlich: Leerfahrt-Sprit wird gebucht, der LKW steht danach wirklich an seiner Heimat-Niederlassung, und nach langen Einsätzen gilt auch hier die 45h-Wochenruhe.')}\n        ${v("v2.75.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realismus-Feinschliff (Audit Teil 6 — Abschluss des Audit-Programms)</b> — (1) EIN Kalender: Das LKW-Fahrverbot gilt jetzt am echten Kalender-Sonntag und an echten Feiertagen (vorher lief ein Parallel-Kalender, dessen „Sonntag" auf einen Werktag fiel). (2) BAG-Fahrverbot und Krankmeldungen stoppen jetzt auch laufende Touren — es wird sofort eine Vertretung organisiert. (3) Kunden-Insolvenz bedeutet echten Forderungsausfall: offene Rechnungen werden als Verlust ausgebucht (sichtbar in der GuV) — Factoring hat damit einen realen Sinn. (4) Selbstfahrer zahlen Maut wie jeder andere LKW und tragen ein Grundrisiko auch ohne Skill-Lücke. (5) Fahrer-Risiko steigt stetig mit sinkender Motivation statt an einer unsichtbaren Klippe. (6) Wetter & Baustellen wirken jetzt wirklich: Umwege kosten Sprit, Unwetter erhöhen das Unfallrisiko auf der betroffenen Route. (7) Die IT-Sicherheits-Direktive senkt die Cyberangriff-Wahrscheinlichkeit tatsächlich (−90 %). (8) Lange verfallene vorgeplante Aufträge räumen sich aus der Warteschlange; der Diebstahl-Anwalt holt nur bei bestehender Deckung mehr heraus; Büroschäden skalieren mit der Betriebsgröße.')}\n        ${v("v2.74.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV-Details auch für Selbstfahrer vollständig</b> — Kraftstoff der eigenen Touren (inkl. Leerfahrt heim) und Reparaturen aus Selbstfahr-Zwischenfällen erscheinen jetzt in den GuV-Detailzeilen „Kraftstoff & Maut" und „Reparaturen" (die Summen stimmten bereits, die Aufschlüsselung zeigte 0).')}\n        ${v("v2.74.0", "Juni 2026", '<span style="color:var(--accent2);">FEATURE:</span> <b>Echte Buchhaltung: Abschreibung (AfA) und Umsatzsteuer (Audit Teil 5, „Paket D2")</b> — (1) Fahrzeugkäufe sind jetzt erfolgsneutral: Der Kaufpreis ist kein Sofort-Aufwand mehr, sondern aktiviert das Fahrzeug — abgeschrieben wird linear über 8 Jahre (15 % Restwert), als eigene GuV-Position „Abschreibungen". Kein künstlicher Riesen-Verlust mehr im Kaufmonat. (2) Beim Verkauf oder Diebstahl wird der Restbuchwert ausgebucht — die GuV zeigt den echten Buchgewinn oder -verlust. (3) 19 % Umsatzsteuer als durchlaufender Posten: Erlöse werden brutto vereinnahmt, vorsteuerfähige Ausgaben (Diesel, Maut, Reparaturen, Fahrzeuge, Verwaltung) brutto bezahlt, und am Monatsersten wird die Zahllast ans Finanzamt abgeführt — im Investitionsmonat gibt es wie real eine Vorsteuer-Erstattung. Der Gewinn bleibt davon unberührt, aber die Liquidität verhält sich wie im echten Unternehmen. (4) Bilanz-Buchwert jetzt konsistent linear zur AfA; der Markt-Wiederverkaufswert bleibt davon getrennt.')}\n        ${v("v2.73.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Wochenruhe wie im echten Fahrerleben (Audit Teil 4)</b> — Die gesetzliche 45-Stunden-Wochenruhe wird jetzt aufs Wochenende gelegt, wie es reale Disponenten planen: Sie blockiert effektiv einen Arbeitstag statt zwei — denn sonntags ruht der LKW wegen des Fahrverbots ohnehin. Ergebnis: spürbar mehr Touren pro Monat (+27 % gemessen) und mehr pünktliche Lieferungen, ohne die Lenk- und Ruhezeiten-Regeln aufzuweichen.')}\n        ${v("v2.72.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Reale Marktpreise & Durchsatz (Audit Teil 3): Frachtraten, Tagesleistung, Disposition und Pönalen wie in der echten Branche</b> — (1) Frachtraten auf reales Niveau (~2,10 €/km für Komplettladungen auf „mittel", Board und Frachtenbörse). (2) Reale Tagesleistung: kurze Anfahrt + Beladung passen in einen Tag (bis ~580 km Gesamtstrecke) — LKW schaffen spürbar mehr Touren. (3) Nachmittags-Disposition: heute frei gewordene LKW bekommen noch am selben Tag die nächste Ladung. (4) Disponenten verplanen maximal eine Folgetour pro LKW — keine wochenlangen Warteschlangen mehr, deutlich mehr pünktliche Lieferungen. (5) Verspätungs-Pönale gestaffelt wie in echten Verträgen (~8 % plus 6 % je Tag, Deckel 40 %) statt pauschal 40 %. (6) Kontrolldichte (Bußgelder) auf reales Maß reduziert. (7) Werkstattkosten kalibriert (~0,13 €/km Routine-Instandhaltung) und Pannen kosten Zustand in realistischem Umfang. Gemessen: Umsatz je LKW verzehnfacht, Erlös exakt im realen Korridor — der Aufbau einer profitablen Flotte bleibt eine echte unternehmerische Aufgabe (Auslastung, Verträge, Werkstatt, Compliance).')}\n        ${v("v2.71.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Exploit-Schließung (Audit Teil 2): Geld-Drucker abgeschaltet, Markt verhält sich realistisch</b> — (1) Leasing-Ende konsequent: Ein ausgelaufener Vertrag fährt nicht weiter und zählt nicht als Eigentum, bis Sie sich entscheiden; die Restwert-Übernahme wird sauber gebucht und der Buchwert ist der Übernahmepreis — der „Leasen→Übernehmen→Teuer-Verkaufen"-Trick ist Geschichte. (2) Reparaturkosten skalieren mit der Fahrzeugklasse (ein Sattelzug kostet in der Werkstatt real mehr als ein Transporter) und der Wiederverkaufswert hängt stärker an Alter und Laufleistung — „vor dem Verkauf billig hochreparieren" lohnt nicht mehr; mit eigener Werkstatt samt Meister bleibt Aufbereitung ein ehrliches, begrenztes Geschäft. (3) Händler-Verhandlungen: maximal 2 Runden, Schmerzgrenze ~12 %; Anhänger-Händler akzeptieren keine 70-%-Abschläge mehr. (4) Marketing-Kampagnen sind nicht mehr stapelbar. (5) Frachtraten-Aufschläge aus Ereignissen bauen sich realistisch wieder ab. (6) Einstellungen kosten Anwerbung/Ausstattung (HR-Abteilung senkt das wirklich). (7) Diesel-Lager/Kontrakte und LKW-Käufe erscheinen jetzt vollständig in GuV und Kontoauszug. (8) Disponenten-Rücksprachen verbrennen keine Tageskapazität mehr; Sofortstarts überholen weder Warteschlange noch Fahrer-Heimkehr.')}\n        ${v("v2.70.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Großes Korrektheits-Update (Audit Teil 1): Versicherung zahlt wirklich, Buchhaltung stimmt, keine Karteileichen</b> — (1) Diebstahl: Teil-/Vollkasko zahlen jetzt tatsächlich den Wiederbeschaffungswert minus Selbstbeteiligung aus (vorher wurde die Erstattung nur angezeigt); unversicherter Diebstahl wird nicht mehr doppelt belastet. (2) Frachtversicherung zahlte jede Entschädigung doppelt — behoben. (3) Betriebsversicherungen (Haftpflicht, Cyber, D&O …) kosten jetzt wirklich ihre Monatsprämie statt einmalig. (4) Schwere Unfälle werden sofort nach Versicherungslage reguliert — nicht mehr abhängig davon, welche Antwort Sie anklicken. (5) Kündigungen kosten genau einmal: regulär 2 Monatsgehälter Abfindung, fristlos (nach Abmahnungen) wie im echten Arbeitsrecht keine. (6) Fahrer ohne LKW oder zu Hause sammeln keine „Tage unterwegs" mehr — Ersatzfahrer verkümmern nicht mehr. (7) Auftrags-Storno räumt jetzt sauber auf: Anhänger wieder verfügbar, Karte zeigt keine Geistertour, LKW steht an plausibler Position. (8) Vorgeplante Aufträge berechnen die Anfahrt korrekt von der tatsächlichen LKW-Position. (9) Automatische Rückfracht respektiert Anhänger-Typ, Gefahrgut, Fahrer-Qualifikation und Genehmigungspflichten. (10) Hilfe/FAQ und Versicherungsanzeigen sagen jetzt überall die Wahrheit (Deckung, Diebstahl-Erstattung, Frachtenbörse ohne Tageslimit).')}\n        ${v("v2.69.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV: Betriebsschäden eigene Position statt Sammelposten</b> — Selbstbeteiligungen bei Betriebshaftpflicht-, Büro-, Rechts- und D&O-Schäden landeten bisher in der opaken Zeile „Sonstige betriebliche Aufwendungen". Sie haben jetzt eine eigene, aufklappbare GuV-Position — der Geschäftsführer sieht, wofür das Geld floss.')}\n        ${v("v2.68.0", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Bilanz und Monatsabschluss stimmen jetzt</b> — Die Bilanz ging vorher nicht auf, weil offene Forderungen und der Wert von Gebäuden/Infrastruktur nicht ins Eigenkapital einflossen — jetzt enthalten, Aktiva = Passiva. Außerdem nutzt der Monatsabschluss dieselbe periodengerechte Umsatzbasis (Erfassung bei Auftragsabschluss) wie die laufende GuV — vorher zeigte der Abschluss den späteren Zahlungseingang, was den Monatsumsatz verfälschte.')}\n        ${v("v2.67.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Disposition nimmt keine absehbar verspäteten Aufträge mehr an</b> — Bisher nahm die Disposition auch Aufträge an, die der LKW erst 1–2 Tage nach Frist liefern konnte — mit 40 % Preisabzug. Jetzt wird nur angenommen, was der LKW pünktlich schafft. Da der LKW ohnehin voll ausgelastet ist, bleibt die Auftragszahl gleich, aber deutlich mehr Lieferungen sind pünktlich (voller Preis) — spürbar mehr Umsatz.')}\n        ${v("v2.66.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Mehr Touren pro LKW — Leerfahrt zur Beladung wurde doppelt berechnet</b> — Ein Fehler ließ die Anfahrt zum Beladeort doppelt in die Tourdauer einfließen. Touren mit Anfahrt dauerten dadurch deutlich länger als nötig — der LKW schaffte weniger Aufträge im Monat und riss häufig die Liefertermine (mit 40 % Preisabzug). Jetzt zählt die Anfahrt genau einmal: spürbar mehr Aufträge pro LKW, mehr pünktliche Lieferungen und entsprechend mehr Umsatz.')}\n        ${v("v2.65.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Versicherungslogik realistisch (Haftpflicht/Teilkasko/Vollkasko)</b> — Die Tarife greifen jetzt wie in der Realität: Haftpflicht deckt nur Fremdschäden an Dritten — Schäden am eigenen LKW tragen Sie selbst. Teilkasko deckt Diebstahl, Glasbruch und Wildschaden (voll minus Selbstbeteiligung), aber keine selbstverschuldeten Unfälle. Vollkasko deckt zusätzlich selbstverschuldete Unfälle (voll minus SB). Pannen laufen jetzt über den Wartungsvertrag statt über die Kasko — so lohnt sich das Aufrüsten der Versicherung wirklich.')}\n        ${v("v2.64.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Realistische Versicherungsprämien und faire Bußgelder</b> — Die Kfz-Versicherung war deutlich zu teuer (Haftpflicht/Teilkasko/Vollkasko rund 3–5× über realen Sätzen). Die Prämien sinken jetzt auf realistische Werte (Haftpflicht eines Sattelzugs z. B. grob €230 statt €800 pro Monat). Außerdem zählt eine gute Rechts- und Compliance-Abteilung jetzt wirklich: Bußgelder sinken mit Compliance-Personal und passenden Direktiven, statt reines Pech zu sein.')}\n        ${v("v2.63.0", "Juni 2026", '<span style="color:var(--accent2);">BALANCE:</span> <b>Frühphase neu: Owner-Operator-Start</b> — Du gründest jetzt schlank und fährst anfangs selbst (1 LKW, kein teures Personal, Miet-Karenz in den ersten Monaten, geringer Unternehmerlohn) — so trägt sich die Frühphase. einfach/mittel/schwer staffeln Polster und Selbstfahr-Druck. Außerdem: größere und realistischere Aufträge im Frühspiel, fairere Lieferfristen, mildere Anfangs-Bußgelder und ein anfahrt-bewusster Auto-Disponent (weniger Leerfahrten).')}\n        ${v("v2.62.10", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>GuV erfasst Kraftstoff/Maut korrekt + zwei Buchungs-Bugs</b> — In der GuV zeigte „Kraftstoff" €0, obwohl Sprit anfiel (die Kosten landeten unter „Sonstige"). Die Zeile heißt jetzt „Kraftstoff & Maut" und wird direkt aus der Buchhaltung gespeist — immer korrekt, auch bei Selbstfahrt. Außerdem behoben: Reparaturen aus Selbstfahr-Zwischenfällen und GF-Fortbildungen wurden wegen falscher Buchungs-Kategorie gar nicht von der Kasse abgezogen — jetzt korrekt verbucht.')}\n        ${v("v2.62.9", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Wartungsverträge jetzt korrekt abschließbar</b> — Bisher ließ sich für einen eigenen LKW (neu oder gebraucht) kein Wartungsvertrag richtig abschließen: Der einzige Button saß auf der Händler-Gebrauchtwagen-Karte und schloss versehentlich für den falschen LKW ab. Jetzt gibt es im LKW-Detail einen „Wartungsvertrag"-Button, und direkt nach dem Kauf wird ein Vertrag angeboten (neu und gebraucht). Der fehlerhafte Händler-Button wurde entfernt.')}\n        ${v("v2.62.8", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahr-Zwischenfall wird jetzt angezeigt</b> — Ein Zwischenfall durch Fahr-Skill-Lücke (Schaden + Reparaturkosten) auf einer Selbstfahr-Tour landete bisher nur in den Nachrichten. Jetzt erscheinen zusätzlich sofort eine kurze Meldung und eine Bestätigungs-Box, damit der Vorfall nicht übersehen wird.')}\n        ${v("v2.62.7", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Selbstfahrt: kein Heim-Abend und kein unmöglicher Kurztrip</b> — Während einer mehrtägigen Selbstfahr-Tour erschien abends die Heim-Übersicht („Bier trinken, Joggen …"), obwohl man im LKW unterwegs ist; die Spieluhr lief während der Tour weiter. Jetzt ruht sie, solange du selbst fährst. Zudem wird der Wochenend-„Kurztrip" nur noch angeboten, wenn das Wochenende wirklich noch vor dir liegt (nicht mehr, wenn du z. B. sonntags von Tour zurückkommst).')}\n        ${v("v2.62.6", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>„Anrufen" springt direkt zum wartenden Anruf</b> — Der Schnellzugriff „Anrufen →" im Heute-Cockpit öffnete nur den Posteingang; der wartende Telefonanruf lag darunter. Jetzt scrollt der Klick direkt zur Anruf-Karte mit den Antwortoptionen.')}\n        ${v("v2.62.5", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Dortmund: Doppeleintrag entfernt und Spielstart repariert</b> — In den Wirtschaftsregionen erschien Dortmund zweimal („Dortmund" und „Ruhrgebiet (Dortmund)"), beide für dieselbe Stadt. Der doppelte Eintrag wurde entfernt. Außerdem behoben: Ein Spielstart in „Ruhrgebiet (Dortmund)" stürzte bei der Auftragsgenerierung ab — die Region wird jetzt korrekt auf ihre Karten-Stadt Dortmund aufgelöst.')}\n        ${v("v2.62.4", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Keine doppelten Diesel-Preis-Schocks mehr</b> — Ein Diesel-Preis-Schock konnte am selben Tag aus zwei unabhängigen Ereignis-Systemen feuern. Jetzt gibt es genau eine Quelle — mit der ausführlichen Entscheidung „Frachtraten anpassen oder Kosten selbst tragen".')}
         ${v("v2.62.3", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Auftragsfilter „Nur machbare" wieder korrekt</b> — Der Filter zeigte auch Aufträge als machbar, die genau einen Tag zu spät fertig geworden wären (Off-by-one). Jetzt gelten nur Aufträge als machbar, die fristgerecht abgeschlossen werden können.')}
         ${v("v2.62.2", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Markteffekte verfliegen wieder & keine Entscheidungs-Staus</b> — (1) Markt-/Nachrichten-Effekte auf das Auftragsvolumen klingen jetzt über rund zwei Wochen wieder ab (vorher blieben sie dauerhaft und konnten das Volumen ohne erkennbare Ursache drücken). (2) Gleichartige Entscheidungen (gleicher Titel) werden nicht mehr doppelt eingereiht — das verhindert seltene Stau-Situationen, in denen sich das Spiel an gestapelten Dialogen verschluckte.')}
         ${v("v2.62.1", "Juni 2026", '<span style="color:var(--warn);">FIX:</span> <b>Softlocks entschärft</b> — (1) Ein liegengebliebener LKW wird jetzt automatisch repariert, sobald du dir die Reparatur leisten kannst (vorher erst ab 1.500 € Kasse — günstigere Reparaturen blieben darunter hängen). (2) Wenn du keine LKW mehr hast, im Minus bist und das Kreditlimit ausgereizt ist, endet das Spiel jetzt sauber mit Insolvenz, statt in einer ausweglosen Hängepartie zu verharren.')}
