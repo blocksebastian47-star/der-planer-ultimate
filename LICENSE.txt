@@ -1,0 +1,81 @@
+LIZENZ
+„Der Planer Ultimate" — Speditions-Simulation (Single-File-HTML-Spiel)
+
+© 2026 Dr. Sebastian Olbert Richard Block, Berlin, Deutschland.
+Alle Rechte vorbehalten (all rights reserved).
+
+1. SCHUTZGEGENSTAND UND RECHTEINHABER
+
+Der gesamte Inhalt dieses Repositories — insbesondere der Quellcode
+(index.html), die Spielidee, das Spielkonzept, die Spielmechanik, die
+Struktur, saemtliche Texte und sonstigen Inhalte des Spiels „Der Planer
+Ultimate" — ist als Computerprogramm bzw. Sprachwerk urheberrechtlich
+geschuetzt (§§ 2, 69a ff. UrhG). Alleiniger Urheber und Rechteinhaber ist
+Dr. Sebastian Olbert Richard Block, Berlin, Deutschland
+(GitHub: blocksebastian47-star). Einzelheiten zur Urheberschaft
+dokumentiert die Datei URHEBERNACHWEIS.txt.
+
+2. GESTATTETE NUTZUNG
+
+Gestattet ist ausschliesslich:
+
+a) das Ansehen des Quellcodes und der Inhalte zu Demonstrations-,
+   Pruef- und Informationszwecken;
+b) das private, nicht-kommerzielle Ausprobieren des Spiels im eigenen
+   Browser;
+c) die Nutzung der von GitHub fuer oeffentliche Repositories technisch
+   bereitgestellten Plattformfunktionen (Ansehen, Klonen, plattform-
+   internes Forken) in dem Umfang, in dem die GitHub-Nutzungsbedingungen
+   dies vorsehen. Kopien, die ueber solche Plattformfunktionen entstehen,
+   duerfen ausschliesslich im Rahmen der Buchstaben a) und b) genutzt
+   werden.
+
+3. NICHT GESTATTETE NUTZUNG
+
+Ohne vorherige schriftliche Zustimmung des Rechteinhabers ist
+insbesondere NICHT gestattet:
+
+a) die Weitergabe an Dritte sowie jede Veroeffentlichung, Verbreitung
+   oder oeffentliche Zugaenglichmachung des Spiels oder von Teilen davon
+   ausserhalb dieses Repositories;
+b) jede Veraenderung, Bearbeitung, Uebersetzung oder sonstige
+   Umgestaltung sowie deren Veroeffentlichung (einschliesslich der
+   Wiederveroeffentlichung unter eigenem oder fremdem Namen);
+c) jede kommerzielle Nutzung oder Verwertung, gleich in welcher Form
+   (z. B. Verkauf, Vermietung, Lizenzierung, entgeltliches Hosting,
+   Werbefinanzierung, In-App-Verkaeufe);
+d) die vollstaendige oder teilweise Uebernahme von Quellcode, Texten,
+   Spielmechaniken oder Gestaltungselementen in eigene oder fremde
+   Projekte;
+e) das Entfernen, Verdecken oder Veraendern von Urheberrechtshinweisen,
+   dieser Lizenzdatei oder der Datei URHEBERNACHWEIS.txt;
+f) die Nutzung der Inhalte dieses Repositories zum Trainieren von
+   KI-Modellen oder zum Aufbau abgeleiteter Datensaetze.
+
+4. ZUSTIMMUNGSVORBEHALT
+
+Jede Nutzung, die ueber Ziffer 2 hinausgeht, bedarf der VORHERIGEN
+SCHRIFTLICHEN ZUSTIMMUNG des Rechteinhabers. Anfragen sind ueber das
+GitHub-Profil github.com/blocksebastian47-star moeglich.
+
+5. FOLGEN VON VERSTOESSEN
+
+Verstoesse gegen diese Lizenz verletzen das Urheberrecht und koennen
+zivilrechtliche Ansprueche (u. a. Unterlassung, Auskunft und
+Schadensersatz, §§ 97 ff. UrhG) sowie strafrechtliche Folgen
+(§§ 106 ff. UrhG) nach sich ziehen. Der Rechteinhaber behaelt sich vor,
+Verstoesse konsequent zu verfolgen.
+
+6. KEINE GEWAEHRLEISTUNG
+
+Das Spiel und der Quellcode werden ohne jede Gewaehrleistung und ohne
+Zusicherung bestimmter Eigenschaften bereitgestellt („wie besehen").
+Die Nutzung im Rahmen von Ziffer 2 erfolgt auf eigenes Risiko.
+
+7. SCHLUSSBESTIMMUNGEN
+
+Es gilt das Recht der Bundesrepublik Deutschland. Sollte eine
+Bestimmung dieser Lizenz unwirksam sein, bleibt die Wirksamkeit der
+uebrigen Bestimmungen unberuehrt.
+
+Stand: 12.06.2026

@@ -1,0 +1,101 @@
+URHEBERNACHWEIS — ERKLAERUNG ZUR URHEBERSCHAFT
+„Der Planer Ultimate" — Speditions-Simulation (Single-File-HTML-Spiel)
+
+Stand: 12.06.2026 · Spielversion: v2.96.1
+(Diese Stand-Zeile wird bei jedem Versions-Commit mitgepflegt.)
+
+1. ERKLAERUNG ZUR URHEBERSCHAFT
+
+Ich, Dr. Sebastian Olbert Richard Block, Berlin, Deutschland
+(GitHub-Account: blocksebastian47-star), erklaere hiermit:
+
+1.1 Ich bin der alleinige Urheber und Rechteinhaber des Spiels
+    „Der Planer Ultimate" (Speditions-/Management-Simulation als
+    Single-File-HTML/JavaScript-Anwendung).
+
+1.2 Die Spielidee, das Spielkonzept, die Spielmechanik, die inhaltliche
+    Struktur, die Spielbalance-Vorgaben sowie saemtliche gestalterischen
+    und inhaltlichen Entscheidungen stammen von mir. Ich habe die
+    Entwicklung durchgehend gesteuert: Anforderungen vorgegeben,
+    Designvorschlaege gepruft, ausgewaehlt und freigegeben, jede
+    Aenderung in eigenen Spieltests geprueft und abgenommen.
+
+1.3 Bei der technischen Umsetzung (Programmierung) und bei Text-
+    formulierungen habe ich das KI-Entwicklungswerkzeug „Claude Code"
+    (Anthropic, PBC) als Hilfsmittel unter meiner fortlaufenden
+    Anleitung und Kontrolle eingesetzt. Der Werkzeugeinsatz ist in der
+    Commit-Historie transparent dokumentiert (Vermerk „Co-Authored-By:
+    Claude ..."). Diese Vermerke dokumentieren ausschliesslich den
+    Einsatz des Werkzeugs; sie begruenden keine Urheberschaft und keine
+    Rechte Dritter. Nach den Nutzungsbedingungen von Anthropic stehen
+    die Rechte an den Arbeitsergebnissen (Outputs), soweit solche
+    Rechte bestehen, dem Nutzer zu.
+
+1.4 Rechte Dritter am Spiel bestehen nicht. Das Projekt ist keine
+    Auftragsarbeit und nicht im Rahmen eines Arbeits-, Ausbildungs-
+    oder Dienstverhaeltnisses entstanden.
+
+2. ENTSTEHUNGSGESCHICHTE
+
+2.1 „Der Planer Ultimate" ist ein privates Eigenprojekt; eine spaetere
+    kommerzielle Verwertung durch mich ist beabsichtigt.
+
+2.2 Die Entwicklung erfolgt lokal auf meinem Rechner mit Versions-
+    verwaltung ueber Git; das Projekt wird in meinem GitHub-Account
+    veroeffentlicht:
+    https://github.com/blocksebastian47-star/der-planer-ultimate
+
+2.3 Beginn der versionierten Entwicklung: 15.05.2026 („Initial
+    commit"). Seitdem wird das Spiel kontinuierlich in einzeln
+    dokumentierten, von GitHub zeitgestempelten Commits weiter-
+    entwickelt (bis zum 12.06.2026: 367 Commits; die jeweils aktuelle
+    Zahl ist mit `git rev-list --count HEAD` pruefbar).
+
+2.4 Commits, Dateidaten und Server-Zeitstempel (GitHub) dienen als
+    technische Beweise der Entstehungsgeschichte und meiner
+    Urheberschaft.
+
+3. BEWEISMITTEL
+
+3.1 Oeffentliches GitHub-Repository mit vollstaendiger, zeit-
+    gestempelter Commit-Historie:
+    https://github.com/blocksebastian47-star/der-planer-ultimate
+
+3.2 Lokales Git-Repository auf meinem Rechner mit identischer Historie
+    und lokalen Dateidaten.
+
+3.3 Detaillierte Commit-Botschaften, die Entwurfsentscheidungen,
+    Spieltest-Befunde, Messlaeufe und Begruendungen dokumentieren —
+    ein Detailgrad, der nur beim tatsaechlichen Schoepfer des Werks
+    vorliegt.
+
+3.4 Versioniertes Aenderungsprotokoll im Spiel selbst (Hilfe →
+    Changelog) mit Versions- und Datumsangaben seit Projektbeginn.
+
+3.5 Konto-Identitaet: GitHub-Account blocksebastian47-star
+    (Commit-Identitaet „Dr. Block" mit GitHub-noreply-Adresse).
+
+3.6 Diese Datei URHEBERNACHWEIS.txt sowie die Lizenzdatei LICENSE.txt.
+
+4. HINWEIS FUER DRITTE
+
+4.1 Dritte duerfen den Quellcode und die Inhalte dieses Repositories
+    ausschliesslich ansehen und das Spiel privat, nicht-kommerziell im
+    Browser ausprobieren (Demonstrations-, Pruef- und Informations-
+    zwecke; Einzelheiten regelt die LICENSE.txt).
+
+4.2 Nicht gestattet ist insbesondere: das Kopieren ueber die GitHub-
+    Plattformfunktionen hinaus, die Weiterverwendung in eigenen oder
+    fremden Projekten, das Ausgeben als eigene Leistung, jede
+    Veraenderung oder Wiederveroeffentlichung sowie jede kommerzielle
+    Nutzung.
+
+4.3 Jede ueber Ziffer 4.1 hinausgehende Nutzung bedarf meiner
+    vorherigen schriftlichen Zustimmung (Kontakt: ueber das GitHub-
+    Profil). Verstoesse koennen rechtliche Schritte nach sich ziehen
+    (§§ 97 ff., 106 ff. UrhG).
+
+Berlin, den 12.06.2026
+
+Dr. Sebastian Olbert Richard Block
+(alleiniger Urheber und Rechteinhaber)

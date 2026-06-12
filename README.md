@@ -2,11 +2,21 @@
 
 Eine Speditions-Simulation als Single-File-HTML-Spiel.
 
+## 🔒 Urheberrecht & Lizenz
+
+**© 2026 Dr. Sebastian Olbert Richard Block, Berlin, Deutschland. Alle Rechte vorbehalten.**
+
+Dieses Projekt — Quellcode, Spielidee, Spielmechanik, Struktur und Texte — ist urheberrechtlich geschützt. Es darf angesehen und privat im Browser ausprobiert werden; **jede Weitergabe, Veränderung, Wiederveröffentlichung oder kommerzielle Nutzung ist ohne vorherige schriftliche Zustimmung nicht gestattet.**
+
+- Lizenzbedingungen: [LICENSE.txt](LICENSE.txt)
+- Urheberschafts-Dokumentation: [URHEBERNACHWEIS.txt](URHEBERNACHWEIS.txt)
+- Nutzungsanfragen: über das [GitHub-Profil](https://github.com/blocksebastian47-star)
+
 ## 🚛 Über das Spiel
 
-Speditions-Management-Simulation. Plane Routen, verwalte Aufträge, behalte den Überblick.
+Speditions-Management-Simulation. Plane Routen, verwalte Aufträge, behalte den Überblick — vom Owner-Operator mit einem LKW bis zum internationalen Konzern.
 
-**Aktueller Build:** v2.0512 (12.05.2026)
+**Aktuelle Version:** siehe Versionsanzeige im Spielmenü und Changelog in der Spiel-Hilfe (die Git-Historie dokumentiert jede Version).
 
 ## 🎮 Spielen
 
@@ -25,7 +35,7 @@ Das gesamte Spiel ist in einer einzigen HTML-Datei (`index.html`) mit eingebette
 # Anschließend einfach im Browser neu laden
 ```
 
-### Mit Claude Code weiterentwickeln
+### Mit Claude Code weiterentwickeln (interner Workflow des Rechteinhabers)
 
 ```bash
 claude
@@ -35,14 +45,16 @@ Dann z.B.: *"Lies index.html und füge eine neue Spielmechanik X hinzu"*
 
 ## 📝 Versionshistorie
 
-- **v2.0512** — Aktuelle Version, optimiert auf 1,3 MB (von vorher 1,6 MB)
-- Frühere Versionen siehe Git-Historie
+Vollständig dokumentiert im Changelog innerhalb des Spiels (Hilfe → Changelog) und in der Git-Commit-Historie.
 
 ## 📁 Struktur
 
 ```
 .
-├── index.html        # Das komplette Spiel (HTML + CSS + JS in einer Datei)
-├── README.md         # Diese Datei
-└── .gitignore        # Git-Ignore-Regeln
+├── index.html            # Das komplette Spiel (HTML + CSS + JS in einer Datei)
+├── README.md             # Diese Datei
+├── LICENSE.txt           # Lizenz — alle Rechte vorbehalten
+├── URHEBERNACHWEIS.txt   # Dokumentation der Urheberschaft
+├── CLAUDE.md             # Arbeitsnotizen für die Entwicklung
+└── .gitignore            # Git-Ignore-Regeln
 ```
