@@ -1,7 +1,7 @@
 URHEBERNACHWEIS — ERKLAERUNG ZUR URHEBERSCHAFT
 „Der Planer Ultimate" — Speditions-Simulation (Single-File-HTML-Spiel)
 
-Stand: 13.06.2026 · Spielversion: v2.98.0
+Stand: 13.06.2026 · Spielversion: v2.98.1
 (Diese Stand-Zeile wird bei jedem Versions-Commit mitgepflegt.)
 
 1. ERKLAERUNG ZUR URHEBERSCHAFT
